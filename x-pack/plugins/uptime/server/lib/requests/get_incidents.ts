@@ -5,12 +5,9 @@
  */
 
 import { UMElasticsearchQueryFn } from '../adapters/framework';
-import {
-  GetPingsParams,
-  HttpResponseBody,
-  PingsResponse,
-  Ping,
-} from '../../../common/runtime_types';
+import { GetPingsParams, PingsResponse } from '../../../common/runtime_types';
+import { timestamp } from 'rxjs/operators';
+import moment from 'moment';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -47,15 +44,29 @@ export const getIncidents: UMElasticsearchQueryFn<GetPingsParams, PingsResponse>
         ...queryContext,
       },
       ...sortParam,
-      size,
+      size: 0,
       aggs: {
         incidents: {
-          terms: {
-            field: 'monitor.status_block',
-            size: 10,
+          composite: {
+            sources: [
+              {
+                timestamp: {
+                  terms: {
+                    field: 'monitor.status_block',
+                  },
+                },
+              },
+              {
+                location: {
+                  terms: {
+                    field: 'observer.geo.name',
+                  },
+                },
+              },
+            ],
           },
           aggs: {
-            ping: {
+            ping_info: {
               top_hits: {
                 size: 1,
               },
@@ -71,29 +82,21 @@ export const getIncidents: UMElasticsearchQueryFn<GetPingsParams, PingsResponse>
     params.body.from = index * size;
   }
 
-  const {
-    hits: { hits, total },
-    aggregations: aggs,
-  } = await callES('search', params);
+  const { aggregations: aggs } = await callES('search', params);
 
-  const locations = aggs?.locations ?? { buckets: [{ key: 'N/A', doc_count: 0 }] };
+  const lastStatusBlockByLocation: Record<string, string> = {};
 
-  const pings: Ping[] = hits.map((doc: any) => {
-    const { _id, _source } = doc;
-    // Calculate here the length of the content string in bytes, this is easier than in client JS, where
-    // we don't have access to Buffer.byteLength. There are some hacky ways to do this in the
-    // client but this is cleaner.
-    const httpBody: HttpResponseBody | undefined = _source?.http?.response?.body;
-    if (httpBody && httpBody.content) {
-      httpBody.content_bytes = Buffer.byteLength(httpBody.content);
+  return aggs?.incidents.buckets.map(({ key: { location, timestamp }, ping_info }) => {
+    let duration = 0;
+    if (lastStatusBlockByLocation[location]) {
+      duration = moment(timestamp).diff(lastStatusBlockByLocation[location], 'm');
     }
-
-    return { ..._source, timestamp: _source['@timestamp'], docId: _id };
+    lastStatusBlockByLocation[location] = timestamp;
+    return {
+      timestamp,
+      location,
+      duration,
+      ping: ping_info.hits.hits[0]._source,
+    };
   });
-
-  return {
-    total: total.value,
-    locations: locations.buckets.map((bucket: { key: string }) => bucket.key),
-    pings,
-  };
 };

@@ -5,16 +5,13 @@
  */
 
 import { schema } from '@kbn/config-schema';
-import { isLeft } from 'fp-ts/lib/Either';
-import { PathReporter } from 'io-ts/lib/PathReporter';
 import { UMServerLibs } from '../../lib/lib';
 import { UMRestApiRouteFactory } from '../types';
 import { API_URLS } from '../../../common/constants';
-import { GetPingsParamsType } from '../../../common/runtime_types';
 
 export const createGetIncidentsRoute: UMRestApiRouteFactory = (libs: UMServerLibs) => ({
   method: 'GET',
-  path: API_URLS.PINGS,
+  path: API_URLS.INCIDENTS,
   validate: {
     query: schema.object({
       from: schema.string(),
@@ -29,23 +26,16 @@ export const createGetIncidentsRoute: UMRestApiRouteFactory = (libs: UMServerLib
   },
   handler: async ({ callES, dynamicSettings }, _context, request, response): Promise<any> => {
     const { from, to, ...optional } = request.query;
-    const params = GetPingsParamsType.decode({ dateRange: { from, to }, ...optional });
-    if (isLeft(params)) {
-      // eslint-disable-next-line no-console
-      console.error(new Error(PathReporter.report(params).join(';')));
-      return response.badRequest({ body: { message: 'Received invalid request parameters.' } });
-    }
+    const params = { dateRange: { from, to }, ...optional };
 
-    const result = await libs.requests.getPings({
+    const result = await libs.requests.getIncidents({
       callES,
       dynamicSettings,
-      ...params.right,
+      ...params,
     });
 
     return response.ok({
-      body: {
-        ...result,
-      },
+      body: result,
     });
   },
 });

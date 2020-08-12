@@ -18,6 +18,7 @@ import { fetchMLJobEffect } from './ml_anomaly';
 import { fetchIndexStatusEffect } from './index_status';
 import { fetchCertificatesEffect } from '../certificates/certificates';
 import { fetchAlertsEffect } from './alerts';
+import { fetchIncidentsEffect } from '../monitor_details/incidents';
 
 export function* rootEffect() {
   yield fork(fetchMonitorDetailsEffect);
@@ -35,4 +36,5 @@ export function* rootEffect() {
   yield fork(fetchIndexStatusEffect);
   yield fork(fetchCertificatesEffect);
   yield fork(fetchAlertsEffect);
+  yield fork(fetchIncidentsEffect);
 }

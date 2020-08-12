@@ -21,6 +21,7 @@ import { mlJobsReducer } from './ml_anomaly';
 import { certificatesReducer } from '../certificates/certificates';
 import { selectedFiltersReducer } from './selected_filters';
 import { alertsReducer } from './alerts';
+import { incidentsReducer } from '../monitor_details/incidents';
 
 export const rootReducer = combineReducers({
   monitor: monitorReducer,
@@ -39,4 +40,5 @@ export const rootReducer = combineReducers({
   certificates: certificatesReducer,
   selectedFilters: selectedFiltersReducer,
   alerts: alertsReducer,
+  incidents: incidentsReducer,
 });
