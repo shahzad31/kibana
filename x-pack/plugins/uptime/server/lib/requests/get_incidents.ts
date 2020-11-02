@@ -4,10 +4,9 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
+import moment from 'moment';
 import { UMElasticsearchQueryFn } from '../adapters/framework';
 import { GetPingsParams, PingsResponse } from '../../../common/runtime_types';
-import { timestamp } from 'rxjs/operators';
-import moment from 'moment';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -57,7 +56,7 @@ export const getIncidents: UMElasticsearchQueryFn<GetPingsParams, PingsResponse>
                 },
               },
               {
-                location: {
+                pingLocation: {
                   terms: {
                     field: 'observer.geo.name',
                   },
@@ -66,7 +65,7 @@ export const getIncidents: UMElasticsearchQueryFn<GetPingsParams, PingsResponse>
             ],
           },
           aggs: {
-            ping_info: {
+            pingInfo: {
               top_hits: {
                 size: 1,
               },
@@ -86,17 +85,17 @@ export const getIncidents: UMElasticsearchQueryFn<GetPingsParams, PingsResponse>
 
   const lastStatusBlockByLocation: Record<string, string> = {};
 
-  return aggs?.incidents.buckets.map(({ key: { location, timestamp }, ping_info }) => {
+  return aggs?.incidents.buckets.map(({ key: { pingLocation, timestamp }, pingInfo }) => {
     let duration = 0;
-    if (lastStatusBlockByLocation[location]) {
-      duration = moment(timestamp).diff(lastStatusBlockByLocation[location], 'm');
+    if (lastStatusBlockByLocation[pingLocation]) {
+      duration = moment(timestamp).diff(lastStatusBlockByLocation[pingLocation], 'm');
     }
-    lastStatusBlockByLocation[location] = timestamp;
+    lastStatusBlockByLocation[pingLocation] = timestamp;
     return {
       timestamp,
       location,
       duration,
-      ping: ping_info.hits.hits[0]._source,
+      ping: pingInfo.hits.hits[0]._source,
     };
   });
 };

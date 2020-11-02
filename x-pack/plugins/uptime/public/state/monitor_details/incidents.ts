@@ -7,24 +7,24 @@
 import { handleActions } from 'redux-actions';
 import { takeLatest } from 'redux-saga/effects';
 import { createAsyncAction } from '../actions/utils';
-import { getAsyncInitialState, handleAsyncAction } from '../reducers/utils';
+import { asyncInitState, handleAsyncAction } from '../reducers/utils';
 import { CertResult, GetCertsParams } from '../../../common/runtime_types';
 import { AppState } from '../index';
-import { AsyncInitialState } from '../reducers/types';
 import { fetchEffectFactory } from '../effects/fetch_effect';
 import { fetchIncidents } from '../api/incidents';
+import { AsyncInitState } from '../reducers/types';
 
 export const getIncidentsAction = createAsyncAction<GetCertsParams, CertResult>('GET_INCIDENTS');
 
 interface IncidentsState {
-  incidents: AsyncInitialState<CertResult>;
+  incidents: AsyncInitState<CertResult>;
 }
 
 const initialState = {
-  incidents: getAsyncInitialState(),
+  incidents: asyncInitState(),
 };
 
-export const incidentsReducer = handleActions<CertificatesState>(
+export const incidentsReducer = handleActions<any>(
   {
     ...handleAsyncAction<IncidentsState>('incidents', getIncidentsAction),
   },
