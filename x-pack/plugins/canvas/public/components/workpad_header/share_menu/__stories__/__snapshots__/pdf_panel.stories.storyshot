@@ -22,13 +22,14 @@ exports[`Storyshots components/WorkpadHeader/ShareMenu/PDFPanel default 1`] = `
       onClick={[Function]}
       style={
         Object {
+          "minWidth": undefined,
           "width": "100%",
         }
       }
       type="button"
     >
       <span
-        className="euiButton__content"
+        className="euiButtonContent euiButton__content"
       >
         <span
           className="euiButton__text"
@@ -62,17 +63,17 @@ exports[`Storyshots components/WorkpadHeader/ShareMenu/PDFPanel default 1`] = `
         className="euiButton euiButton--primary euiButton--small"
         style={
           Object {
+            "minWidth": undefined,
             "width": "100%",
           }
         }
         type="button"
       >
         <span
-          className="euiButton__content"
+          className="euiButtonContent euiButton__content"
         >
-          <div
-            aria-hidden="true"
-            className="euiButton__icon"
+          <span
+            className="euiButtonContent__icon"
             data-euiicon-type="copy"
             size="m"
           />

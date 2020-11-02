@@ -3,7 +3,6 @@
 exports[`Storyshots components/WorkpadHeader/EditMenu 2 elements selected 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -21,7 +20,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu 2 elements selected 1`] = 
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"
@@ -37,7 +36,6 @@ exports[`Storyshots components/WorkpadHeader/EditMenu 2 elements selected 1`] = 
 exports[`Storyshots components/WorkpadHeader/EditMenu 3+ elements selected 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -55,7 +53,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu 3+ elements selected 1`] =
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"
@@ -71,7 +69,6 @@ exports[`Storyshots components/WorkpadHeader/EditMenu 3+ elements selected 1`] =
 exports[`Storyshots components/WorkpadHeader/EditMenu clipboard data exists 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -89,7 +86,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu clipboard data exists 1`] 
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"
@@ -105,7 +102,6 @@ exports[`Storyshots components/WorkpadHeader/EditMenu clipboard data exists 1`] 
 exports[`Storyshots components/WorkpadHeader/EditMenu default 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -123,7 +119,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu default 1`] = `
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"
@@ -139,7 +135,6 @@ exports[`Storyshots components/WorkpadHeader/EditMenu default 1`] = `
 exports[`Storyshots components/WorkpadHeader/EditMenu single element selected 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -157,7 +152,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu single element selected 1`
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"
@@ -173,7 +168,6 @@ exports[`Storyshots components/WorkpadHeader/EditMenu single element selected 1`
 exports[`Storyshots components/WorkpadHeader/EditMenu single grouped element selected 1`] = `
 <div
   className="euiPopover euiPopover--anchorDownLeft"
-  container={null}
   onKeyDown={[Function]}
   onMouseDown={[Function]}
   onMouseUp={[Function]}
@@ -191,7 +185,7 @@ exports[`Storyshots components/WorkpadHeader/EditMenu single grouped element sel
       type="button"
     >
       <span
-        className="euiButtonEmpty__content"
+        className="euiButtonContent euiButtonEmpty__content"
       >
         <span
           className="euiButtonEmpty__text"

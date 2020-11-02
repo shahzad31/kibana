@@ -11,14 +11,17 @@ import { ConcreteTaskInstance, TaskStatus } from '../../../task_manager/server';
 import { TaskRunnerContext } from './task_runner_factory';
 import { TaskRunner } from './task_runner';
 import { encryptedSavedObjectsMock } from '../../../encrypted_saved_objects/server/mocks';
-import { loggingSystemMock } from '../../../../../src/core/server/mocks';
+import {
+  loggingSystemMock,
+  savedObjectsRepositoryMock,
+} from '../../../../../src/core/server/mocks';
 import { PluginStartContract as ActionsPluginStart } from '../../../actions/server';
 import { actionsMock, actionsClientMock } from '../../../actions/server/mocks';
 import { alertsMock, alertsClientMock } from '../mocks';
 import { eventLoggerMock } from '../../../event_log/server/event_logger.mock';
 import { IEventLogger } from '../../../event_log/server';
 import { SavedObjectsErrorHelpers } from '../../../../../src/core/server';
-
+import { Alert } from '../../common';
 const alertType = {
   id: 'test',
   name: 'My test alert',
@@ -71,9 +74,10 @@ describe('Task Runner', () => {
     spaceIdToNamespace: jest.fn().mockReturnValue(undefined),
     getBasePath: jest.fn().mockReturnValue(undefined),
     eventLogger: eventLoggerMock.create(),
+    internalSavedObjectsRepository: savedObjectsRepositoryMock.create(),
   };
 
-  const mockedAlertTypeSavedObject = {
+  const mockedAlertTypeSavedObject: Alert = {
     id: '1',
     consumer: 'bar',
     createdAt: new Date('2019-02-12T21:01:22.479Z'),
@@ -82,6 +86,7 @@ describe('Task Runner', () => {
     muteAll: false,
     enabled: true,
     alertTypeId: '123',
+    apiKey: '',
     apiKeyOwner: 'elastic',
     schedule: { interval: '10s' },
     name: 'alert-name',
@@ -102,6 +107,10 @@ describe('Task Runner', () => {
         },
       },
     ],
+    executionStatus: {
+      status: 'unknown',
+      lastExecutionDate: new Date('2020-08-20T19:23:38Z'),
+    },
   };
 
   beforeEach(() => {
@@ -211,20 +220,27 @@ describe('Task Runner', () => {
     await taskRunner.run();
     expect(actionsClient.enqueueExecution).toHaveBeenCalledTimes(1);
     expect(actionsClient.enqueueExecution.mock.calls[0]).toMatchInlineSnapshot(`
-                  Array [
-                    Object {
-                      "apiKey": "MTIzOmFiYw==",
-                      "id": "1",
-                      "params": Object {
-                        "foo": true,
-                      },
-                      "spaceId": undefined,
-                    },
-                  ]
-          `);
+      Array [
+        Object {
+          "apiKey": "MTIzOmFiYw==",
+          "id": "1",
+          "params": Object {
+            "foo": true,
+          },
+          "source": Object {
+            "source": Object {
+              "id": "1",
+              "type": "alert",
+            },
+            "type": "SAVED_OBJECT",
+          },
+          "spaceId": undefined,
+        },
+      ]
+    `);
 
     const eventLogger = taskRunnerFactoryInitializerParams.eventLogger;
-    expect(eventLogger.logEvent).toHaveBeenCalledTimes(3);
+    expect(eventLogger.logEvent).toHaveBeenCalledTimes(4);
     expect(eventLogger.logEvent).toHaveBeenCalledWith({
       event: {
         action: 'execute',
@@ -260,6 +276,25 @@ describe('Task Runner', () => {
         ],
       },
       message: "test:1: 'alert-name' created new instance: '1'",
+    });
+    expect(eventLogger.logEvent).toHaveBeenCalledWith({
+      event: {
+        action: 'active-instance',
+      },
+      kibana: {
+        alerting: {
+          instance_id: '1',
+        },
+        saved_objects: [
+          {
+            id: '1',
+            namespace: undefined,
+            rel: 'primary',
+            type: 'alert',
+          },
+        ],
+      },
+      message: "test:1: 'alert-name' active instance: '1'",
     });
     expect(eventLogger.logEvent).toHaveBeenCalledWith({
       event: {
@@ -329,23 +364,36 @@ describe('Task Runner', () => {
           url: '/',
         },
       },
+      // TODO: Remove once we upgrade to hapi v18
+      _core: {
+        info: {
+          uri: 'http://localhost',
+        },
+      },
     });
     expect(actionsClient.enqueueExecution).toHaveBeenCalledTimes(1);
     expect(actionsClient.enqueueExecution.mock.calls[0]).toMatchInlineSnapshot(`
-                  Array [
-                    Object {
-                      "apiKey": "MTIzOmFiYw==",
-                      "id": "1",
-                      "params": Object {
-                        "foo": true,
-                      },
-                      "spaceId": undefined,
-                    },
-                  ]
-          `);
+      Array [
+        Object {
+          "apiKey": "MTIzOmFiYw==",
+          "id": "1",
+          "params": Object {
+            "foo": true,
+          },
+          "source": Object {
+            "source": Object {
+              "id": "1",
+              "type": "alert",
+            },
+            "type": "SAVED_OBJECT",
+          },
+          "spaceId": undefined,
+        },
+      ]
+    `);
 
     const eventLogger = taskRunnerFactoryInitializerParams.eventLogger;
-    expect(eventLogger.logEvent).toHaveBeenCalledTimes(3);
+    expect(eventLogger.logEvent).toHaveBeenCalledTimes(4);
     expect(eventLogger.logEvent.mock.calls).toMatchInlineSnapshot(`
       Array [
         Array [
@@ -386,6 +434,27 @@ describe('Task Runner', () => {
               ],
             },
             "message": "test:1: 'alert-name' created new instance: '1'",
+          },
+        ],
+        Array [
+          Object {
+            "event": Object {
+              "action": "active-instance",
+            },
+            "kibana": Object {
+              "alerting": Object {
+                "instance_id": "1",
+              },
+              "saved_objects": Array [
+                Object {
+                  "id": "1",
+                  "namespace": undefined,
+                  "rel": "primary",
+                  "type": "alert",
+                },
+              ],
+            },
+            "message": "test:1: 'alert-name' active instance: '1'",
           },
         ],
         Array [
@@ -465,7 +534,7 @@ describe('Task Runner', () => {
     `);
 
     const eventLogger = taskRunnerFactoryInitializerParams.eventLogger;
-    expect(eventLogger.logEvent).toHaveBeenCalledTimes(2);
+    expect(eventLogger.logEvent).toHaveBeenCalledTimes(3);
     expect(eventLogger.logEvent.mock.calls).toMatchInlineSnapshot(`
       Array [
         Array [
@@ -508,6 +577,27 @@ describe('Task Runner', () => {
             "message": "test:1: 'alert-name' resolved instance: '2'",
           },
         ],
+        Array [
+          Object {
+            "event": Object {
+              "action": "active-instance",
+            },
+            "kibana": Object {
+              "alerting": Object {
+                "instance_id": "1",
+              },
+              "saved_objects": Array [
+                Object {
+                  "id": "1",
+                  "namespace": undefined,
+                  "rel": "primary",
+                  "type": "alert",
+                },
+              ],
+            },
+            "message": "test:1: 'alert-name' active instance: '1'",
+          },
+        ],
       ]
     `);
   });
@@ -537,9 +627,7 @@ describe('Task Runner', () => {
     expect(await taskRunner.run()).toMatchInlineSnapshot(`
       Object {
         "runAt": 1970-01-01T00:00:10.000Z,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
     expect(taskRunnerFactoryInitializerParams.logger.error).toHaveBeenCalledWith(
@@ -580,6 +668,12 @@ describe('Task Runner', () => {
           url: '/',
         },
       },
+      // TODO: Remove once we upgrade to hapi v18
+      _core: {
+        info: {
+          uri: 'http://localhost',
+        },
+      },
     });
   });
 
@@ -610,6 +704,12 @@ describe('Task Runner', () => {
       raw: {
         req: {
           url: '/',
+        },
+      },
+      // TODO: Remove once we upgrade to hapi v18
+      _core: {
+        info: {
+          uri: 'http://localhost',
         },
       },
     });
@@ -643,9 +743,7 @@ describe('Task Runner', () => {
     expect(runnerResult).toMatchInlineSnapshot(`
       Object {
         "runAt": 1970-01-01T00:00:10.000Z,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
 
@@ -697,9 +795,7 @@ describe('Task Runner', () => {
     expect(runnerResult).toMatchInlineSnapshot(`
       Object {
         "runAt": 1970-01-01T00:05:00.000Z,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
   });
@@ -730,9 +826,7 @@ describe('Task Runner', () => {
     expect(runnerResult).toMatchInlineSnapshot(`
       Object {
         "runAt": 1970-01-01T00:05:00.000Z,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
   });
@@ -762,11 +856,46 @@ describe('Task Runner', () => {
     expect(runnerResult).toMatchInlineSnapshot(`
       Object {
         "runAt": 1970-01-01T00:05:00.000Z,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
+  });
+
+  test(`doesn't change previousStartedAt when it fails to run`, async () => {
+    const originalAlertSate = {
+      previousStartedAt: '1970-01-05T00:00:00.000Z',
+    };
+
+    alertType.executor.mockImplementation(
+      ({ services: executorServices }: AlertExecutorOptions) => {
+        throw new Error('OMG');
+      }
+    );
+
+    const taskRunner = new TaskRunner(
+      alertType,
+      {
+        ...mockedTaskInstance,
+        state: originalAlertSate,
+      },
+      taskRunnerFactoryInitializerParams
+    );
+
+    alertsClient.get.mockResolvedValueOnce(mockedAlertTypeSavedObject);
+    encryptedSavedObjectsClient.getDecryptedAsInternalUser.mockResolvedValueOnce({
+      id: '1',
+      type: 'alert',
+      attributes: {
+        apiKey: Buffer.from('123:abc').toString('base64'),
+      },
+      references: [],
+    });
+
+    const runnerResult = await taskRunner.run();
+
+    expect(runnerResult.state.previousStartedAt).toEqual(
+      new Date(originalAlertSate.previousStartedAt)
+    );
   });
 
   test('avoids rescheduling a failed Alert Task Runner when it throws due to failing to fetch the alert', async () => {
@@ -794,9 +923,7 @@ describe('Task Runner', () => {
     expect(runnerResult).toMatchInlineSnapshot(`
       Object {
         "runAt": undefined,
-        "state": Object {
-          "previousStartedAt": 1970-01-01T00:00:00.000Z,
-        },
+        "state": Object {},
       }
     `);
   });

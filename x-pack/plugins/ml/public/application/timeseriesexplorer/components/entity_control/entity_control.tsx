@@ -9,14 +9,7 @@ import React, { Component } from 'react';
 import { FormattedMessage } from '@kbn/i18n/react';
 import { i18n } from '@kbn/i18n';
 
-import {
-  EuiComboBox,
-  EuiComboBoxOptionOption,
-  EuiFlexItem,
-  EuiFormRow,
-  EuiToolTip,
-} from '@elastic/eui';
-import { EuiSelectableOption } from '@elastic/eui/src/components/selectable/selectable_option';
+import { EuiComboBox, EuiComboBoxOptionOption, EuiFlexItem, EuiFormRow } from '@elastic/eui';
 
 export interface Entity {
   fieldName: string;
@@ -113,7 +106,7 @@ export class EntityControl extends Component<EntityControlProps, EntityControlSt
     this.props.onSearchChange(this.props.entity, searchValue);
   };
 
-  renderOption = (option: EuiSelectableOption) => {
+  renderOption = (option: EuiComboBoxOptionOption) => {
     const { label } = option;
     return label === EMPTY_FIELD_VALUE_LABEL ? <i>{label}</i> : label;
   };
@@ -142,6 +135,7 @@ export class EntityControl extends Component<EntityControlProps, EntityControlSt
         onSearchChange={this.onSearchChange}
         isClearable={false}
         renderOption={this.renderOption}
+        data-test-subj={`mlSingleMetricViewerEntitySelection ${entity.fieldName}`}
       />
     );
 
@@ -156,9 +150,7 @@ export class EntityControl extends Component<EntityControlProps, EntityControlSt
     return (
       <EuiFlexItem grow={false}>
         <EuiFormRow label={entity.fieldName} helpText={forceSelection ? selectMessage : null}>
-          <EuiToolTip position="right" content={forceSelection ? selectMessage : null}>
-            {control}
-          </EuiToolTip>
+          {control}
         </EuiFormRow>
       </EuiFlexItem>
     );

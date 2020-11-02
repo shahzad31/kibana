@@ -28,6 +28,14 @@ describe('EventLogClientService', () => {
 
       eventLogStartService.getClient(request);
 
+      const savedObjectGetter = savedObjectProviderRegistry.getProvidersClient(request);
+      expect(jest.requireMock('./event_log_client').EventLogClient).toHaveBeenCalledWith({
+        esContext,
+        request,
+        savedObjectGetter,
+        spacesService: undefined,
+      });
+
       expect(savedObjectProviderRegistry.getProvidersClient).toHaveBeenCalledWith(request);
     });
   });
@@ -46,6 +54,12 @@ function fakeRequest(): KibanaRequest {
     raw: {
       req: {
         url: '/',
+      },
+    },
+    // TODO: Remove once we upgrade to hapi v18
+    _core: {
+      info: {
+        uri: 'http://localhost',
       },
     },
     getSavedObjectsClient: () => savedObjectsClient,

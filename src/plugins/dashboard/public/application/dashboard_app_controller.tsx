@@ -24,9 +24,18 @@ import { EuiCheckboxGroupIdToSelectedMap } from '@elastic/eui/src/components/for
 import React, { useState, ReactElement } from 'react';
 import ReactDOM from 'react-dom';
 import angular from 'angular';
+import deepEqual from 'fast-deep-equal';
 
 import { Observable, pipe, Subscription, merge } from 'rxjs';
-import { filter, map, debounceTime, mapTo, startWith, switchMap } from 'rxjs/operators';
+import {
+  filter,
+  map,
+  debounceTime,
+  mapTo,
+  startWith,
+  switchMap,
+  distinctUntilChanged,
+} from 'rxjs/operators';
 import { History } from 'history';
 import { SavedObjectSaveOpts } from 'src/plugins/saved_objects/public';
 import { NavigationPublicPluginStart as NavigationStart } from 'src/plugins/navigation/public';
@@ -57,7 +66,6 @@ import {
   ViewMode,
   ContainerOutput,
   EmbeddableInput,
-  SavedObjectEmbeddableInput,
 } from '../../../embeddable/public';
 import { NavAction, SavedDashboardPanel } from '../types';
 
@@ -73,14 +81,14 @@ import { getDashboardTitle } from './dashboard_strings';
 import { DashboardAppScope } from './dashboard_app';
 import { convertSavedDashboardPanelToPanelState } from './lib/embeddable_saved_object_converters';
 import { RenderDeps } from './application';
-import { IKbnUrlStateStorage, unhashUrl } from '../../../kibana_utils/public';
+import { IKbnUrlStateStorage, setStateToKbnUrl, unhashUrl } from '../../../kibana_utils/public';
 import {
   addFatalError,
   AngularHttpError,
   KibanaLegacyStart,
   subscribeWithScope,
-  migrateLegacyQuery,
 } from '../../../kibana_legacy/public';
+import { migrateLegacyQuery } from './lib/migrate_legacy_query';
 
 export interface DashboardAppControllerDependencies extends RenderDeps {
   $scope: DashboardAppScope;
@@ -131,12 +139,11 @@ export class DashboardAppController {
     dashboardCapabilities,
     scopedHistory,
     embeddableCapabilities: { visualizeCapabilities, mapsCapabilities },
-    data: { query: queryService },
+    data: { query: queryService, search: searchService },
     core: {
       notifications,
       overlays,
       chrome,
-      injectedMetadata,
       fatalErrors,
       uiSettings,
       savedObjects,
@@ -144,6 +151,7 @@ export class DashboardAppController {
       i18n: i18nStart,
     },
     history,
+    setHeaderActionMenu,
     kbnUrlStateStorage,
     usageCollection,
     navigation,
@@ -168,7 +176,7 @@ export class DashboardAppController {
       chrome.docTitle.change(dash.title);
     }
 
-    const incomingEmbeddable = embeddable
+    let incomingEmbeddable = embeddable
       .getStateTransfer(scopedHistory())
       .getIncomingEmbeddablePackage();
 
@@ -279,6 +287,12 @@ export class DashboardAppController {
     const updateIndexPatternsOperator = pipe(
       filter((container: DashboardContainer) => !!container && !isErrorEmbeddable(container)),
       map(getDashboardIndexPatterns),
+      distinctUntilChanged((a, b) =>
+        deepEqual(
+          a.map((ip) => ip.id),
+          b.map((ip) => ip.id)
+        )
+      ),
       // using switchMap for previous task cancellation
       switchMap((panelIndexPatterns: IndexPattern[]) => {
         return new Observable((observer) => {
@@ -328,10 +342,22 @@ export class DashboardAppController {
       dashboardStateManager.getPanels().forEach((panel: SavedDashboardPanel) => {
         embeddablesMap[panel.panelIndex] = convertSavedDashboardPanelToPanelState(panel);
       });
-      let expandedPanelId;
-      if (dashboardContainer && !isErrorEmbeddable(dashboardContainer)) {
-        expandedPanelId = dashboardContainer.getInput().expandedPanelId;
+
+      // If the incoming embeddable state's id already exists in the embeddables map, replace the input, retaining the existing gridData for that panel.
+      if (incomingEmbeddable?.embeddableId && embeddablesMap[incomingEmbeddable.embeddableId]) {
+        const originalPanelState = embeddablesMap[incomingEmbeddable.embeddableId];
+        embeddablesMap[incomingEmbeddable.embeddableId] = {
+          gridData: originalPanelState.gridData,
+          type: incomingEmbeddable.type,
+          explicitInput: {
+            ...originalPanelState.explicitInput,
+            ...incomingEmbeddable.input,
+            id: incomingEmbeddable.embeddableId,
+          },
+        };
+        incomingEmbeddable = undefined;
       }
+
       const shouldShowEditHelp = getShouldShowEditHelp();
       const shouldShowViewHelp = getShouldShowViewHelp();
       const isEmptyInReadonlyMode = shouldShowUnauthorizedEmptyState();
@@ -353,7 +379,7 @@ export class DashboardAppController {
         lastReloadRequestTime,
         title: dashboardStateManager.getTitle(),
         description: dashboardStateManager.getDescription(),
-        expandedPanelId,
+        expandedPanelId: dashboardStateManager.getExpandedPanelId(),
       };
     };
 
@@ -386,8 +412,9 @@ export class DashboardAppController {
     >(DASHBOARD_CONTAINER_TYPE);
 
     if (dashboardFactory) {
+      const searchSessionId = searchService.session.start();
       dashboardFactory
-        .create(getDashboardInput())
+        .create({ ...getDashboardInput(), searchSessionId })
         .then((container: DashboardContainer | ErrorEmbeddable | undefined) => {
           if (container && !isErrorEmbeddable(container)) {
             dashboardContainer = container;
@@ -405,17 +432,29 @@ export class DashboardAppController {
               ) : null;
             };
 
-            outputSubscription = new Subscription();
-            outputSubscription.add(
-              dashboardContainer
-                .getOutput$()
-                .pipe(
-                  mapTo(dashboardContainer),
-                  startWith(dashboardContainer), // to trigger initial index pattern update
-                  updateIndexPatternsOperator
+            outputSubscription = merge(
+              // output of dashboard container itself
+              dashboardContainer.getOutput$(),
+              // plus output of dashboard container children,
+              // children may change, so make sure we subscribe/unsubscribe with switchMap
+              dashboardContainer.getOutput$().pipe(
+                map(() => dashboardContainer!.getChildIds()),
+                distinctUntilChanged(deepEqual),
+                switchMap((newChildIds: string[]) =>
+                  merge(
+                    ...newChildIds.map((childId) =>
+                      dashboardContainer!.getChild(childId).getOutput$()
+                    )
+                  )
                 )
-                .subscribe()
-            );
+              )
+            )
+              .pipe(
+                mapTo(dashboardContainer),
+                startWith(dashboardContainer), // to trigger initial index pattern update
+                updateIndexPatternsOperator
+              )
+              .subscribe();
 
             inputSubscription = dashboardContainer.getInput$().subscribe(() => {
               let dirty = false;
@@ -454,25 +493,16 @@ export class DashboardAppController {
               refreshDashboardContainer();
             });
 
-            if (incomingEmbeddable) {
-              if ('id' in incomingEmbeddable) {
-                container.addOrUpdateEmbeddable<SavedObjectEmbeddableInput>(
-                  incomingEmbeddable.type,
-                  {
-                    savedObjectId: incomingEmbeddable.id,
-                  }
-                );
-              } else if ('input' in incomingEmbeddable) {
-                const input = incomingEmbeddable.input;
-                delete input.id;
-                const explicitInput = {
-                  savedVis: input,
-                };
-                container.addOrUpdateEmbeddable<EmbeddableInput>(
-                  incomingEmbeddable.type,
-                  explicitInput
-                );
-              }
+            // If the incomingEmbeddable does not yet exist in the panels listing, create a new panel using the container's addEmbeddable method.
+            if (
+              incomingEmbeddable &&
+              (!incomingEmbeddable.embeddableId ||
+                !container.getInput().panels[incomingEmbeddable.embeddableId])
+            ) {
+              container.addNewEmbeddable<EmbeddableInput>(
+                incomingEmbeddable.type,
+                incomingEmbeddable.input
+              );
             }
           }
 
@@ -496,9 +526,6 @@ export class DashboardAppController {
       dashboardStateManager.getQuery() || queryStringManager.getDefaultQuery(),
       filterManager.getFilters()
     );
-
-    timefilter.disableTimeRangeSelector();
-    timefilter.disableAutoRefreshSelector();
 
     const landingPageUrl = () => `#${DashboardConstants.LANDING_PAGE_PATH}`;
 
@@ -546,7 +573,7 @@ export class DashboardAppController {
         differences.filters = appStateDashboardInput.filters;
       }
 
-      Object.keys(_.omit(containerInput, ['filters'])).forEach((key) => {
+      Object.keys(_.omit(containerInput, ['filters', 'searchSessionId'])).forEach((key) => {
         const containerValue = (containerInput as { [key: string]: unknown })[key];
         const appStateValue = ((appStateDashboardInput as unknown) as { [key: string]: unknown })[
           key
@@ -564,7 +591,8 @@ export class DashboardAppController {
     const refreshDashboardContainer = () => {
       const changes = getChangesFromAppStateForContainerState();
       if (changes && dashboardContainer) {
-        dashboardContainer.updateInput(changes);
+        const searchSessionId = searchService.session.start();
+        dashboardContainer.updateInput({ ...changes, searchSessionId });
       }
     };
 
@@ -675,7 +703,13 @@ export class DashboardAppController {
     };
     const dashboardNavBar = document.getElementById('dashboardChrome');
     const updateNavBar = () => {
-      ReactDOM.render(<navigation.ui.TopNavMenu {...getNavBarProps()} />, dashboardNavBar);
+      ReactDOM.render(
+        <navigation.ui.TopNavMenu
+          {...getNavBarProps()}
+          {...(isEmbeddedExternally ? {} : { setMenuMountPoint: setHeaderActionMenu })}
+        />,
+        dashboardNavBar
+      );
     };
 
     const unmountNavBar = () => {
@@ -1043,7 +1077,12 @@ export class DashboardAppController {
           allowEmbed: true,
           allowShortUrl:
             !dashboardConfig.getHideWriteControls() || dashboardCapabilities.createShortUrl,
-          shareableUrl: unhashUrl(window.location.href),
+          shareableUrl: setStateToKbnUrl(
+            '_a',
+            dashboardStateManager.getAppState(),
+            { useHash: false, storeInHashQuery: true },
+            unhashUrl(window.location.href)
+          ),
           objectId: dash.id,
           objectType: 'dashboard',
           sharingData: {
@@ -1072,12 +1111,6 @@ export class DashboardAppController {
         $scope.model.filters = filterManager.getFilters();
         $scope.model.query = queryStringManager.getQuery();
         dashboardStateManager.applyFilters($scope.model.query, $scope.model.filters);
-        if (dashboardContainer) {
-          dashboardContainer.updateInput({
-            filters: $scope.model.filters,
-            query: $scope.model.query,
-          });
-        }
       },
     });
 
@@ -1122,6 +1155,7 @@ export class DashboardAppController {
       if (dashboardContainer) {
         dashboardContainer.destroy();
       }
+      searchService.session.clear();
     });
   }
 }

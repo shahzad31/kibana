@@ -4,7 +4,8 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 import { i18n } from '@kbn/i18n';
-import { FeatureConfig } from '../common/feature';
+import { KibanaFeatureConfig } from '../common';
+import { DEFAULT_APP_CATEGORIES } from '../../../../src/core/server';
 
 export interface BuildOSSFeaturesParams {
   savedObjectTypes: string[];
@@ -19,8 +20,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
         defaultMessage: 'Discover',
       }),
       order: 100,
-      icon: 'discoverApp',
-      navLinkId: 'discover',
+      category: DEFAULT_APP_CATEGORIES.kibana,
       app: ['discover', 'kibana'],
       catalogue: ['discover'],
       privileges: {
@@ -78,9 +78,8 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
       name: i18n.translate('xpack.features.visualizeFeatureName', {
         defaultMessage: 'Visualize',
       }),
-      order: 200,
-      icon: 'visualizeApp',
-      navLinkId: 'visualize',
+      order: 700,
+      category: DEFAULT_APP_CATEGORIES.kibana,
       app: ['visualize', 'lens', 'kibana'],
       catalogue: ['visualize'],
       privileges: {
@@ -138,9 +137,8 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
       name: i18n.translate('xpack.features.dashboardFeatureName', {
         defaultMessage: 'Dashboard',
       }),
-      order: 300,
-      icon: 'dashboardApp',
-      navLinkId: 'dashboards',
+      order: 200,
+      category: DEFAULT_APP_CATEGORIES.kibana,
       app: ['dashboards', 'kibana'],
       catalogue: ['dashboard'],
       privileges: {
@@ -172,6 +170,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
               'visualization',
               'timelion-sheet',
               'canvas-workpad',
+              'lens',
               'map',
               'dashboard',
               'query',
@@ -216,8 +215,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
         defaultMessage: 'Dev Tools',
       }),
       order: 1300,
-      icon: 'devToolsApp',
-      navLinkId: 'dev_tools',
+      category: DEFAULT_APP_CATEGORIES.management,
       app: ['dev_tools', 'kibana'],
       catalogue: ['console', 'searchprofiler', 'grokdebugger'],
       privileges: {
@@ -253,7 +251,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
         defaultMessage: 'Advanced Settings',
       }),
       order: 1500,
-      icon: 'advancedSettingsApp',
+      category: DEFAULT_APP_CATEGORIES.management,
       app: ['kibana'],
       catalogue: ['advanced_settings'],
       management: {
@@ -292,7 +290,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
         defaultMessage: 'Index Pattern Management',
       }),
       order: 1600,
-      icon: 'indexPatternApp',
+      category: DEFAULT_APP_CATEGORIES.management,
       app: ['kibana'],
       catalogue: ['indexPatterns'],
       management: {
@@ -331,7 +329,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
         defaultMessage: 'Saved Objects Management',
       }),
       order: 1700,
-      icon: 'savedObjectsApp',
+      category: DEFAULT_APP_CATEGORIES.management,
       app: ['kibana'],
       catalogue: ['saved_objects'],
       management: {
@@ -349,7 +347,7 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
             all: [...savedObjectTypes],
             read: [],
           },
-          ui: ['read', 'edit', 'delete', 'copyIntoSpace'],
+          ui: ['read', 'edit', 'delete', 'copyIntoSpace', 'shareIntoSpace'],
         },
         read: {
           app: ['kibana'],
@@ -367,15 +365,14 @@ export const buildOSSFeatures = ({ savedObjectTypes, includeTimelion }: BuildOSS
       },
     },
     ...(includeTimelion ? [timelionFeature] : []),
-  ] as FeatureConfig[];
+  ] as KibanaFeatureConfig[];
 };
 
-const timelionFeature: FeatureConfig = {
+const timelionFeature: KibanaFeatureConfig = {
   id: 'timelion',
   name: 'Timelion',
   order: 350,
-  icon: 'timelionApp',
-  navLinkId: 'timelion',
+  category: DEFAULT_APP_CATEGORIES.kibana,
   app: ['timelion', 'kibana'],
   catalogue: ['timelion'],
   privileges: {

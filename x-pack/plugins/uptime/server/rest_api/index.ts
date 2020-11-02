@@ -6,7 +6,13 @@
 
 import { createGetCertsRoute } from './certs/certs';
 import { createGetOverviewFilters } from './overview_filters';
-import { createGetIncidentsRoute, createGetPingHistogramRoute, createGetPingsRoute } from './pings';
+import {
+  createGetPingHistogramRoute,
+  createGetPingsRoute,
+  createJourneyRoute,
+  createJourneyScreenshotRoute,
+  createGetIncidentsRoute,
+} from './pings';
 import { createGetDynamicSettingsRoute, createPostDynamicSettingsRoute } from './dynamic_settings';
 import { createLogPageViewRoute } from './telemetry';
 import { createGetSnapshotCount } from './snapshot';
@@ -41,4 +47,6 @@ export const restApiRoutes: UMRestApiRouteFactory[] = [
   createLogPageViewRoute,
   createGetPingHistogramRoute,
   createGetMonitorDurationRoute,
+  createJourneyRoute,
+  createJourneyScreenshotRoute,
 ];

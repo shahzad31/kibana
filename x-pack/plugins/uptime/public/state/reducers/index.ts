@@ -22,6 +22,7 @@ import { certificatesReducer } from '../certificates/certificates';
 import { selectedFiltersReducer } from './selected_filters';
 import { alertsReducer } from './alerts';
 import { incidentsReducer } from '../monitor_details/incidents';
+import { journeyReducer } from './journey';
 
 export const rootReducer = combineReducers({
   monitor: monitorReducer,
@@ -41,4 +42,5 @@ export const rootReducer = combineReducers({
   selectedFilters: selectedFiltersReducer,
   alerts: alertsReducer,
   incidents: incidentsReducer,
+  journeys: journeyReducer,
 });

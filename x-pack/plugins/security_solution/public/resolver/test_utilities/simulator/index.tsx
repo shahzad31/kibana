@@ -7,24 +7,21 @@
 import React from 'react';
 import { Store, createStore, applyMiddleware } from 'redux';
 import { mount, ReactWrapper } from 'enzyme';
-import { createMemoryHistory, History as HistoryPackageHistoryInterface } from 'history';
-import { CoreStart } from '../../../../../../../src/core/public';
+import { History as HistoryPackageHistoryInterface, createMemoryHistory } from 'history';
 import { coreMock } from '../../../../../../../src/core/public/mocks';
 import { spyMiddlewareFactory } from '../spy_middleware_factory';
 import { resolverMiddlewareFactory } from '../../store/middleware';
 import { resolverReducer } from '../../store/reducer';
 import { MockResolver } from './mock_resolver';
-import { ResolverState, DataAccessLayer, SpyMiddleware } from '../../types';
+import { ResolverState, DataAccessLayer, SpyMiddleware, SideEffectSimulator } from '../../types';
 import { ResolverAction } from '../../store/actions';
+import { sideEffectSimulatorFactory } from '../../view/side_effect_simulator_factory';
+import { uiSetting } from '../../mocks/ui_setting';
 
 /**
  * Test a Resolver instance using jest, enzyme, and a mock data layer.
  */
 export class Simulator {
-  /**
-   * A string that uniquely identifies this Resolver instance among others mounted in the DOM.
-   */
-  private readonly resolverComponentInstanceID: string;
   /**
    * The redux store, creating in the constructor using the `dataAccessLayer`.
    * This code subscribes to state transitions.
@@ -43,10 +40,40 @@ export class Simulator {
    * This is used by `debugActions`.
    */
   private readonly spyMiddleware: SpyMiddleware;
+  /**
+   * Simulator which allows you to explicitly simulate resize events and trigger animation frames
+   */
+  private readonly sideEffectSimulator: SideEffectSimulator;
+
+  /**
+   * An `enzyme` supported CSS selector for process node elements.
+   */
+  public static nodeElementSelector({
+    entityID,
+    selected = false,
+  }: ProcessNodeElementSelectorOptions = {}): string {
+    let selector: string = baseNodeElementSelector;
+    if (entityID !== undefined) {
+      selector += `[data-test-resolver-node-id="${entityID}"]`;
+    }
+    if (selected) {
+      selector += '[aria-selected="true"]';
+    }
+    return selector;
+  }
+
+  /**
+   * The simulator returns enzyme `ReactWrapper`s from various methods. Use this predicate to determine if they are DOM nodes.
+   */
+  public static isDOM(wrapper: ReactWrapper): boolean {
+    return typeof wrapper.type() === 'string';
+  }
+
   constructor({
     dataAccessLayer,
     resolverComponentInstanceID,
     databaseDocumentID,
+    indices,
     history,
   }: {
     /**
@@ -58,12 +85,15 @@ export class Simulator {
      */
     resolverComponentInstanceID: string;
     /**
+     * Indices that the backend would use to find the document ID.
+     */
+    indices: string[];
+    /**
      * a databaseDocumentID to pass to Resolver. Resolver will use this in requests to the mock data layer.
      */
-    databaseDocumentID?: string;
+    databaseDocumentID: string;
     history?: HistoryPackageHistoryInterface<never>;
   }) {
-    this.resolverComponentInstanceID = resolverComponentInstanceID;
     // create the spy middleware (for debugging tests)
     this.spyMiddleware = spyMiddlewareFactory();
 
@@ -85,18 +115,59 @@ export class Simulator {
     this.history = history ?? createMemoryHistory();
 
     // Used for `KibanaContextProvider`
-    const coreStart: CoreStart = coreMock.createStart();
+    const coreStart = coreMock.createStart();
+
+    coreStart.uiSettings.get.mockImplementation(uiSetting);
+
+    this.sideEffectSimulator = sideEffectSimulatorFactory();
 
     // Render Resolver via the `MockResolver` component, using `enzyme`.
     this.wrapper = mount(
       <MockResolver
-        resolverComponentInstanceID={this.resolverComponentInstanceID}
+        resolverComponentInstanceID={resolverComponentInstanceID}
         history={this.history}
+        sideEffectSimulator={this.sideEffectSimulator}
         store={this.store}
         coreStart={coreStart}
         databaseDocumentID={databaseDocumentID}
+        indices={indices}
       />
     );
+  }
+
+  /**
+   * Unmount the Resolver component. Use this to test what happens when code that uses Resolver unmounts it.
+   */
+  public unmount(): void {
+    this.wrapper.unmount();
+  }
+
+  /**
+   * Get the component instance ID from the component.
+   */
+  public get resolverComponentInstanceID(): string {
+    return this.wrapper.prop('resolverComponentInstanceID');
+  }
+
+  /**
+   * Change the component instance ID (updates the React component props.)
+   */
+  public set resolverComponentInstanceID(value: string) {
+    this.wrapper.setProps({ resolverComponentInstanceID: value });
+  }
+
+  /**
+   * Change the indices (updates the React component props.)
+   */
+  public set indices(value: string[]) {
+    this.wrapper.setProps({ indices: value });
+  }
+
+  /**
+   * Get the indices (updates the React component props.)
+   */
+  public get indices(): string[] {
+    return this.wrapper.prop('indices');
   }
 
   /**
@@ -126,7 +197,7 @@ export class Simulator {
    * After 10 times, quit.
    * Use this to continually check a value. See `toYieldEqualTo`.
    */
-  public async *map<R>(mapper: () => R): AsyncIterable<R> {
+  public async *map<R>(mapper: (() => Promise<R>) | (() => R)): AsyncIterable<R> {
     let timeoutCount = 0;
     while (timeoutCount < 10) {
       timeoutCount++;
@@ -146,7 +217,29 @@ export class Simulator {
    * returns a `ReactWrapper` even if nothing is found, as that is how `enzyme` does things.
    */
   public processNodeElements(options: ProcessNodeElementSelectorOptions = {}): ReactWrapper {
-    return this.domNodes(processNodeElementSelector(options));
+    return this.domNodes(Simulator.nodeElementSelector(options));
+  }
+
+  /**
+   * The button that opens a node's submenu.
+   */
+  public processNodeSubmenuButton(
+    /** nodeID for the related node */ entityID: string
+  ): ReactWrapper {
+    return this.domNodes(
+      `[data-test-subj="resolver:submenu:button"][data-test-resolver-node-id="${entityID}"]`
+    );
+  }
+
+  /**
+   * The primary button (used to select a node) which contains a label for the node as its content.
+   */
+  public processNodePrimaryButton(
+    /** nodeID for the related node */ entityID: string
+  ): ReactWrapper {
+    return this.domNodes(
+      `[data-test-subj="resolver:node:primary-button"][data-test-resolver-node-id="${entityID}"]`
+    );
   }
 
   /**
@@ -161,7 +254,7 @@ export class Simulator {
    */
   public unselectedProcessNode(entityID: string): ReactWrapper {
     return this.processNodeElements({ entityID }).not(
-      processNodeElementSelector({ entityID, selected: true })
+      Simulator.nodeElementSelector({ entityID, selected: true })
     );
   }
 
@@ -174,96 +267,86 @@ export class Simulator {
   }
 
   /**
-   * Return an Enzyme ReactWrapper that includes the Related Events host button for a given process node
-   *
-   * @param entityID The entity ID of the proocess node to select in
+   * This manually runs the animation frames tied to a configurable timestamp in the future.
    */
-  public processNodeRelatedEventButton(entityID: string): ReactWrapper {
-    return this.domNodes(
-      `${processNodeElementSelector({ entityID })} [data-test-subj="resolver:submenu:button"]`
-    );
+  public runAnimationFramesTimeFromNow(time: number = 0) {
+    this.sideEffectSimulator.controls.time = time;
+    this.sideEffectSimulator.controls.provideAnimationFrame();
   }
 
   /**
-   * The items in the submenu that is opened by expanding a node in the map.
+   * The last value written to the clipboard via the `SideEffectors`.
    */
-  public processNodeSubmenuItems(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:map:node-submenu-item"]');
+  public get clipboardText(): string {
+    return this.sideEffectSimulator.controls.clipboardText;
   }
 
   /**
-   * Return the selected node query string values.
+   * Call this to resolve the promise returned by the `SideEffectors` `writeText` method (which in production points to `navigator.clipboard.writeText`.
    */
-  public queryStringValues(): { selectedNode: string[] } {
-    const urlSearchParams = new URLSearchParams(this.history.location.search);
-    return {
-      selectedNode: urlSearchParams.getAll(`resolver-${this.resolverComponentInstanceID}-id`),
-    };
+  confirmTextWrittenToClipboard(): void {
+    this.sideEffectSimulator.controls.confirmTextWrittenToClipboard();
   }
 
   /**
-   * The element that shows when Resolver is waiting for the graph data.
+   * The 'search' part of the URL.
    */
-  public graphLoadingElement(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:graph:loading"]');
+  public get historyLocationSearch(): string {
+    // Wrap the `search` value from the MemoryHistory using `URLSearchParams` in order to standardize it.
+    return new URLSearchParams(this.history.location.search).toString();
   }
 
   /**
-   * The element that shows if Resolver couldn't draw the graph.
+   * Given a 'data-test-subj' value, it will resolve the react wrapper or undefined if not found
    */
-  public graphErrorElement(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:graph:error"]');
+  public async resolve(selector: string): Promise<ReactWrapper | undefined> {
+    return this.resolveWrapper(() => this.domNodes(`[data-test-subj="${selector}"]`));
   }
 
   /**
-   * The element where nodes get drawn.
+   * Given a `role`, return DOM nodes that have it. Use this to assert that ARIA roles are present as expected.
    */
-  public graphElement(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:graph"]');
+  public domNodesWithRole(role: string): ReactWrapper {
+    return this.domNodes(`[role="${role}"]`);
   }
 
   /**
-   * The titles of the links that select a node in the node list view.
+   * Given a 'data-test-subj' selector, it will return the domNode
    */
-  public nodeListNodeLinkText(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:node-list:node-link:title"]');
+  public testSubject(selector: string): ReactWrapper {
+    return this.domNodes(`[data-test-subj="${selector}"]`);
   }
 
   /**
-   * The icons in the links that select a node in the node list view.
+   * Given a `ReactWrapper`, returns a wrapper containing immediately following `dd` siblings.
+   * `subject` must contain just 1 element.
    */
-  public nodeListNodeLinkIcons(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:node-list:node-link:icon"]');
-  }
-
-  /**
-   * Link rendered in the breadcrumbs of the node detail view. Takes the user to the node list.
-   */
-  public nodeDetailBreadcrumbNodeListLink(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:node-detail:breadcrumbs:node-list-link"]');
-  }
-
-  /**
-   * The title element for the node detail view.
-   */
-  public nodeDetailViewTitle(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:node-detail:title"]');
-  }
-
-  /**
-   * The icon element for the node detail title.
-   */
-  public nodeDetailViewTitleIcon(): ReactWrapper {
-    return this.domNodes('[data-test-subj="resolver:node-detail:title-icon"]');
+  public descriptionDetails(subject: ReactWrapper): ReactWrapper {
+    // find the associated DOM nodes, then return an enzyme wrapper that only contains those.
+    const subjectNode = subject.getDOMNode();
+    let current = subjectNode.nextElementSibling;
+    const associated: Set<Element> = new Set();
+    // Multiple `dt`s can be associated with a set of `dd`s. Skip immediately following `dt`s.
+    while (current !== null && current.nodeName === 'DT') {
+      current = current.nextElementSibling;
+    }
+    while (current !== null && current.nodeName === 'DD') {
+      associated.add(current);
+      current = current.nextElementSibling;
+    }
+    return subject
+      .closest('dl')
+      .find('dd')
+      .filterWhere((candidate) => {
+        return associated.has(candidate.getDOMNode());
+      });
   }
 
   /**
    * Return DOM nodes that match `enzymeSelector`.
    */
   private domNodes(enzymeSelector: string): ReactWrapper {
-    return this.wrapper
-      .find(enzymeSelector)
-      .filterWhere((wrapper) => typeof wrapper.type() === 'string');
+    return this.wrapper.find(enzymeSelector).filterWhere(Simulator.isDOM);
   }
 
   /**
@@ -283,10 +366,7 @@ export class Simulator {
       const title = titles.at(index).text();
       const description = descriptions.at(index).text();
 
-      // Exclude timestamp since we can't currently calculate the expected description for it from tests
-      if (title !== '@timestamp') {
-        entries.push([title, description]);
-      }
+      entries.push([title, description]);
     }
     return entries;
   }
@@ -295,9 +375,9 @@ export class Simulator {
    * Resolve the wrapper returned by `wrapperFactory` only once it has at least 1 element in it.
    */
   public async resolveWrapper(
-    wrapperFactory: () => ReactWrapper,
+    wrapperFactory: (() => Promise<ReactWrapper>) | (() => ReactWrapper),
     predicate: (wrapper: ReactWrapper) => boolean = (wrapper) => wrapper.length > 0
-  ): Promise<ReactWrapper | void> {
+  ): Promise<ReactWrapper | undefined> {
     for await (const wrapper of this.map(wrapperFactory)) {
       if (predicate(wrapper)) {
         return wrapper;
@@ -306,7 +386,7 @@ export class Simulator {
   }
 }
 
-const baseResolverSelector = '[data-test-subj="resolver:node"]';
+const baseNodeElementSelector = '[data-test-subj="resolver:node"]';
 
 interface ProcessNodeElementSelectorOptions {
   /**
@@ -317,21 +397,4 @@ interface ProcessNodeElementSelectorOptions {
    * If true, only get nodes with an `[aria-selected="true"]` attribute.
    */
   selected?: boolean;
-}
-
-/**
- * An `enzyme` supported CSS selector for process node elements.
- */
-function processNodeElementSelector({
-  entityID,
-  selected = false,
-}: ProcessNodeElementSelectorOptions = {}): string {
-  let selector: string = baseResolverSelector;
-  if (entityID !== undefined) {
-    selector += `[data-test-resolver-node-id="${entityID}"]`;
-  }
-  if (selected) {
-    selector += '[aria-selected="true"]';
-  }
-  return selector;
 }

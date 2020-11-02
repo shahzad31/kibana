@@ -13,7 +13,7 @@ Array [
       <span
         className="canvasVarHeader__iconWrapper"
       >
-        <div
+        <span
           data-euiicon-type="sortLeft"
           style={
             Object {
@@ -64,14 +64,18 @@ Array [
           <button
             className="euiButton euiButton--danger euiButton--small euiButton--fill"
             onClick={[Function]}
+            style={
+              Object {
+                "minWidth": undefined,
+              }
+            }
             type="button"
           >
             <span
-              className="euiButton__content"
+              className="euiButtonContent euiButton__content"
             >
-              <div
-                aria-hidden="true"
-                className="euiButton__icon"
+              <span
+                className="euiButtonContent__icon"
                 data-euiicon-type="trash"
                 size="m"
               />
@@ -92,7 +96,7 @@ Array [
             type="button"
           >
             <span
-              className="euiButtonEmpty__content"
+              className="euiButtonContent euiButtonEmpty__content"
             >
               <span
                 className="euiButtonEmpty__text"

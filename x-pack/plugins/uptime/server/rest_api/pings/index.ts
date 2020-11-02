@@ -7,3 +7,5 @@
 export { createGetPingsRoute } from './get_pings';
 export { createGetIncidentsRoute } from './get_incidents';
 export { createGetPingHistogramRoute } from './get_ping_histogram';
+export { createJourneyRoute } from './journeys';
+export { createJourneyScreenshotRoute } from './journey_screenshots';

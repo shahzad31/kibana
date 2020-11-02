@@ -17,6 +17,7 @@ import { fetchMonitorDurationEffect } from './monitor_duration';
 import { fetchMLJobEffect } from './ml_anomaly';
 import { fetchIndexStatusEffect } from './index_status';
 import { fetchCertificatesEffect } from '../certificates/certificates';
+import { fetchJourneyStepsEffect } from './journey';
 import { fetchAlertsEffect } from './alerts';
 import { fetchIncidentsEffect } from '../monitor_details/incidents';
 
@@ -36,5 +37,6 @@ export function* rootEffect() {
   yield fork(fetchIndexStatusEffect);
   yield fork(fetchCertificatesEffect);
   yield fork(fetchAlertsEffect);
+  yield fork(fetchJourneyStepsEffect);
   yield fork(fetchIncidentsEffect);
 }

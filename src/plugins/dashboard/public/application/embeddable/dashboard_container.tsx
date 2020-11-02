@@ -78,6 +78,7 @@ export interface InheritedChildInput extends IndexSignature {
   viewMode: ViewMode;
   hidePanelTitles?: boolean;
   id: string;
+  searchSessionId?: string;
 }
 
 export interface DashboardContainerOptions {
@@ -171,6 +172,7 @@ export class DashboardContainer extends Container<InheritedChildInput, Dashboard
     // TODO: In the current infrastructure, embeddables in a container do not react properly to
     // changes. Removing the existing embeddable, and adding a new one is a temporary workaround
     // until the container logic is fixed.
+
     const finalPanels = { ...this.input.panels };
     delete finalPanels[previousPanelState.explicitInput.id];
     const newPanelId = newPanelState.explicitInput?.id ? newPanelState.explicitInput.id : uuid.v4();
@@ -196,9 +198,10 @@ export class DashboardContainer extends Container<InheritedChildInput, Dashboard
     EEI extends EmbeddableInput = EmbeddableInput,
     EEO extends EmbeddableOutput = EmbeddableOutput,
     E extends IEmbeddable<EEI, EEO> = IEmbeddable<EEI, EEO>
-  >(type: string, explicitInput: Partial<EEI>) {
-    if (explicitInput.id && this.input.panels[explicitInput.id]) {
-      this.replacePanel(this.input.panels[explicitInput.id], {
+  >(type: string, explicitInput: Partial<EEI>, embeddableId?: string) {
+    const idToReplace = embeddableId || explicitInput.id;
+    if (idToReplace && this.input.panels[idToReplace]) {
+      this.replacePanel(this.input.panels[idToReplace], {
         type,
         explicitInput: {
           ...explicitInput,
@@ -226,7 +229,15 @@ export class DashboardContainer extends Container<InheritedChildInput, Dashboard
   }
 
   protected getInheritedInput(id: string): InheritedChildInput {
-    const { viewMode, refreshConfig, timeRange, query, hidePanelTitles, filters } = this.input;
+    const {
+      viewMode,
+      refreshConfig,
+      timeRange,
+      query,
+      hidePanelTitles,
+      filters,
+      searchSessionId,
+    } = this.input;
     return {
       filters,
       hidePanelTitles,
@@ -235,6 +246,7 @@ export class DashboardContainer extends Container<InheritedChildInput, Dashboard
       refreshConfig,
       viewMode,
       id,
+      searchSessionId,
     };
   }
 }

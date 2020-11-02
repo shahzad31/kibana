@@ -17,16 +17,18 @@ import { FlexPage } from './page';
 
 interface LoadingPageProps {
   message?: ReactNode;
+  'data-test-subj'?: string;
 }
 
-export const LoadingPage = ({ message }: LoadingPageProps) => (
-  <FlexPage>
+export const LoadingPage = ({
+  message,
+  'data-test-subj': dataTestSubj = 'loadingPage',
+}: LoadingPageProps) => (
+  <FlexPage data-test-subj={dataTestSubj}>
     <EuiPageBody>
       <EuiPageContent verticalPosition="center" horizontalPosition="center">
-        <EuiFlexGroup alignItems="center">
-          <EuiFlexItem grow={false}>
-            <EuiLoadingSpinner size="xl" />
-          </EuiFlexItem>
+        <EuiFlexGroup alignItems="center" style={{ flexWrap: 'nowrap' }}>
+          <EuiLoadingSpinner size="xl" style={{ marginRight: '8px' }} />
           <EuiFlexItem data-test-subj="loadingMessage">{message}</EuiFlexItem>
         </EuiFlexGroup>
       </EuiPageContent>
