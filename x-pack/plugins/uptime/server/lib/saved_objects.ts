@@ -7,12 +7,14 @@
 
 import { DYNAMIC_SETTINGS_DEFAULTS } from '../../common/constants';
 import { DynamicSettings } from '../../common/runtime_types';
-import { SavedObjectsType, SavedObjectsErrorHelpers } from '../../../../../src/core/server';
+import { SavedObjectsErrorHelpers, SavedObjectsType } from '../../../../../src/core/server';
 import { UMSavedObjectsQueryFn } from './adapters';
 
 export interface UMSavedObjectsAdapter {
+  dynamicSettings: DynamicSettings;
   getUptimeDynamicSettings: UMSavedObjectsQueryFn<DynamicSettings>;
   setUptimeDynamicSettings: UMSavedObjectsQueryFn<void, DynamicSettings>;
+  resetState: UMSavedObjectsQueryFn<void, DynamicSettings>;
 }
 
 export const settingsObjectType = 'uptime-dynamic-settings';
@@ -46,10 +48,15 @@ export const umDynamicSettings: SavedObjectsType = {
 };
 
 export const savedObjectsAdapter: UMSavedObjectsAdapter = {
+  dynamicSettings: DYNAMIC_SETTINGS_DEFAULTS,
   getUptimeDynamicSettings: async (client): Promise<DynamicSettings> => {
     try {
+      if (savedObjectsAdapter?.dynamicSettings) {
+        return savedObjectsAdapter.dynamicSettings;
+      }
       const obj = await client.get<DynamicSettings>(umDynamicSettings.name, settingsObjectId);
-      return obj?.attributes ?? DYNAMIC_SETTINGS_DEFAULTS;
+      savedObjectsAdapter.dynamicSettings = obj?.attributes ?? DYNAMIC_SETTINGS_DEFAULTS;
+      return savedObjectsAdapter.dynamicSettings;
     } catch (getErr) {
       if (SavedObjectsErrorHelpers.isNotFoundError(getErr)) {
         return DYNAMIC_SETTINGS_DEFAULTS;
@@ -62,5 +69,10 @@ export const savedObjectsAdapter: UMSavedObjectsAdapter = {
       id: settingsObjectId,
       overwrite: true,
     });
+    await savedObjectsAdapter.resetState(client, settings);
+  },
+  resetState: async (client) => {
+    const obj = await client.get<DynamicSettings>(umDynamicSettings.name, settingsObjectId);
+    savedObjectsAdapter.dynamicSettings = obj?.attributes ?? DYNAMIC_SETTINGS_DEFAULTS;
   },
 };
