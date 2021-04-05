@@ -9,7 +9,15 @@ import React, { useContext } from 'react';
 import moment from 'moment';
 import { i18n } from '@kbn/i18n';
 import styled from 'styled-components';
-import { EuiFlexGroup, EuiFlexItem, EuiText, EuiToolTip, EuiBadge, EuiSpacer } from '@elastic/eui';
+import {
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiText,
+  EuiToolTip,
+  EuiBadge,
+  EuiSpacer,
+  EuiIcon,
+} from '@elastic/eui';
 import { parseTimestamp } from '../parse_timestamp';
 import { Ping } from '../../../../../common/runtime_types';
 import {
@@ -22,6 +30,7 @@ import {
 import { UptimeThemeContext } from '../../../../contexts';
 import { euiStyled } from '../../../../../../../../src/plugins/kibana_react/common';
 import { STATUS_DOWN_LABEL, STATUS_UP_LABEL } from '../../../common/translations';
+import { DurationInfo } from './duration_info';
 
 interface MonitorListStatusColumnProps {
   status: string;
@@ -181,15 +190,10 @@ export const MonitorListStatusColumn = ({
             {statusMessage},
           </PaddedText>
         </EuiToolTip>
-        <EuiToolTip
-          content={
-            <EuiText color="ghost" size="xs">
-              {timestamp.toLocaleString()}
-            </EuiText>
-          }
-        >
+        <EuiToolTip content={<DurationInfo ping={summaryPings[0]} timestamp={tsString} />}>
           <EuiText size="xs" color="subdued" className="eui-textNoWrap">
-            Checked {getShortTimeStamp(timestamp)}
+            {getShortTimeStamp(timestamp) + ' '}
+            <EuiIcon type="clock" />
           </EuiText>
         </EuiToolTip>
       </EuiText>
