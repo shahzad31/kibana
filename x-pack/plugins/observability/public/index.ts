@@ -33,6 +33,7 @@ export const plugin: PluginInitializer<
 export * from './components/shared/action_menu/';
 
 export type { UXMetrics } from './components/shared/core_web_vitals/';
+export type { FieldValueSuggestionsProps } from './components/shared/field_value_suggestions/';
 export {
   getCoreVitalsComponent,
   HeaderMenuPortal,

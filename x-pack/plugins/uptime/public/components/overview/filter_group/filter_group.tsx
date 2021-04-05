@@ -9,12 +9,16 @@ import React, { useState } from 'react';
 import { EuiFilterGroup } from '@elastic/eui';
 import styled from 'styled-components';
 import { useRouteMatch } from 'react-router-dom';
-import { FilterPopoverProps, FilterPopover } from './filter_popover';
 import { OverviewFilters } from '../../../../common/runtime_types/overview_filters';
 import { filterLabels } from './translations';
 import { useFilterUpdate } from '../../../hooks/use_filter_update';
 import { MONITOR_ROUTE } from '../../../../common/constants';
 import { useSelectedFilters } from '../../../hooks/use_selected_filters';
+import {
+  FieldValueSuggestions,
+  FieldValueSuggestionsProps,
+} from '../../../../../observability/public';
+import { useIndexPattern } from '../kuery_bar/use_index_pattern';
 
 interface Props {
   loading: boolean;
@@ -25,12 +29,8 @@ const Container = styled(EuiFilterGroup)`
   margin-bottom: 10px;
 `;
 
-function isDisabled<T>(array?: T[]) {
-  return array ? array.length === 0 : true;
-}
-
 export const FilterGroupComponent: React.FC<Props> = ({ overviewFilters, loading }) => {
-  const { locations, ports, schemes, tags } = overviewFilters;
+  const { index_pattern: indexPattern } = useIndexPattern();
 
   const [updatedFieldValues, setUpdatedFieldValues] = useState<{
     fieldName: string;
@@ -41,54 +41,51 @@ export const FilterGroupComponent: React.FC<Props> = ({ overviewFilters, loading
 
   const { selectedLocations, selectedPorts, selectedSchemes, selectedTags } = useSelectedFilters();
 
-  const onFilterFieldChange = (fieldName: string, values: string[]) => {
+  const onFilterFieldChange = (values: string[], fieldName: string) => {
     setUpdatedFieldValues({ fieldName, values });
   };
 
   const isMonitorPage = useRouteMatch(MONITOR_ROUTE);
 
-  const filterPopoverProps: FilterPopoverProps[] = [
+  if (indexPattern === null) {
+    return <div />;
+  }
+
+  const filterPopoverProps: FieldValueSuggestionsProps[] = [
     {
-      loading,
-      onFilterFieldChange,
-      fieldName: 'observer.geo.name',
-      id: 'location',
-      items: locations || [],
-      selectedItems: selectedLocations,
-      title: filterLabels.LOCATION,
+      onChange: onFilterFieldChange,
+      sourceField: 'observer.geo.name',
+      selectedValues: selectedLocations,
+      label: filterLabels.LOCATION,
+      indexPattern,
+      filters: [],
     },
     // on monitor page we only display location filter in ping list
     ...(!isMonitorPage
       ? [
           {
-            loading,
-            onFilterFieldChange,
-            fieldName: 'url.port',
-            id: 'port',
-            disabled: isDisabled(ports),
-            items: ports?.map((p: number) => p.toString()) ?? [],
-            selectedItems: selectedPorts,
-            title: filterLabels.PORT,
+            onChange: onFilterFieldChange,
+            sourceField: 'url.port',
+            selectedValues: selectedPorts,
+            label: filterLabels.PORT,
+            indexPattern,
+            filters: [],
           },
           {
-            loading,
-            onFilterFieldChange,
-            fieldName: 'monitor.type',
-            id: 'scheme',
-            disabled: isDisabled(schemes),
-            items: schemes ?? [],
-            selectedItems: selectedSchemes,
-            title: filterLabels.SCHEME,
+            onChange: onFilterFieldChange,
+            sourceField: 'monitor.type',
+            selectedValues: selectedSchemes,
+            label: filterLabels.SCHEME,
+            indexPattern,
+            filters: [],
           },
           {
-            loading,
-            onFilterFieldChange,
-            fieldName: 'tags',
-            id: 'tags',
-            disabled: isDisabled(tags),
-            items: tags ?? [],
-            selectedItems: selectedTags,
-            title: filterLabels.TAG,
+            onChange: onFilterFieldChange,
+            sourceField: 'tags',
+            selectedValues: selectedTags,
+            label: filterLabels.TAG,
+            indexPattern,
+            filters: [],
           },
         ]
       : []),
@@ -97,7 +94,7 @@ export const FilterGroupComponent: React.FC<Props> = ({ overviewFilters, loading
   return (
     <Container>
       {filterPopoverProps.map((item) => (
-        <FilterPopover key={item.id} {...item} />
+        <FieldValueSuggestions key={item.sourceField} {...item} />
       ))}
     </Container>
   );

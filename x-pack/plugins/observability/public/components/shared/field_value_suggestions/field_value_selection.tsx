@@ -18,10 +18,10 @@ import { i18n } from '@kbn/i18n';
 import { PopoverAnchorPosition } from '@elastic/eui/src/components/popover/popover';
 
 export interface FieldValueSelectionProps {
-  value?: string;
+  selectedValues: string[];
   label: string;
   loading?: boolean;
-  onChange: (val?: string) => void;
+  onChange: (val: string[]) => void;
   values?: string[];
   setQuery: Dispatch<SetStateAction<string>>;
   anchorPosition?: PopoverAnchorPosition;
@@ -30,16 +30,16 @@ export interface FieldValueSelectionProps {
   width?: number;
 }
 
-const formatOptions = (values?: string[], value?: string): EuiSelectableOption[] => {
+const formatOptions = (values: string[], selectedValues: string[]): EuiSelectableOption[] => {
   return (values ?? []).map((val) => ({
     label: val,
-    ...(value === val ? { checked: 'on' } : {}),
+    ...(selectedValues.includes(val) ? { checked: 'on' } : {}),
   }));
 };
 
 export function FieldValueSelection({
   label,
-  value,
+  selectedValues,
   loading,
   values,
   setQuery,
@@ -49,12 +49,14 @@ export function FieldValueSelection({
   anchorPosition,
   onChange: onSelectionChange,
 }: FieldValueSelectionProps) {
-  const [options, setOptions] = useState<EuiSelectableOption[]>(formatOptions(values, value));
+  const [options, setOptions] = useState<EuiSelectableOption[]>(
+    formatOptions(values ?? [], selectedValues)
+  );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
-    setOptions(formatOptions(values, value));
-  }, [values, value]);
+    setOptions(formatOptions(values ?? [], selectedValues));
+  }, [values, selectedValues]);
 
   const onButtonClick = () => {
     setIsPopoverOpen(!isPopoverOpen);
@@ -119,12 +121,12 @@ export function FieldValueSelection({
                   size="s"
                   fullWidth
                   disabled={
-                    !value &&
+                    selectedValues?.length === 0 &&
                     (options.length === 0 || !options.find((opt) => opt?.checked === 'on'))
                   }
                   onClick={() => {
                     const selected = options.find((opt) => opt?.checked === 'on');
-                    onSelectionChange(selected?.label);
+                    onSelectionChange(selected?.label ? [selected?.label] : []);
                     setIsPopoverOpen(false);
                   }}
                 >

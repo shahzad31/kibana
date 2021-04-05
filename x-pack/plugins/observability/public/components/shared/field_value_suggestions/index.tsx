@@ -15,11 +15,11 @@ import { FieldValueSelection } from './field_value_selection';
 import { ESFilter } from '../../../../../../../typings/elasticsearch';
 
 export interface FieldValueSuggestionsProps {
-  value?: string;
+  selectedValues?: string[];
   label: string;
   indexPattern: IndexPattern;
   sourceField: string;
-  onChange: (val?: string) => void;
+  onChange: (val: string[], fieldName: string) => void;
   filters: ESFilter[];
   anchorPosition?: PopoverAnchorPosition;
   time?: { from: string; to: string };
@@ -32,7 +32,7 @@ export function FieldValueSuggestions({
   sourceField,
   label,
   indexPattern,
-  value,
+  selectedValues,
   filters,
   button,
   time,
@@ -58,10 +58,10 @@ export function FieldValueSuggestions({
     <FieldValueSelection
       values={values as string[]}
       label={label}
-      onChange={onSelectionChange}
+      onChange={(val) => onSelectionChange(val, sourceField)}
       setQuery={setDebouncedValue}
       loading={loading}
-      value={value}
+      selectedValues={selectedValues}
       button={button}
       forceOpen={forceOpen}
       anchorPosition={anchorPosition}
