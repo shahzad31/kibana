@@ -30,6 +30,21 @@ export const MonitorStatusTranslations = {
       observerLocation: '{{state.observerLocation}}',
     },
   }),
+  defaultSlackActionMessage: i18n.translate(
+    'xpack.uptime.alerts.monitorStatus.defaultActionMessage.slack',
+    {
+      defaultMessage: `*Monitor: {monitorName} is down* :warning: <{kibanaBaseUrl}{monitorUptimeUrl}|View status in Uptime>\n{monitorName} with url {monitorUrl} is {statusMessage} from {observerLocation}. The latest error message is {latestErrorMessage}`,
+      values: {
+        monitorName: '{{state.monitorName}}',
+        monitorUrl: '{{{state.monitorUrl}}}',
+        statusMessage: '{{state.statusMessage}}',
+        latestErrorMessage: '{{{state.latestErrorMessage}}}',
+        observerLocation: '{{state.observerLocation}}',
+        monitorUptimeUrl: '{{state.monitorUptimeUrl}}',
+        kibanaBaseUrl: '{{kibanaBaseUrl}}',
+      },
+    }
+  ),
   name: i18n.translate('xpack.uptime.alerts.monitorStatus.clientName', {
     defaultMessage: 'Uptime monitor status',
   }),

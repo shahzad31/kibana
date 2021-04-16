@@ -21,6 +21,7 @@ import {
 } from '../../../../actions/server';
 import { ActionTypeId } from '../../components/settings/types';
 import { Ping } from '../../../common/runtime_types/ping';
+import { kibanaService } from '../kibana_service';
 
 export const SLACK_ACTION_ID: ActionTypeId = '.slack';
 export const PAGER_DUTY_ACTION_ID: ActionTypeId = '.pagerduty';
@@ -32,6 +33,19 @@ export const JIRA_ACTION_ID: ActionTypeId = '.jira';
 export const WEBHOOK_ACTION_ID: ActionTypeId = '.webhook';
 
 const { MONITOR_STATUS } = ACTION_GROUP_DEFINITIONS;
+
+const getSlackRecoveryMessage = (selectedMonitor: Ping) => {
+  return i18n.translate('xpack.uptime.alerts.monitorStatus.recoveryMessage.slack', {
+    defaultMessage:
+      '*Monitor: Simple Node Server has recovered*:white_check_mark:\n{monitor} with url {url} has recovered with status Up <{kibanaBaseUrl}{monitorUptimeUrl}|View status in Uptime>',
+    values: {
+      monitor: selectedMonitor?.monitor?.name || selectedMonitor?.monitor?.id,
+      url: selectedMonitor?.url?.full,
+      kibanaBaseUrl: kibanaService.core.http.basePath.publicBaseUrl,
+      monitorUptimeUrl: `/app/uptime/monitor/${btoa(selectedMonitor?.monitor?.id)}`,
+    },
+  });
+};
 
 const getRecoveryMessage = (selectedMonitor: Ping) => {
   return i18n.translate('xpack.uptime.alerts.monitorStatus.recoveryMessage', {
@@ -92,6 +106,12 @@ export function populateAlertActions({ defaultActions, selectedMonitor }: NewAle
         actions.push(recoveredAction);
         break;
       case SLACK_ACTION_ID:
+        action.params = {
+          message: MonitorStatusTranslations.defaultSlackActionMessage,
+        };
+        recoveredAction.params.message = getSlackRecoveryMessage(selectedMonitor);
+        actions.push(recoveredAction);
+        break;
       case TEAMS_ACTION_ID:
         action.params = {
           message: MonitorStatusTranslations.defaultActionMessage,

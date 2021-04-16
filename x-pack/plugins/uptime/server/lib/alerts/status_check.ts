@@ -105,6 +105,10 @@ export const formatFilterString = async (
     search
   );
 
+const getUptimeMonitorUrl = (monitorId: string) => {
+  return `/app/uptime/monitor/${Buffer.from(monitorId).toString('base64')}`;
+};
+
 export const getMonitorSummary = (monitorInfo: Ping) => {
   return {
     monitorUrl: monitorInfo.url?.full,
@@ -113,7 +117,7 @@ export const getMonitorSummary = (monitorInfo: Ping) => {
     monitorType: monitorInfo.monitor?.type,
     latestErrorMessage: monitorInfo.error?.message,
     observerLocation: monitorInfo.observer?.geo?.name ?? UNNAMED_LOCATION,
-    observerHostname: monitorInfo.agent?.name,
+    monitorUptimeUrl: getUptimeMonitorUrl(monitorInfo.monitor?.id!),
   };
 };
 
