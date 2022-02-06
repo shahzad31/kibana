@@ -10,3 +10,5 @@ import { UptimePlugin } from './apps/plugin';
 
 export const plugin = (initializerContext: PluginInitializerContext) =>
   new UptimePlugin(initializerContext);
+
+export type UptimePublicStart = ReturnType<UptimePlugin['start']>;

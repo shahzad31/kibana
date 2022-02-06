@@ -13,6 +13,7 @@ import {
   PingsResponse,
   Ping,
 } from '../../../common/runtime_types';
+import { ESFilter } from '../../../../../../src/core/types/elasticsearch';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -70,6 +71,7 @@ export const getPings: UMElasticsearchQueryFn<GetPingsParams, PingsResponse> = a
   size: sizeParam,
   locations,
   excludedLocations,
+  filters,
 }) => {
   const size = sizeParam ?? DEFAULT_PAGE_SIZE;
 
@@ -82,6 +84,7 @@ export const getPings: UMElasticsearchQueryFn<GetPingsParams, PingsResponse> = a
           { range: { '@timestamp': { gte: from, lte: to } } },
           ...(monitorId ? [{ term: { 'monitor.id': monitorId } }] : []),
           ...(status ? [{ term: { 'monitor.status': status } }] : []),
+          ...parseFilters(filters),
         ] as QueryDslQueryContainer[],
         ...REMOVE_NON_SUMMARY_BROWSER_CHECKS,
       },
@@ -89,6 +92,15 @@ export const getPings: UMElasticsearchQueryFn<GetPingsParams, PingsResponse> = a
     sort: [{ '@timestamp': { order: (sort ?? 'desc') as 'asc' | 'desc' } }],
     ...((locations ?? []).length > 0
       ? { post_filter: { terms: { 'observer.geo.name': locations as unknown as string[] } } }
+      : {}),
+    ...(filters
+      ? {
+          runtime_mappings: {
+            'service.name': {
+              type: 'keyword',
+            },
+          },
+        }
       : {}),
   };
 
@@ -107,6 +119,8 @@ export const getPings: UMElasticsearchQueryFn<GetPingsParams, PingsResponse> = a
       },
     });
   }
+
+  console.log(JSON.stringify(searchBody));
 
   const {
     body: {
@@ -131,4 +145,16 @@ export const getPings: UMElasticsearchQueryFn<GetPingsParams, PingsResponse> = a
     total: total.value,
     pings,
   };
+};
+
+const parseFilters = (filters?: string) => {
+  if (!filters) {
+    return [];
+  }
+  try {
+    const esFilters: ESFilter[] = JSON.parse(filters);
+    return esFilters;
+  } catch (e) {
+    return [];
+  }
 };

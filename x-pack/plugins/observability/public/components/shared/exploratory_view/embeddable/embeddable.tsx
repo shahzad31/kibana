@@ -127,6 +127,7 @@ export default function Embeddable({
         onBrushEnd={({ range }) => {}}
         withDefaultActions={Boolean(withActions)}
         extraActions={actions}
+        viewMode="view"
       />
       {isSaveOpen && attributesJSON && (
         <LensSaveModalComponent

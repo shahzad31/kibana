@@ -9,6 +9,7 @@ import { schema } from '@kbn/config-schema';
 import { UMServerLibs } from '../../lib/lib';
 import { UMRestApiRouteFactory } from '../types';
 import { API_URLS } from '../../../common/constants';
+import { GetPingsParams } from '../../../common/runtime_types';
 
 export const createGetPingsRoute: UMRestApiRouteFactory = (libs: UMServerLibs) => ({
   method: 'GET',
@@ -24,11 +25,22 @@ export const createGetPingsRoute: UMRestApiRouteFactory = (libs: UMServerLibs) =
       size: schema.maybe(schema.number()),
       sort: schema.maybe(schema.string()),
       status: schema.maybe(schema.string()),
+      filters: schema.maybe(schema.string()),
     }),
   },
   handler: async ({ uptimeEsClient, request, response }): Promise<any> => {
-    const { from, to, index, monitorId, status, sort, size, locations, excludedLocations } =
-      request.query;
+    const {
+      from,
+      to,
+      index,
+      monitorId,
+      status,
+      sort,
+      size,
+      locations,
+      excludedLocations,
+      filters,
+    } = request.query;
 
     return await libs.requests.getPings({
       uptimeEsClient,
@@ -38,6 +50,7 @@ export const createGetPingsRoute: UMRestApiRouteFactory = (libs: UMServerLibs) =
       status,
       sort,
       size,
+      filters,
       locations: locations ? JSON.parse(locations) : [],
       excludedLocations,
     });

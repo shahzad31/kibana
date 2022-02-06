@@ -6,7 +6,7 @@
  */
 
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback, useContext, useEffect } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { selectPingList } from '../../../state/selectors';
 import { GetPingsParams, Ping } from '../../../../common/runtime_types/ping';
 import { getPings as getPingsAction } from '../../../state/actions';
@@ -16,13 +16,15 @@ import { useFetcher } from '../../../../../observability/public';
 import { fetchJourneysFailedSteps } from '../../../state/api/journey';
 import { useSelectedFilters } from '../../../hooks/use_selected_filters';
 import { MONITOR_TYPES } from '../../../../common/constants';
+import { useTimeRange } from '../../../hooks/use_time_range';
 
 interface Props {
   pageSize: number;
   pageIndex: number;
+  serviceName?: string;
 }
 
-export const usePingsList = ({ pageSize, pageIndex }: Props) => {
+export const usePingsList = ({ pageSize, pageIndex, serviceName }: Props) => {
   const {
     error,
     loading,
@@ -31,7 +33,9 @@ export const usePingsList = ({ pageSize, pageIndex }: Props) => {
 
   const { lastRefresh } = useContext(UptimeRefreshContext);
 
-  const { dateRangeStart: from, dateRangeEnd: to } = useContext(UptimeSettingsContext);
+  const [filters, setFilters] = useState('');
+
+  const { from, to } = useTimeRange();
 
   const { statusFilter } = useGetUrlParams();
 
@@ -46,6 +50,20 @@ export const usePingsList = ({ pageSize, pageIndex }: Props) => {
     [dispatch]
   );
 
+  useEffect(() => {
+    if (serviceName) {
+      setFilters(
+        JSON.stringify([
+          {
+            term: {
+              'service.name': serviceName,
+            },
+          },
+        ])
+      );
+    }
+  }, [serviceName]);
+
   const locations = JSON.stringify(selectedFilters.selectedLocations);
   const excludedLocations = JSON.stringify(selectedFilters.excludedLocations);
 
@@ -56,6 +74,7 @@ export const usePingsList = ({ pageSize, pageIndex }: Props) => {
         from,
         to,
       },
+      filters,
       excludedLocations,
       locations,
       index: pageIndex,
@@ -73,6 +92,7 @@ export const usePingsList = ({ pageSize, pageIndex }: Props) => {
     statusFilter,
     locations,
     excludedLocations,
+    filters,
   ]);
 
   const { data } = useFetcher(() => {

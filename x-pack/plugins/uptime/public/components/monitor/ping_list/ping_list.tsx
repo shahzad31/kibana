@@ -50,11 +50,12 @@ export const formatDuration = (durationMicros: number) => {
   });
 };
 
-export const PingList = () => {
+export const PingList = ({ serviceName }: { serviceName: string }) => {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageIndex, setPageIndex] = useState(0);
 
   const { error, loading, pings, total, failedSteps } = usePingsList({
+    serviceName,
     pageSize,
     pageIndex,
   });

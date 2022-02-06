@@ -141,6 +141,8 @@ export class ObservabilityDataViews {
     }
   }
 
+  addRunTime;
+
   async getDataView(app: AppDataType, indices?: string): Promise<DataView | undefined> {
     if (!this.data) {
       throw new Error('data is not defined');
@@ -164,6 +166,7 @@ export class ObservabilityDataViews {
 
         // this is intentional a non blocking call, so no await clause
         this.validateFieldFormats(app, dataView);
+
         return dataView;
       } catch (e: unknown) {
         if (e instanceof SavedObjectNotFound) {

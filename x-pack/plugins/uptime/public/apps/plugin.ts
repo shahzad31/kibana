@@ -49,6 +49,8 @@ import { LazySyntheticsCustomAssetsExtension } from '../components/fleet_package
 import { Start as InspectorPluginStart } from '../../../../../src/plugins/inspector/public';
 import { UptimeUiConfig } from '../../common/config';
 import { CasesUiStart } from '../../../cases/public';
+import { getMonitorOverviewComponent, MonitorOverview } from './monitor_overview';
+import { kibanaService } from '../state/kibana_service';
 
 export interface ClientPluginsSetup {
   home?: HomePublicPluginSetup;
@@ -218,7 +220,7 @@ export class UptimePlugin
     });
   }
 
-  public start(start: CoreStart, plugins: ClientPluginsStart): void {
+  public start(coreStart: CoreStart, plugins: ClientPluginsStart) {
     if (plugins.fleet) {
       const { registerExtension } = plugins.fleet;
 
@@ -241,6 +243,12 @@ export class UptimePlugin
         Component: LazySyntheticsCustomAssetsExtension,
       });
     }
+
+    kibanaService.core = coreStart;
+
+    return {
+      MonitorOverview: getMonitorOverviewComponent(coreStart, plugins),
+    };
   }
 
   public stop(): void {}

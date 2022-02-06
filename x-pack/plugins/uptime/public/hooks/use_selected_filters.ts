@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useRouteMatch } from 'react-router-dom';
 import { useGetUrlParams } from './use_url_params';
 import { filterLabels } from '../components/overview/filter_group/translations';
-import { FILTER_FIELDS, MONITOR_ROUTE } from '../../common/constants';
+import { FILTER_FIELDS, OVERVIEW_ROUTE } from '../../common/constants';
 import { parseFiltersMap } from './use_filter_update';
 
 type FilterType = string[];
@@ -42,7 +42,7 @@ export const getFiltersFromMap = (map?: Map<string, string[]>): Filters => {
 
 export const useSelectedFilters = () => {
   const { filters, excludedFilters } = useGetUrlParams();
-  const isMonitorPage = useRouteMatch(MONITOR_ROUTE);
+  const isOverviewPage = useRouteMatch({ path: OVERVIEW_ROUTE, exact: true });
 
   return useMemo(() => {
     const selectedFilters = parseFiltersMap(filters);
@@ -72,7 +72,7 @@ export const useSelectedFilters = () => {
         excludedItems: excludedLocations,
       },
       // on monitor page we only display location filter in ping list
-      ...(!isMonitorPage
+      ...(isOverviewPage
         ? [
             {
               field: 'url.port',
@@ -99,5 +99,5 @@ export const useSelectedFilters = () => {
       selectedLocations,
       filtersList,
     };
-  }, [excludedFilters, filters, isMonitorPage]);
+  }, [excludedFilters, filters, isOverviewPage]);
 };

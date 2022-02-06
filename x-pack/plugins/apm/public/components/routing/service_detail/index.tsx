@@ -28,6 +28,7 @@ import { ServiceProfiling } from '../../app/service_profiling';
 import { ServiceDependencies } from '../../app/service_dependencies';
 import { ServiceLogs } from '../../app/service_logs';
 import { InfraOverview } from '../../app/infra_overview';
+import { UptimeOverview } from '../../app/uptime_overview/uptime_overview';
 
 function page({
   title,
@@ -255,6 +256,18 @@ export const serviceDetail = {
         element: <InfraOverview />,
         searchBarOptions: {
           hidden: true,
+        },
+      }),
+      '/services/{serviceName}/uptime': page({
+        tab: 'uptime',
+        title: i18n.translate('xpack.apm.views.uptime.title', {
+          defaultMessage: 'Uptime',
+        }),
+        element: <UptimeOverview />,
+        searchBarOptions: {
+          showTransactionTypeSelector: false,
+          showTimeComparison: false,
+          showKueryBar: false,
         },
       }),
       '/services/{serviceName}/': {

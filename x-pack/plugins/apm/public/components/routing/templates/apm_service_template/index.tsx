@@ -47,7 +47,8 @@ type Tab = NonNullable<EuiPageHeaderProps['tabs']>[0] & {
     | 'infra'
     | 'service-map'
     | 'logs'
-    | 'profiling';
+    | 'profiling'
+    | 'uptime';
   hidden?: boolean;
 };
 
@@ -316,6 +317,19 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
           </EuiFlexItem>
         </EuiFlexGroup>
       ),
+    },
+    {
+      key: 'uptime',
+      href: router.link('/services/{serviceName}/uptime', {
+        path: {
+          serviceName,
+        },
+        query,
+      }),
+      hidden: false,
+      label: i18n.translate('xpack.apm.home.serviceUptimeTabLabel', {
+        defaultMessage: 'Monitors',
+      }),
     },
   ];
 

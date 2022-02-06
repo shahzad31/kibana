@@ -13,6 +13,7 @@ import { ApmPluginSetupDeps } from '../../plugin';
 import { MapsStartApi } from '../../../../maps/public';
 import { ObservabilityPublicStart } from '../../../../observability/public';
 import { Start as InspectorPluginStart } from '../../../../../../src/plugins/inspector/public';
+import type { UptimePublicStart } from '../../../../uptime/public';
 
 export interface ApmPluginContextValue {
   appMountParameters: AppMountParameters;
@@ -22,6 +23,7 @@ export interface ApmPluginContextValue {
   plugins: ApmPluginSetupDeps & { maps?: MapsStartApi };
   observabilityRuleTypeRegistry: ObservabilityRuleTypeRegistry;
   observability: ObservabilityPublicStart;
+  uptime: UptimePublicStart;
 }
 
 export const ApmPluginContext = createContext({} as ApmPluginContextValue);
