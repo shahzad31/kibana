@@ -55,8 +55,14 @@ export class AuthenticationService {
     getStartServices,
     http,
   }: SetupParams): AuthenticationServiceSetup {
-    const getCurrentUser = async () =>
-      (await http.get('/internal/security/me', { asSystemRequest: true })) as AuthenticatedUser;
+    const getCurrentUser = async () => {
+      return (await http.get('/internal/security/me', {
+        asSystemRequest: true,
+        headers: {
+          'Cache-Control': 'max-age=60, must-revalidate',
+        },
+      })) as AuthenticatedUser;
+    };
 
     const areAPIKeysEnabled = async () =>
       ((await http.get('/internal/security/api_key/_enabled')) as { apiKeysEnabled: boolean })

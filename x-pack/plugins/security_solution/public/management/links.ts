@@ -247,6 +247,8 @@ export const getManagementFilteredLinks = async (
 
   const linksToExclude: SecurityPageName[] = [];
 
+  // delay the first refresh to prioritize the initial page load of rest of the kibana
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   const currentUser = await plugins.security.authc.getCurrentUser();
 
   const isPlatinumPlus = licenseService.isPlatinumPlus();

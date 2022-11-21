@@ -52,6 +52,8 @@ export class TagsCache implements ITagsCache, ITagsChangeListener {
   }
 
   public async initialize() {
+    // delay the first refresh to prioritize the initial page load of rest of the kibana
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     await this.refresh();
 
     if (this.refreshInterval) {

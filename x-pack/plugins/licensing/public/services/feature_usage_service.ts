@@ -50,12 +50,22 @@ export class FeatureUsageService {
     // Skip registration if on logged-out page
     // NOTE: this only works because the login page does a full-page refresh after logging in
     // If this is ever changed, this code will need to buffer registrations and call them after the user logs in.
-    const registrationPromise =
-      http.anonymousPaths.isAnonymous(window.location.pathname) || this.registrations.length === 0
-        ? Promise.resolve()
-        : http.post('/internal/licensing/feature_usage/register', {
-            body: JSON.stringify(this.registrations),
-          });
+
+    const registerFeatureUsage = async () => {
+      if (
+        http.anonymousPaths.isAnonymous(window.location.pathname) ||
+        this.registrations.length === 0
+      ) {
+        return Promise.resolve();
+      }
+      // delay registration a bit to prioritize the initial page load
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return http.post('/internal/licensing/feature_usage/register', {
+        body: JSON.stringify(this.registrations),
+      });
+    };
+
+    const registrationPromise = registerFeatureUsage();
 
     return {
       notifyUsage: async (featureName, usedAt = Date.now()) => {

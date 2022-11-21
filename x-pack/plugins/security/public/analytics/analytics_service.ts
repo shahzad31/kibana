@@ -61,6 +61,8 @@ export class AnalyticsService {
         throttleTime(5000)
       )
       .subscribe(async () => {
+        // delay the first refresh to prioritize the initial page load of rest of the kibana
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         try {
           await AnalyticsService.recordAuthTypeAnalytics(http);
         } catch {

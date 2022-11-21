@@ -190,7 +190,11 @@ export class SpacesManager {
     if (this.isAnonymousPath()) {
       return;
     }
-    const activeSpace = await this.http.get<Space>('/internal/spaces/_active_space');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const activeSpace = await this.http.get<Space>('/internal/spaces/_active_space', {
+      headers: { 'cache-control': 'max-age=60' },
+      cache: 'force-cache',
+    });
     this.activeSpace$.next(activeSpace);
   }
 

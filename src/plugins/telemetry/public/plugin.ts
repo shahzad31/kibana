@@ -229,6 +229,8 @@ export class TelemetryPlugin implements Plugin<TelemetryPluginSetup, TelemetryPl
       }
 
       // Refresh and get telemetry config
+      // delay the refresh to avoid blocking the UI
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       const updatedConfig = await this.refreshConfig();
 
       analytics.optIn({ global: { enabled: this.telemetryService!.isOptedIn } });

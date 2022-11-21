@@ -98,12 +98,15 @@ export class SecurityCheckupService {
       });
   }
 
-  private getSecurityCheckupState(http: HttpStart) {
-    return http.anonymousPaths.isAnonymous(window.location.pathname)
-      ? Promise.resolve(DEFAULT_SECURITY_CHECKUP_STATE)
-      : http
-          .get<SecurityCheckupState>('/internal/security/security_checkup/state')
-          .catch(() => DEFAULT_SECURITY_CHECKUP_STATE);
+  private async getSecurityCheckupState(http: HttpStart) {
+    if (http.anonymousPaths.isAnonymous(window.location.pathname)) {
+      return Promise.resolve(DEFAULT_SECURITY_CHECKUP_STATE);
+    }
+    // delay a bit to prioritize other requests
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return http
+      .get<SecurityCheckupState>('/internal/security/security_checkup/state')
+      .catch(() => DEFAULT_SECURITY_CHECKUP_STATE);
   }
 
   private setAlertVisibility(show: boolean, persist: boolean) {

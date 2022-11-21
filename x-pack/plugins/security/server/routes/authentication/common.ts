@@ -86,7 +86,12 @@ export function defineCommonRoutes({
           );
         }
 
-        return response.ok({ body: getAuthenticationService().getCurrentUser(request)! });
+        return response.ok({
+          body: getAuthenticationService().getCurrentUser(request)!,
+          headers: {
+            'cache-control': 'max-age=60, must-revalidate',
+          },
+        });
       })
     );
   }

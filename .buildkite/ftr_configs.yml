@@ -278,6 +278,7 @@ enabled:
   - x-pack/performance/journeys/ecommerce_dashboard_map_only.ts
   - x-pack/performance/journeys/flight_dashboard.ts
   - x-pack/performance/journeys/login.ts
+  - x-pack/performance/journeys/home_page.ts
   - x-pack/performance/journeys/many_fields_discover.ts
   - x-pack/performance/journeys/promotion_tracking_dashboard.ts
   - x-pack/performance/journeys/web_logs_dashboard.ts

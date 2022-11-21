@@ -58,8 +58,14 @@ export class NewsfeedApiDriver implements INewsfeedApiDriver {
       method: 'GET',
     });
 
+    const fetchNewsfeed = async () => {
+      // delay the fetch by 2 second to prioritise rest of kibana
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return window.fetch(request);
+    };
+
     return Rx.from(
-      window.fetch(request).then(async (response) => {
+      fetchNewsfeed().then(async (response) => {
         const { items } = (await response.json()) as NewsfeedResponse;
         return this.convertResponse(items);
       })

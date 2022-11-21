@@ -20,7 +20,10 @@ export function initGetActiveSpaceApi(deps: InternalRouteDeps) {
     createLicensedRouteHandler(async (context, request, response) => {
       try {
         const space = await getSpacesService().getActiveSpace(request);
-        return response.ok({ body: space });
+        return response.ok({
+          body: space,
+          headers: { 'cache-control': 'max-age=60' },
+        });
       } catch (error) {
         return response.customError(wrapError(error));
       }
