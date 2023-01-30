@@ -7,20 +7,12 @@
 
 import React, { useMemo } from 'react';
 import { FormattedMessage } from '@kbn/i18n-react';
-import {
-  EuiButtonEmpty,
-  EuiScreenReaderOnly,
-  EuiToolTip,
-  EuiLink,
-  EuiText,
-  EuiIcon,
-} from '@elastic/eui';
+import { EuiButtonEmpty, EuiScreenReaderOnly, EuiLink, EuiText, EuiIcon } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { euiStyled } from '@kbn/kibana-react-plugin/common';
-import { WaterfallTooltipContent } from './waterfall_tooltip_content';
-import { WaterfallChartTooltip } from './styles';
+import { useDispatch } from 'react-redux';
 import { FIXED_AXIS_HEIGHT, RESOURCE_TITLE_FONT_SIZE } from './constants';
-import { formatTooltipHeading } from '../../common/network_data/data_formatting';
+import { useWaterfallContext } from './context/waterfall_context';
 
 interface Props {
   index: number;
@@ -97,8 +89,8 @@ export const getChunks = (text: string = '') => {
 };
 
 // Helper component for adding middle text truncation, e.g.
-// really-really-really-long....ompressed.js
-// Can be used to accomodate content in sidebar item rendering.
+// really-really-really-long....Compressed.js
+// Can be used to accommodate content in sidebar item rendering.
 export const MiddleTruncatedText = ({
   index,
   ariaLabel,
@@ -115,63 +107,77 @@ export const MiddleTruncatedText = ({
     return getChunks(text);
   }, [text]);
 
+  const { chartRef, chartId } = useWaterfallContext();
+
+  const dispatch = useDispatch();
+
   return (
-    <OuterContainer aria-label={ariaLabel} data-test-subj="middleTruncatedTextContainer">
+    <OuterContainer
+      aria-label={ariaLabel}
+      data-test-subj="middleTruncatedTextContainer"
+      onMouseOver={() => {
+        // dispatch(showSideBarItemTooltip(index - 1));
+        chartRef.current?.dispatchExternalPointerEvent({
+          chartId: chartId.current,
+          type: 'Over',
+          scale: 'ordinal',
+          x: index - 1,
+          y: [{ value: 0, groupId: 'waterfallChart' }],
+          // y: [{ value: domain?.max / 2, groupId: 'waterfallChart' }],
+          smVerticalValue: null,
+          smHorizontalValue: null,
+        });
+      }}
+      onMouseOut={() => {
+        // dispatch(showSideBarItemTooltip(null));
+        chartRef.current?.dispatchExternalPointerEvent({
+          chartId: chartId.current,
+          type: 'Out',
+        });
+      }}
+    >
       <EuiScreenReaderOnly>
         <span data-test-subj="middleTruncatedTextSROnly">{fullText}</span>
       </EuiScreenReaderOnly>
-      <WaterfallChartTooltip
-        as={EuiToolTip}
-        content={
-          <WaterfallTooltipContent {...{ text: formatTooltipHeading(index, fullText), url }} />
-        }
-        data-test-subj="middleTruncatedTextToolTip"
-        delay="long"
-        position="top"
-      >
-        <>
-          {onClick ? (
-            <StyledButton
-              onClick={onClick}
-              data-test-subj={`middleTruncatedTextButton${index}`}
-              buttonRef={setButtonRef}
-              flush={'left'}
-            >
-              <InnerContainer>
-                <IndexNumber
-                  css={{ minWidth: `${String(highestIndex).length + 3}ch` }}
-                  color="subdued"
+      <>
+        {onClick ? (
+          <StyledButton
+            onClick={onClick}
+            data-test-subj={`middleTruncatedTextButton${index}`}
+            buttonRef={setButtonRef}
+            flush={'left'}
+          >
+            <InnerContainer>
+              <IndexNumber
+                css={{ minWidth: `${String(highestIndex).length + 3}ch` }}
+                color="subdued"
+                size="s"
+              >
+                {index}
+              </IndexNumber>
+              {secureHttps && (
+                <SecureIcon
+                  type="lock"
                   size="s"
-                >
-                  {index}
-                </IndexNumber>
-                {secureHttps && (
-                  <SecureIcon
-                    type="lock"
-                    size="s"
-                    color="success"
-                    aria-label={i18n.translate(
-                      'xpack.synthetics.waterfallChart.sidebar.url.https',
-                      {
-                        defaultMessage: 'https',
-                      }
-                    )}
-                  />
-                )}
-                <FirstChunk>{chunks.first}</FirstChunk>
-                <LastChunk>{chunks.last}</LastChunk>
-              </InnerContainer>
-            </StyledButton>
-          ) : (
-            <InnerContainer aria-hidden={true}>
-              <FirstChunk>
-                {index}. {chunks.first}
-              </FirstChunk>
+                  color="success"
+                  aria-label={i18n.translate('xpack.synthetics.waterfallChart.sidebar.url.https', {
+                    defaultMessage: 'https',
+                  })}
+                />
+              )}
+              <FirstChunk>{chunks.first}</FirstChunk>
               <LastChunk>{chunks.last}</LastChunk>
             </InnerContainer>
-          )}
-        </>
-      </WaterfallChartTooltip>
+          </StyledButton>
+        ) : (
+          <InnerContainer aria-hidden={true}>
+            <FirstChunk>
+              {index}. {chunks.first}
+            </FirstChunk>
+            <LastChunk>{chunks.last}</LastChunk>
+          </InnerContainer>
+        )}
+      </>
       <span>
         <EuiLink href={url} external target="_blank">
           <EuiScreenReaderOnly>

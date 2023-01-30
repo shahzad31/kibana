@@ -9,7 +9,6 @@ import React from 'react';
 import {
   Axis,
   BarSeries,
-  BarStyleAccessor,
   Chart,
   DomainRange,
   Position,
@@ -26,10 +25,9 @@ import { WaterfallChartMarkers } from './waterfall_marker/waterfall_markers';
 interface Props {
   tickFormat: TickFormatter;
   domain: DomainRange;
-  barStyleAccessor: BarStyleAccessor;
 }
 
-export const WaterfallChartFixedAxis = ({ tickFormat, domain, barStyleAccessor }: Props) => {
+export const WaterfallChartFixedAxis = ({ tickFormat, domain }: Props) => {
   const theme = useChartTheme();
   const { euiTheme } = useEuiTheme();
 
@@ -72,7 +70,6 @@ export const WaterfallChartFixedAxis = ({ tickFormat, domain, barStyleAccessor }
           xAccessor="x"
           yAccessors={['y']}
           y0Accessors={['y0']}
-          styleAccessor={barStyleAccessor}
           data={[
             { x: 0, y0: 0, y1: 1 },
             { x: 1, y0: 0, y1: 1 },

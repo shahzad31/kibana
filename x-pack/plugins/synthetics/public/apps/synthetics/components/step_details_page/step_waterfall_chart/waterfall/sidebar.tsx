@@ -5,22 +5,22 @@
  * 2.0.
  */
 
-import React, { useMemo } from 'react';
-import { EuiPanel, EuiFlexGroup, EuiFlexItem, useEuiTheme } from '@elastic/eui';
+import React from 'react';
+import { EuiPanel, EuiFlexGroup, useEuiTheme } from '@elastic/eui';
+import { useSelector } from 'react-redux';
+import { WaterfallSidebarItem } from './waterfall_sidebar_item';
+import { chartEventSelector } from '../../../../state/waterfall_chart/selectors';
 import { FIXED_AXIS_HEIGHT, SIDEBAR_GROW_SIZE } from './constants';
-import { IWaterfallContext, useWaterfallContext } from './context/waterfall_context';
-import { WaterfallChartSidebarWrapper } from './styles';
-import { WaterfallChartProps } from './waterfall_chart';
+import { IWaterfallContext } from './context/waterfall_context';
+import { SideBarFlexItem, WaterfallChartSidebarWrapper } from './styles';
 
 interface SidebarProps {
   items: Required<IWaterfallContext>['sidebarItems'];
-  render: Required<WaterfallChartProps>['renderSidebarItem'];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ items, render }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const { euiTheme } = useEuiTheme();
-  const { onSidebarClick } = useWaterfallContext();
-  const handleSidebarClick = useMemo(() => onSidebarClick, [onSidebarClick]);
+  const chartEvent = useSelector(chartEventSelector);
 
   return (
     <WaterfallChartSidebarWrapper grow={SIDEBAR_GROW_SIZE}>
@@ -30,15 +30,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ items, render }) => {
       >
         <EuiPanel css={{ height: '100%' }} hasBorder={false} hasShadow={false} paddingSize="none">
           <EuiFlexGroup
-            css={{ height: '100%' }}
+            css={{ height: '100%', paddingTop: 1.5 }}
             direction="column"
             gutterSize="none"
             responsive={false}
           >
             {items.map((item, index) => {
               return (
-                <EuiFlexItem
+                <SideBarFlexItem
                   key={index}
+                  isFocused={chartEvent?.x === index}
                   css={{
                     outline: 0,
                     minWidth: 0, // Needed for flex to not stretch noWrap children
@@ -46,8 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ items, render }) => {
                     paddingRight: euiTheme.size.s,
                   }}
                 >
-                  {render(item, index, handleSidebarClick)}
-                </EuiFlexItem>
+                  <WaterfallSidebarItem item={item} />
+                </SideBarFlexItem>
               );
             })}
           </EuiFlexGroup>

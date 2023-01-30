@@ -7,6 +7,7 @@
 
 import { combineReducers } from '@reduxjs/toolkit';
 
+import { waterfallChartReducer, WaterfallChartState } from './waterfall_chart';
 import { browserJourneyReducer } from './browser_journey';
 import { defaultAlertingReducer, DefaultAlertingState } from './alert_rules';
 import { manualTestRunsReducer, ManualTestRunsState } from './manual_test_runs';
@@ -46,6 +47,7 @@ export interface SyntheticsAppState {
   dynamicSettings: DynamicSettingsState;
   serviceLocations: ServiceLocationsState;
   syntheticsEnablement: SyntheticsEnablementState;
+  waterfallChart: WaterfallChartState;
 }
 
 export const rootReducer = combineReducers<SyntheticsAppState>({
@@ -65,4 +67,5 @@ export const rootReducer = combineReducers<SyntheticsAppState>({
   dynamicSettings: dynamicSettingsReducer,
   serviceLocations: serviceLocationsReducer,
   syntheticsEnablement: syntheticsEnablementReducer,
+  waterfallChart: waterfallChartReducer,
 });

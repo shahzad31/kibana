@@ -9,11 +9,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { EuiHealth } from '@elastic/eui';
 import { JourneyStep, NetworkEvent } from '../../../../../../../common/runtime_types';
 import { getSeriesAndDomain, getSidebarItems } from '../../common/network_data/data_formatting';
-import { SidebarItem, LegendItem } from '../../common/network_data/types';
+import { LegendItem } from '../../common/network_data/types';
 import { RenderItem, WaterfallDataEntry } from '../../common/network_data/types';
 import { useFlyout } from './waterfall_flyout/use_flyout';
 import { WaterfallFlyout } from './waterfall_flyout/waterfall_flyout';
-import { WaterfallSidebarItem } from './waterfall_sidebar_item';
 import { MarkerItems, WaterfallProvider } from './context/waterfall_context';
 import { WaterfallChart } from './waterfall_chart';
 
@@ -44,8 +43,6 @@ export const WaterfallChartWrapper: React.FC<Props> = ({
 
   const [networkData] = useState<NetworkEvent[]>(data);
 
-  const hasFilters = activeFilters.length > 0;
-
   const { series, domain, metadata, totalHighlightedRequests } = useMemo(() => {
     return getSeriesAndDomain(networkData, onlyHighlighted, query, activeFilters);
   }, [networkData, query, activeFilters, onlyHighlighted]);
@@ -75,22 +72,10 @@ export const WaterfallChartWrapper: React.FC<Props> = ({
 
   const highestSideBarIndex = Math.max(...series.map((sr: WaterfallDataEntry) => sr.x));
 
-  const renderSidebarItem: RenderItem<SidebarItem> = useCallback(
-    (item) => {
-      return (
-        <WaterfallSidebarItem
-          item={item}
-          renderFilterScreenReaderText={hasFilters && !onlyHighlighted}
-          onClick={onSidebarClick}
-          highestIndex={highestSideBarIndex}
-        />
-      );
-    },
-    [hasFilters, onlyHighlighted, onSidebarClick, highestSideBarIndex]
-  );
-
   return (
     <WaterfallProvider
+      highestIndex={highestSideBarIndex}
+      domain={domain}
       activeStep={activeStep}
       markerItems={markerItems}
       totalNetworkRequests={total}
@@ -115,18 +100,6 @@ export const WaterfallChartWrapper: React.FC<Props> = ({
       <WaterfallChart
         tickFormat={useCallback((d: number) => `${Number(d).toFixed(0)} ms`, [])}
         domain={domain}
-        barStyleAccessor={useCallback(({ datum }) => {
-          if (!datum.config?.isHighlighted) {
-            return {
-              rect: {
-                fill: datum.config?.colour,
-                opacity: '0.1',
-              },
-            };
-          }
-          return datum.config.colour;
-        }, [])}
-        renderSidebarItem={renderSidebarItem}
         renderLegendItem={renderLegendItem}
         renderFlyout={renderFlyout}
       />

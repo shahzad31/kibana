@@ -8,7 +8,7 @@
 import React from 'react';
 import { i18n } from '@kbn/i18n';
 import { FormattedMessage } from '@kbn/i18n-react';
-import { BarStyleAccessor, DomainRange, TickFormatter } from '@elastic/charts';
+import { DomainRange, TickFormatter } from '@elastic/charts';
 import { EuiFlexGroup, EuiFlexItem, EuiSwitch, EuiText, useEuiTheme } from '@elastic/eui';
 
 import { MAIN_GROW_SIZE, SIDEBAR_GROW_SIZE } from '../constants';
@@ -21,7 +21,6 @@ interface Props {
   highlightedNetworkRequests: number;
   fetchedNetworkRequests: number;
   shouldRenderSidebar: boolean;
-  barStyleAccessor: BarStyleAccessor;
   domain: DomainRange;
   tickFormat: TickFormatter;
 }
@@ -32,7 +31,6 @@ export const WaterfallTickAxis = ({
   highlightedNetworkRequests,
   fetchedNetworkRequests,
   shouldRenderSidebar,
-  barStyleAccessor,
   domain,
   tickFormat,
 }: Props) => {
@@ -73,15 +71,11 @@ export const WaterfallTickAxis = ({
               </WaterfallChartSidebarWrapper>
             )}
             <EuiFlexItem
-              css={{ outline: 0, marginLeft: '-16px', height: 40 }}
+              css={{ outline: 0, marginLeft: '-24px', height: 40 }}
               grow={shouldRenderSidebar ? MAIN_GROW_SIZE : true}
               data-test-subj="axisOnlyWrapper"
             >
-              <WaterfallChartFixedAxis
-                domain={domain}
-                barStyleAccessor={barStyleAccessor}
-                tickFormat={tickFormat}
-              />
+              <WaterfallChartFixedAxis domain={domain} tickFormat={tickFormat} />
             </EuiFlexItem>
           </EuiFlexGroup>
         </EuiFlexItem>

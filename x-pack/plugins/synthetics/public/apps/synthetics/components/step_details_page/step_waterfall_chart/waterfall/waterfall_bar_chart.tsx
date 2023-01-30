@@ -9,9 +9,9 @@ import React, { useMemo, useCallback } from 'react';
 import {
   Axis,
   BarSeries,
-  BarStyleAccessor,
   Chart,
   DomainRange,
+  Placement,
   Position,
   ScaleType,
   Settings,
@@ -19,6 +19,8 @@ import {
   TooltipInfo,
 } from '@elastic/charts';
 import { useEuiTheme } from '@elastic/eui';
+import { useDispatch } from 'react-redux';
+import { setWaterFallChartEvent } from '../../../../state/waterfall_chart/actions';
 import { useChartTheme } from '../../../../../../hooks/use_chart_theme';
 import { BAR_HEIGHT } from './constants';
 import { WaterfallChartChartContainer, WaterfallChartTooltip } from './styles';
@@ -62,22 +64,43 @@ interface Props {
   chartData: WaterfallData;
   tickFormat: TickFormatter;
   domain: DomainRange;
-  barStyleAccessor: BarStyleAccessor;
 }
 
-export const WaterfallBarChart = ({
-  chartData,
-  tickFormat,
-  domain,
-  barStyleAccessor,
-  index,
-}: Props) => {
+export const WaterfallBarChart = ({ chartData, tickFormat, domain, index }: Props) => {
   const theme = useChartTheme();
   const { euiTheme } = useEuiTheme();
-  const { onElementClick, onProjectionClick } = useWaterfallContext();
+  const { onElementClick, onProjectionClick, chartRef } = useWaterfallContext();
+
   const handleElementClick = useMemo(() => onElementClick, [onElementClick]);
   const handleProjectionClick = useMemo(() => onProjectionClick, [onProjectionClick]);
   const memoizedTickFormat = useCallback(tickFormat, [tickFormat]);
+
+  const dispatch = useDispatch();
+
+  // const isTooltipVisible = useSelector(isSideBarTooltipVisible);
+  //
+  // useEffect(() => {
+  //   if (isTooltipVisible !== null) {
+  //     if (Math.round(isTooltipVisible / CANVAS_MAX_ITEMS) === index) {
+  //       console.log(chartRef.current);
+  //       chartRef.current?.dispatchExternalPointerEvent({
+  //         chartId: chartId.current,
+  //         type: 'Over',
+  //         scale: 'ordinal',
+  //         x: isTooltipVisible % CANVAS_MAX_ITEMS,
+  //         y: [{ value: 0, groupId: 'waterfallChart' }],
+  //         // y: [{ value: domain?.max / 2, groupId: 'waterfallChart' }],
+  //         smVerticalValue: null,
+  //         smHorizontalValue: null,
+  //       });
+  //     }
+  //   } else {
+  //     chartRef.current?.dispatchExternalPointerEvent({
+  //       chartId: chartId.current,
+  //       type: 'Out',
+  //     });
+  //   }
+  // }, [domain?.max, index, isTooltipVisible]);
 
   return (
     <WaterfallChartChartContainer
@@ -85,7 +108,7 @@ export const WaterfallBarChart = ({
       chartIndex={index}
       data-test-subj="wfDataOnlyBarChart"
     >
-      <Chart className="data-chart">
+      <Chart className="data-chart" ref={chartRef}>
         <Settings
           showLegend={false}
           rotation={90}
@@ -98,6 +121,15 @@ export const WaterfallBarChart = ({
           theme={{ ...theme, tooltip: { maxWidth: 500 } }}
           onProjectionClick={handleProjectionClick}
           onElementClick={handleElementClick}
+          onPointerUpdate={(evt) => {
+            if ('x' in evt) {
+              dispatch(setWaterFallChartEvent(evt));
+            } else {
+              dispatch(setWaterFallChartEvent(null));
+            }
+          }}
+          externalPointerEvents={{ tooltip: { visible: true, placement: Placement.Top } }}
+          pointerUpdateDebounce={0}
         />
 
         <Axis
@@ -125,7 +157,17 @@ export const WaterfallBarChart = ({
           xAccessor="x"
           yAccessors={['y']}
           y0Accessors={['y0']}
-          styleAccessor={barStyleAccessor}
+          styleAccessor={useCallback(({ datum }) => {
+            if (!datum.config?.isHighlighted) {
+              return {
+                rect: {
+                  fill: datum.config?.colour,
+                  opacity: '0.1',
+                },
+              };
+            }
+            return datum.config.colour;
+          }, [])}
           data={chartData}
         />
         <WaterfallChartMarkers />

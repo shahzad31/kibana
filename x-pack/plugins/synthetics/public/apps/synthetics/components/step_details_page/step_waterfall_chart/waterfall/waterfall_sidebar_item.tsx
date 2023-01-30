@@ -7,33 +7,32 @@
 
 import React, { RefObject, useMemo, useCallback, useState } from 'react';
 import { EuiFlexGroup, EuiFlexItem, EuiBadge } from '@elastic/eui';
+import { useWaterfallContext } from './context/waterfall_context';
 import { SidebarItem } from '../../common/network_data/types';
 import { MiddleTruncatedText } from './middle_truncated_text';
 import { SideBarItemHighlighter } from './styles';
 import { SIDEBAR_FILTER_MATCHES_SCREENREADER_LABEL } from './translations';
-import { OnSidebarClick } from './waterfall_flyout/use_flyout';
 
 interface SidebarItemProps {
   item: SidebarItem;
-  renderFilterScreenReaderText?: boolean;
-  onClick?: OnSidebarClick;
-  highestIndex: number;
 }
 
-export const WaterfallSidebarItem = ({
+export const WaterfallSidebarItem = React.memo(function WaterfallSidebarItem({
   item,
-  highestIndex,
-  renderFilterScreenReaderText,
-  onClick,
-}: SidebarItemProps) => {
+}: SidebarItemProps) {
+  const { highestIndex, onSidebarClick, activeFilters, showOnlyHighlightedNetworkRequests } =
+    useWaterfallContext();
+
+  const hasFilters = activeFilters.length > 0;
+
+  const renderFilterScreenReaderText = hasFilters && !showOnlyHighlightedNetworkRequests;
+
   const [buttonRef, setButtonRef] = useState<RefObject<HTMLButtonElement | null>>();
   const { status, offsetIndex, index, isHighlighted, url } = item;
 
   const handleSidebarClick = useMemo(() => {
-    if (onClick) {
-      return () => onClick({ buttonRef, networkItemIndex: index });
-    }
-  }, [buttonRef, index, onClick]);
+    return () => onSidebarClick?.({ buttonRef, networkItemIndex: index });
+  }, [buttonRef, index, onSidebarClick]);
 
   const setRef = useCallback((ref) => setButtonRef(ref), [setButtonRef]);
 
@@ -67,7 +66,7 @@ export const WaterfallSidebarItem = ({
               ariaLabel={ariaLabel}
               onClick={handleSidebarClick}
               setButtonRef={setRef}
-              highestIndex={highestIndex}
+              highestIndex={highestIndex ?? 0}
             />
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -81,7 +80,7 @@ export const WaterfallSidebarItem = ({
               ariaLabel={ariaLabel}
               onClick={handleSidebarClick}
               setButtonRef={setRef}
-              highestIndex={highestIndex}
+              highestIndex={highestIndex ?? 0}
             />
           </EuiFlexItem>
           <EuiFlexItem component="span" grow={false}>
@@ -91,4 +90,4 @@ export const WaterfallSidebarItem = ({
       )}
     </SideBarItemHighlighter>
   );
-};
+});

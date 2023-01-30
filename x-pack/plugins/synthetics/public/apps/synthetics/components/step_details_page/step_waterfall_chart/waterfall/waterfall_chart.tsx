@@ -5,8 +5,8 @@
  * 2.0.
  */
 
-import React, { useRef } from 'react';
-import { TickFormatter, DomainRange, BarStyleAccessor } from '@elastic/charts';
+import React from 'react';
+import { TickFormatter, DomainRange } from '@elastic/charts';
 import { EuiFlexGroup, EuiFlexItem, useEuiTheme } from '@elastic/eui';
 
 import { useWaterfallContext } from './context/waterfall_context';
@@ -29,24 +29,17 @@ export type RenderItem<I = any> = (
   index: number,
   onClick?: (event: any) => void
 ) => JSX.Element;
+export type RenderSideBarItem<I = any> = (item: I) => JSX.Element;
 export type RenderElement = () => JSX.Element;
 
 export interface WaterfallChartProps {
   tickFormat: TickFormatter;
   domain: DomainRange;
-  barStyleAccessor: BarStyleAccessor;
-  renderSidebarItem?: RenderItem;
   renderLegendItem?: RenderItem;
   renderFlyout?: RenderElement;
 }
 
-export const WaterfallChart = ({
-  tickFormat,
-  domain,
-  barStyleAccessor,
-  renderSidebarItem,
-  renderFlyout,
-}: WaterfallChartProps) => {
+export const WaterfallChart = ({ tickFormat, domain, renderFlyout }: WaterfallChartProps) => {
   const { euiTheme } = useEuiTheme();
   const {
     data,
@@ -61,10 +54,6 @@ export const WaterfallChart = ({
     highlightedNetworkRequests,
     fetchedNetworkRequests,
   } = useWaterfallContext();
-
-  const chartWrapperDivRef = useRef<HTMLDivElement | null>(null);
-
-  const shouldRenderSidebar = !!(sidebarItems && renderSidebarItem);
 
   const chartsToDisplay = useBarCharts({ data });
   const cancelPagePadding = {
@@ -84,18 +73,16 @@ export const WaterfallChart = ({
           alignItems="stretch"
           responsive={false}
         >
-          {shouldRenderSidebar && (
-            <WaterfallChartSidebarWrapper grow={SIDEBAR_GROW_SIZE}>
-              <WaterfallSearch
-                query={query}
-                setQuery={setQuery}
-                totalNetworkRequests={totalNetworkRequests}
-                highlightedNetworkRequests={highlightedNetworkRequests}
-                fetchedNetworkRequests={fetchedNetworkRequests}
-              />
-            </WaterfallChartSidebarWrapper>
-          )}
-          <EuiFlexItem grow={shouldRenderSidebar ? MAIN_GROW_SIZE : true}>
+          <WaterfallChartSidebarWrapper grow={SIDEBAR_GROW_SIZE}>
+            <WaterfallSearch
+              query={query}
+              setQuery={setQuery}
+              totalNetworkRequests={totalNetworkRequests}
+              highlightedNetworkRequests={highlightedNetworkRequests}
+              fetchedNetworkRequests={fetchedNetworkRequests}
+            />
+          </WaterfallChartSidebarWrapper>
+          <EuiFlexItem grow={MAIN_GROW_SIZE}>
             <WaterfallLegend activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -105,24 +92,18 @@ export const WaterfallChart = ({
           setOnlyHighlighted={setOnlyHighlighted}
           highlightedNetworkRequests={highlightedNetworkRequests}
           fetchedNetworkRequests={fetchedNetworkRequests}
-          shouldRenderSidebar={shouldRenderSidebar}
+          shouldRenderSidebar={true}
           domain={domain}
           tickFormat={tickFormat}
-          barStyleAccessor={barStyleAccessor}
         />
       </WaterfallChartStickyHeaderContainer>
 
-      <WaterfallChartOuterContainer
-        data-test-subj="syntheticsWaterfallChartOuterContainer"
-        ref={chartWrapperDivRef}
-      >
+      <WaterfallChartOuterContainer data-test-subj="syntheticsWaterfallChartOuterContainer">
         <EuiFlexGroup gutterSize="none" responsive={false}>
-          {shouldRenderSidebar ? (
-            <Sidebar items={sidebarItems!} render={renderSidebarItem!} />
-          ) : null}
+          <Sidebar items={sidebarItems!} />
           <EuiFlexItem
-            style={{ marginLeft: '-16px' }}
-            grow={shouldRenderSidebar ? MAIN_GROW_SIZE : true}
+            style={{ marginLeft: '-24px' }}
+            grow={MAIN_GROW_SIZE}
             data-test-subj="dataOnlyWrapper"
           >
             {chartsToDisplay.map((chartData, ind) => (
@@ -131,7 +112,6 @@ export const WaterfallChart = ({
                 key={ind}
                 chartData={chartData}
                 domain={domain}
-                barStyleAccessor={barStyleAccessor}
                 tickFormat={tickFormat}
               />
             ))}

@@ -5,7 +5,9 @@
  * 2.0.
  */
 
-import React, { createContext, useContext, Context, Dispatch, SetStateAction } from 'react';
+import React, { createContext, useContext, Context, Dispatch, SetStateAction, useRef } from 'react';
+import { Chart, DomainRange } from '@elastic/charts';
+import { v4 as uuidv4 } from 'uuid';
 import { JourneyStep } from '../../../../../../../../common/runtime_types';
 import {
   WaterfallData,
@@ -48,6 +50,8 @@ export interface IWaterfallContext {
   setOnlyHighlighted: (val: boolean) => void;
   query: string;
   setQuery: (val: string) => void;
+  domain?: DomainRange;
+  highestIndex?: number;
 }
 
 export const WaterfallContext = createContext<Partial<IWaterfallContext>>({});
@@ -72,7 +76,12 @@ export const WaterfallProvider: React.FC<IWaterfallContext> = ({
   setOnlyHighlighted,
   query,
   setQuery,
+  domain,
+  highestIndex,
 }) => {
+  const chartRef = useRef<Chart>(null);
+  const chartId = useRef(uuidv4());
+
   return (
     <WaterfallContext.Provider
       value={{
@@ -94,6 +103,10 @@ export const WaterfallProvider: React.FC<IWaterfallContext> = ({
         setOnlyHighlighted,
         query,
         setQuery,
+        domain,
+        highestIndex,
+        chartRef,
+        chartId,
       }}
     >
       {children}

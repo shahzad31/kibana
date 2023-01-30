@@ -122,3 +122,12 @@ export const WaterfallChartTooltip = euiStyled(WaterfallTooltipResponsiveMaxWidt
       darkMode ? eui.euiColorDarkestShade : eui.euiColorEmptyShade};
   }
 `;
+
+export const SideBarFlexItem = euiStyled(EuiFlexItem)<{ isFocused: boolean }>`
+  &&& {
+    :hover {
+      background-color: ${({ theme }) => theme.eui.euiColorLightestShade};
+    }
+    background-color: ${({ theme, isFocused }) => isFocused && theme.eui.euiColorLightestShade};
+  }
+`;
