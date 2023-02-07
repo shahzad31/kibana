@@ -7,7 +7,7 @@
 
 import { Duration } from 'moment';
 import { Observable, BehaviorSubject, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, first, mergeMap } from 'rxjs/operators';
 import { ITagsCache } from '@kbn/saved-objects-tagging-oss-plugin/public';
 import { Tag, TagAttributes } from '../../../common/types';
 
@@ -41,6 +41,7 @@ export class TagsCache implements ITagsCache, ITagsChangeListener {
   private readonly internal$: BehaviorSubject<Tag[]>;
   private readonly public$: Observable<Tag[]>;
   private readonly stop$: Subject<void>;
+  private isInitialized$: BehaviorSubject<boolean>;
 
   constructor({ refreshHandler, refreshInterval }: TagsCacheOptions) {
     this.refreshHandler = refreshHandler;
@@ -49,12 +50,14 @@ export class TagsCache implements ITagsCache, ITagsChangeListener {
     this.stop$ = new Subject<void>();
     this.internal$ = new BehaviorSubject<Tag[]>([]);
     this.public$ = this.internal$.pipe(takeUntil(this.stop$));
+    this.isInitialized$ = new BehaviorSubject<boolean>(false);
   }
 
   public async initialize() {
     // delay the first refresh to prioritize the initial page load of rest of the kibana
     await new Promise((resolve) => setTimeout(resolve, 2000));
     await this.refresh();
+    this.isInitialized$.next(true);
 
     if (this.refreshInterval) {
       this.intervalId = window.setInterval(() => {
@@ -76,8 +79,13 @@ export class TagsCache implements ITagsCache, ITagsChangeListener {
     return this.internal$.getValue();
   }
 
-  public getState$() {
-    return this.public$;
+  public getState$({ waitForInitialization = false }: { waitForInitialization?: boolean } = {}) {
+    return waitForInitialization
+      ? this.isInitialized$.pipe(
+          first((isInitialized) => isInitialized),
+          mergeMap(() => this.public$)
+        )
+      : this.public$;
   }
 
   public onDelete(id: string) {

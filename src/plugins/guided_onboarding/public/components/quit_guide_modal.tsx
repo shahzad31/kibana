@@ -20,7 +20,7 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { GuideState } from '@kbn/guided-onboarding';
 import { NotificationsStart } from '@kbn/core/public';
-import { apiService } from '../services/api';
+import { apiService } from '../services/api.service';
 
 interface QuitGuideModalProps {
   closeModal: () => void;
@@ -46,7 +46,7 @@ export const QuitGuideModal = ({
       setIsLoading(false);
       notifications.toasts.addDanger({
         title: i18n.translate('guidedOnboarding.quitGuideModal.deactivateGuideError', {
-          defaultMessage: 'Unable to update the guide. Please try again later.',
+          defaultMessage: 'Unable to update the guide. Wait a moment and try again.',
         }),
         text: error.message,
       });

@@ -27,6 +27,7 @@ import {
   BLOCKLIST,
   CREATE_NEW_RULE,
   DASHBOARDS,
+  DATA_QUALITY,
   DETECT,
   DETECTION_RESPONSE,
   ENDPOINTS,
@@ -54,6 +55,7 @@ import {
   BLOCKLIST_PATH,
   CASES_FEATURE_ID,
   CASES_PATH,
+  DATA_QUALITY_PATH,
   DETECTION_RESPONSE_PATH,
   ENDPOINTS_PATH,
   EVENT_FILTERS_PATH,
@@ -180,6 +182,17 @@ export const securitySolutionsDeepLinks: SecuritySolutionDeepLink[] = [
           }),
         ],
       },
+      {
+        id: SecurityPageName.dataQuality,
+        title: DATA_QUALITY,
+        path: DATA_QUALITY_PATH,
+        features: [FEATURE.general],
+        keywords: [
+          i18n.translate('xpack.securitySolution.search.dataQualityDashboard', {
+            defaultMessage: 'Data quality',
+          }),
+        ],
+      },
     ],
   },
   {
@@ -233,15 +246,6 @@ export const securitySolutionsDeepLinks: SecuritySolutionDeepLink[] = [
           i18n.translate('xpack.securitySolution.search.exceptions', {
             defaultMessage: 'Exception lists',
           }),
-        ],
-        deepLinks: [
-          {
-            id: SecurityPageName.sharedExceptionListDetails,
-            title: 'List Details',
-            path: '/exceptions/shared/:exceptionListId',
-            navLinkStatus: AppNavLinkStatus.hidden,
-            searchable: false,
-          },
         ],
       },
     ],
@@ -526,7 +530,6 @@ export const securitySolutionsDeepLinks: SecuritySolutionDeepLink[] = [
       },
       {
         ...getSecuritySolutionLink<SecurityPageName>('benchmarks'),
-        deepLinks: [getSecuritySolutionLink<SecurityPageName>('rules')],
       },
     ],
   },

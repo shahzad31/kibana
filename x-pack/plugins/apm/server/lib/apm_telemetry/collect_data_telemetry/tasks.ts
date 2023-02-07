@@ -41,7 +41,7 @@ import {
   TRANSACTION_RESULT,
   TRANSACTION_TYPE,
   USER_AGENT_ORIGINAL,
-} from '../../../../common/elasticsearch_fieldnames';
+} from '../../../../common/es_fields/apm';
 import {
   APM_SERVICE_GROUP_SAVED_OBJECT_TYPE,
   MAX_NUMBER_OF_SERVICE_GROUPS,
@@ -54,7 +54,10 @@ import { AgentName } from '../../../../typings/es_schemas/ui/fields/agent';
 import { Span } from '../../../../typings/es_schemas/ui/span';
 import { Transaction } from '../../../../typings/es_schemas/ui/transaction';
 import { APMTelemetry, APMPerService, APMDataTelemetry } from '../types';
-import { ApmIndicesConfig } from '../../../routes/settings/apm_indices/get_apm_indices';
+import {
+  ApmIndicesConfig,
+  APM_AGENT_CONFIGURATION_INDEX,
+} from '../../../routes/settings/apm_indices/get_apm_indices';
 import { TelemetryClient } from '../telemetry_client';
 
 type ISavedObjectsClient = Pick<SavedObjectsClient, 'find'>;
@@ -464,7 +467,6 @@ export const tasks: TelemetryTask[] = [
         span: indices.span,
         transaction: indices.transaction,
         onboarding: indices.onboarding,
-        sourcemap: indices.sourcemap,
       };
 
       type ProcessorEvent = keyof typeof indicesByProcessorEvent;
@@ -558,7 +560,7 @@ export const tasks: TelemetryTask[] = [
     name: 'agent_configuration',
     executor: async ({ indices, telemetryClient }) => {
       const agentConfigurationCount = await telemetryClient.search({
-        index: indices.apmAgentConfigurationIndex,
+        index: APM_AGENT_CONFIGURATION_INDEX,
         body: {
           size: 0,
           timeout,
@@ -1033,11 +1035,10 @@ export const tasks: TelemetryTask[] = [
     executor: async ({ indices, telemetryClient }) => {
       const response = await telemetryClient.indicesStats({
         index: [
-          indices.apmAgentConfigurationIndex,
+          APM_AGENT_CONFIGURATION_INDEX,
           indices.error,
           indices.metric,
           indices.onboarding,
-          indices.sourcemap,
           indices.span,
           indices.transaction,
         ],

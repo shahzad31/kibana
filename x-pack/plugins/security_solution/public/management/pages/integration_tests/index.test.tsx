@@ -38,7 +38,7 @@ describe('when in the Administration tab', () => {
         endpointPrivileges: { loading: false, canAccessEndpointManagement: false },
       });
 
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadPolicyManagement`', async () => {
@@ -47,7 +47,7 @@ describe('when in the Administration tab', () => {
       });
 
       mockedContext.history.push('/administration/policy');
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadTrustedApplications`', async () => {
@@ -56,7 +56,7 @@ describe('when in the Administration tab', () => {
       });
 
       mockedContext.history.push('/administration/trusted_apps');
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadEventFilters`', async () => {
@@ -65,7 +65,7 @@ describe('when in the Administration tab', () => {
       });
 
       mockedContext.history.push('/administration/event_filters');
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadHostIsolationExceptions`', async () => {
@@ -74,7 +74,7 @@ describe('when in the Administration tab', () => {
       });
 
       mockedContext.history.push('/administration/host_isolation_exceptions');
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadBlocklist`', async () => {
@@ -83,7 +83,7 @@ describe('when in the Administration tab', () => {
       });
 
       mockedContext.history.push('/administration/blocklist');
-      expect(await render().findByTestId('noIngestPermissions')).toBeTruthy();
+      expect(await render().findByTestId('noPrivilegesPage')).toBeTruthy();
     });
 
     it('should display `no permission` if no `canReadActionsLogManagement`', async () => {
@@ -100,7 +100,7 @@ describe('when in the Administration tab', () => {
   describe.skip('when the user has permissions', () => {
     it('should display the Management view if user has privileges', async () => {
       useUserPrivilegesMock.mockReturnValue({
-        endpointPrivileges: { loading: false, canReadEndpointList: true },
+        endpointPrivileges: { loading: false, canReadEndpointList: true, canAccessFleet: true },
       });
 
       expect(await render().findByTestId('endpointPage')).toBeTruthy();

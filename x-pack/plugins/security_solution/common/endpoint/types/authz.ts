@@ -6,24 +6,20 @@
  */
 
 /**
- * Endpoint permissions derived from Kibana capabilities and privileges
+ * Set of Endpoint Specific privileges that control application authorization. This interface is
+ * used both on the client and server for consistency
  */
-export interface EndpointPermissions {
+export interface EndpointAuthz {
   /** if user has write permissions to the security solution app */
   canWriteSecuritySolution: boolean;
   /** if user has read permissions to the security solution app */
   canReadSecuritySolution: boolean;
-}
-
-/**
- * Set of Endpoint Specific privileges that control application authorization. This interface is
- * used both on the client and server for consistency
- */
-export interface EndpointAuthz extends EndpointPermissions {
   /** If user has permissions to access Fleet */
   canAccessFleet: boolean;
   /** If user has permissions to access Endpoint management (includes check to ensure they also have access to fleet) */
   canAccessEndpointManagement: boolean;
+  /** If user has permissions to access Actions Log management and also has a platinum license (used for endpoint details flyout) */
+  canAccessEndpointActionsLogManagement: boolean;
   /** if user has permissions to create Artifacts by Policy */
   canCreateArtifactsByPolicy: boolean;
   /** if user has write permissions to endpoint list */
@@ -50,6 +46,8 @@ export interface EndpointAuthz extends EndpointPermissions {
   canGetRunningProcesses: boolean;
   /** If user has permissions to use the Response Actions Console */
   canAccessResponseConsole: boolean;
+  /** If user has write permissions to use execute action */
+  canWriteExecuteOperations: boolean;
   /** If user has write permissions to use file operations */
   canWriteFileOperations: boolean;
   /** if user has write permissions for trusted applications */

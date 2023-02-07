@@ -6,7 +6,7 @@
  * Side Public License, v 1.
  */
 
-import { Subject, Observable, firstValueFrom } from 'rxjs';
+import { Subject, Observable, firstValueFrom, of } from 'rxjs';
 import { filter, take, switchMap } from 'rxjs/operators';
 import type { Logger } from '@kbn/logging';
 import type { ServiceStatus } from '@kbn/core-status-common';
@@ -147,9 +147,13 @@ export class SavedObjectsService
 
     registerCoreObjectTypes(this.typeRegistry);
 
+    const skipMigration = this.config.migration.skip;
+
     return {
       status$: calculateStatus$(
-        this.migrator$.pipe(switchMap((migrator) => migrator.getStatus$())),
+        skipMigration
+          ? of({ status: 'completed' })
+          : this.migrator$.pipe(switchMap((migrator) => migrator.getStatus$())),
         elasticsearch.status$
       ),
       setClientFactoryProvider: (provider) => {
@@ -331,11 +335,11 @@ export class SavedObjectsService
           exportSizeLimit: this.config!.maxImportExportSize,
           logger: this.logger.get('exporter'),
         }),
-      createImporter: (savedObjectsClient) =>
+      createImporter: (savedObjectsClient, options) =>
         new SavedObjectsImporter({
           savedObjectsClient,
           typeRegistry: this.typeRegistry,
-          importSizeLimit: this.config!.maxImportExportSize,
+          importSizeLimit: options?.importSizeLimit ?? this.config!.maxImportExportSize,
         }),
       getTypeRegistry: () => this.typeRegistry,
     };

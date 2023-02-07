@@ -80,7 +80,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
 
   /**
    * Attachment types are being registered in
-   * x-pack/test/functional_with_es_ssl/fixtures/plugins/cases/public/plugin.ts
+   * x-pack/test/functional_with_es_ssl/plugins/cases/public/plugin.ts
    */
   describe('Attachment framework', () => {
     describe('External reference attachments', () => {
@@ -213,7 +213,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
     });
 
     /**
-     * The UI of the cases fixture plugin is in x-pack/test/functional_with_es_ssl/fixtures/plugins/cases/public/application.tsx
+     * The UI of the cases fixture plugin is in x-pack/test/functional_with_es_ssl/plugins/cases/public/application.tsx
      */
     describe('Attachment hooks', () => {
       const TOTAL_OWNERS = ['cases', 'securitySolution', 'observability'];
@@ -302,11 +302,10 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         it('renders different solutions', async () => {
           await openModal();
 
-          await testSubjects.existOrFail('options-filter-popover-button-Solution');
+          await testSubjects.existOrFail('solution-filter-popover-button');
 
-          for (const [owner, caseId] of createdCases.entries()) {
-            await testSubjects.existOrFail(`cases-table-row-${caseId}`);
-            await testSubjects.existOrFail(`case-table-column-owner-icon-${owner}`);
+          for (const [, currentCaseId] of createdCases.entries()) {
+            await testSubjects.existOrFail(`cases-table-row-${currentCaseId}`);
           }
 
           await closeModal();

@@ -6,7 +6,9 @@
  */
 
 import { getUptimeESMockClient } from '../../legacy_uptime/lib/requests/test_helpers';
-import { queryMonitorStatus, periodToMs } from './current_status';
+import { periodToMs } from './current_status';
+import { queryMonitorStatus } from '../../queries/query_monitor_status';
+import times from 'lodash/times';
 
 jest.mock('../common', () => ({
   getMonitors: jest.fn().mockReturnValue({
@@ -87,7 +89,7 @@ describe('current status route', () => {
                             config_id: 'id1',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Asia/Pacific - Japan',
                               },
                             },
                           },
@@ -122,7 +124,7 @@ describe('current status route', () => {
                             config_id: 'id2',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Asia/Pacific - Japan',
                               },
                             },
                           },
@@ -150,7 +152,7 @@ describe('current status route', () => {
                             config_id: 'id2',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Europe - Germany',
                               },
                             },
                           },
@@ -164,28 +166,52 @@ describe('current status route', () => {
           },
         ])
       );
-      expect(await queryMonitorStatus(uptimeEsClient, 3, 140000, ['id1', 'id2'])).toEqual({
+      expect(
+        await queryMonitorStatus(
+          uptimeEsClient,
+          ['Europe - Germany', 'Asia/Pacific - Japan'],
+          { from: 140000, to: 'now' },
+          ['id1', 'id2'],
+          { id1: ['Asia/Pacific - Japan'], id2: ['Europe - Germany', 'Asia/Pacific - Japan'] },
+          {
+            id1: 'id1',
+            id2: 'id2',
+          }
+        )
+      ).toEqual({
+        pending: 0,
         down: 1,
+        enabledMonitorQueryIds: ['id1', 'id2'],
         up: 2,
-        upConfigs: [
-          {
+        upConfigs: {
+          'id1-Asia/Pacific - Japan': {
             configId: 'id1',
-            heartbeatId: 'id1',
-            location: 'test-location',
+            monitorQueryId: 'id1',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-          {
+          'id2-Asia/Pacific - Japan': {
             configId: 'id2',
-            heartbeatId: 'id2',
-            location: 'test-location',
+            monitorQueryId: 'id2',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-        ],
-        downConfigs: [
-          {
+        },
+        downConfigs: {
+          'id2-Europe - Germany': {
             configId: 'id2',
-            heartbeatId: 'id2',
-            location: 'test-location',
+            monitorQueryId: 'id2',
+            location: 'Europe - Germany',
+            status: 'down',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-        ],
+        },
+        pendingConfigs: {},
       });
     });
 
@@ -216,7 +242,7 @@ describe('current status route', () => {
                             config_id: 'id1',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Asia/Pacific - Japan',
                               },
                             },
                           },
@@ -251,7 +277,7 @@ describe('current status route', () => {
                             config_id: 'id2',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Asia/Pacific - Japan',
                               },
                             },
                           },
@@ -279,7 +305,7 @@ describe('current status route', () => {
                             config_id: 'id2',
                             observer: {
                               geo: {
-                                name: 'test-location',
+                                name: 'Europe - Germany',
                               },
                             },
                           },
@@ -300,39 +326,253 @@ describe('current status route', () => {
        *
        * The expectation here is we will send the test client two separate "requests", one for each of the two IDs.
        */
-      expect(await queryMonitorStatus(uptimeEsClient, 10000, 2500, ['id1', 'id2'])).toEqual({
+      const concernedLocations = [
+        'Asia/Pacific - Japan',
+        'Europe - Germany',
+        'Asia/Pacific - Japan',
+      ];
+      expect(
+        await queryMonitorStatus(
+          uptimeEsClient,
+          [...concernedLocations, ...times(9997).map((n) => 'Europe - Germany' + n)],
+          { from: 2500, to: 'now' },
+          ['id1', 'id2'],
+          { id1: [concernedLocations[0]], id2: [concernedLocations[1], concernedLocations[2]] },
+          {
+            id1: 'id1',
+            id2: 'id2',
+          }
+        )
+      ).toEqual({
+        pending: 0,
         down: 1,
+        enabledMonitorQueryIds: ['id1', 'id2'],
         up: 2,
-        upConfigs: [
-          {
+        upConfigs: {
+          'id1-Asia/Pacific - Japan': {
             configId: 'id1',
-            heartbeatId: 'id1',
-            location: 'test-location',
+            monitorQueryId: 'id1',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-          {
+          'id2-Asia/Pacific - Japan': {
             configId: 'id2',
-            heartbeatId: 'id2',
-            location: 'test-location',
+            monitorQueryId: 'id2',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-        ],
-        downConfigs: [
-          {
+        },
+        downConfigs: {
+          'id2-Europe - Germany': {
             configId: 'id2',
-            heartbeatId: 'id2',
-            location: 'test-location',
+            monitorQueryId: 'id2',
+            location: 'Europe - Germany',
+            status: 'down',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
           },
-        ],
+        },
+        pendingConfigs: {},
       });
       expect(esClient.search).toHaveBeenCalledTimes(2);
       // These assertions are to ensure that we are paginating through the IDs we use for filtering
-      // @ts-expect-error mock search is not lining up with expected type
-      expect(esClient.search.mock.calls[0][0].query.bool.filter[1].terms['monitor.id']).toEqual([
-        'id1',
-      ]);
-      // @ts-expect-error mock search is not lining up with expected type
-      expect(esClient.search.mock.calls[1][0].query.bool.filter[1].terms['monitor.id']).toEqual([
-        'id2',
-      ]);
+      expect(
+        // @ts-expect-error mock search is not lining up with expected type
+        esClient.search.mock.calls[0][0].body.query.bool.filter[2].terms['monitor.id']
+      ).toEqual(['id1']);
+      expect(
+        // @ts-expect-error mock search is not lining up with expected type
+        esClient.search.mock.calls[1][0].body.query.bool.filter[2].terms['monitor.id']
+      ).toEqual(['id2']);
+    });
+
+    it('handles pending configs', async () => {
+      const { esClient, uptimeEsClient } = getUptimeESMockClient();
+      esClient.search.mockResponseOnce(
+        getEsResponse([
+          {
+            key: 'id1',
+            location: {
+              buckets: [
+                {
+                  key: 'Asia/Pacific - Japan',
+                  status: {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            '@timestamp': '2022-09-15T16:08:16.724Z',
+                            monitor: {
+                              status: 'up',
+                              id: 'id1',
+                            },
+                            summary: {
+                              up: 1,
+                              down: 0,
+                            },
+                            config_id: 'id1',
+                            observer: {
+                              geo: {
+                                name: 'Asia/Pacific - Japan',
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            key: 'id2',
+            location: {
+              buckets: [
+                {
+                  key: 'Asia/Pacific - Japan',
+                  status: {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            '@timestamp': '2022-09-15T16:09:16.724Z',
+                            monitor: {
+                              status: 'up',
+                              id: 'id2',
+                            },
+                            summary: {
+                              up: 1,
+                              down: 0,
+                            },
+                            config_id: 'id2',
+                            observer: {
+                              geo: {
+                                name: 'Asia/Pacific - Japan',
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                {
+                  key: 'Europe - Germany',
+                  status: {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            '@timestamp': '2022-09-15T16:19:16.724Z',
+                            monitor: {
+                              status: 'down',
+                              id: 'id2',
+                            },
+                            summary: {
+                              down: 1,
+                              up: 0,
+                            },
+                            config_id: 'id2',
+                            observer: {
+                              geo: {
+                                name: 'Europe - Germany',
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ])
+      );
+      expect(
+        await queryMonitorStatus(
+          uptimeEsClient,
+          ['Europe - Germany', 'Asia/Pacific - Japan'],
+          { from: 140000, to: 'now' },
+          ['id1', 'id2', 'project-monitor-id', 'id4'],
+          {
+            id1: ['Asia/Pacific - Japan'],
+            id2: ['Europe - Germany', 'Asia/Pacific - Japan'],
+            'project-monitor-id': ['Europe - Germany', 'Asia/Pacific - Japan'],
+            id4: ['Europe - Germany', 'Asia/Pacific - Japan'],
+          },
+          {
+            id1: 'id1',
+            id2: 'id2',
+            'project-monitor-id': 'id3',
+            id4: 'id4',
+          }
+        )
+      ).toEqual({
+        pending: 0,
+        down: 1,
+        enabledMonitorQueryIds: ['id1', 'id2', 'project-monitor-id', 'id4'],
+        up: 2,
+        upConfigs: {
+          'id1-Asia/Pacific - Japan': {
+            configId: 'id1',
+            monitorQueryId: 'id1',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
+          },
+          'id2-Asia/Pacific - Japan': {
+            configId: 'id2',
+            monitorQueryId: 'id2',
+            location: 'Asia/Pacific - Japan',
+            status: 'up',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
+          },
+        },
+        downConfigs: {
+          'id2-Europe - Germany': {
+            configId: 'id2',
+            monitorQueryId: 'id2',
+            location: 'Europe - Germany',
+            status: 'down',
+            ping: expect.any(Object),
+            timestamp: expect.any(String),
+          },
+        },
+        pendingConfigs: {
+          'id3-Asia/Pacific - Japan': {
+            configId: 'id3',
+            location: 'Asia/Pacific - Japan',
+            monitorQueryId: 'project-monitor-id',
+            status: 'unknown',
+          },
+          'id3-Europe - Germany': {
+            configId: 'id3',
+            location: 'Europe - Germany',
+            monitorQueryId: 'project-monitor-id',
+            status: 'unknown',
+          },
+          'id4-Asia/Pacific - Japan': {
+            configId: 'id4',
+            location: 'Asia/Pacific - Japan',
+            monitorQueryId: 'id4',
+            status: 'unknown',
+          },
+          'id4-Europe - Germany': {
+            configId: 'id4',
+            location: 'Europe - Germany',
+            monitorQueryId: 'id4',
+            status: 'unknown',
+          },
+        },
+      });
     });
   });
 });
