@@ -111,7 +111,10 @@ export function ObservabilityAlertSearchBar({
   );
 
   return (
-    <EuiFlexGroup direction="column" gutterSize="s">
+    <EuiFlexGroup direction="row" gutterSize="s">
+      <EuiFlexItem grow={false}>
+        <AlertsStatusFilter status={status} onChange={onStatusChange} />
+      </EuiFlexItem>
       <EuiFlexItem>
         <AlertsSearchBar
           appName={appName}
@@ -121,14 +124,6 @@ export function ObservabilityAlertSearchBar({
           query={kuery}
           onQuerySubmit={onSearchBarParamsChange}
         />
-      </EuiFlexItem>
-
-      <EuiFlexItem>
-        <EuiFlexGroup justifyContent="spaceBetween" alignItems="center">
-          <EuiFlexItem grow={false}>
-            <AlertsStatusFilter status={status} onChange={onStatusChange} />
-          </EuiFlexItem>
-        </EuiFlexGroup>
       </EuiFlexItem>
     </EuiFlexGroup>
   );

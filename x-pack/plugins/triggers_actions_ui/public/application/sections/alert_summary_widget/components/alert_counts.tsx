@@ -22,11 +22,11 @@ interface Props {
 
 export const AlertCounts = ({ activeAlertCount, recoveredAlertCount, onActiveClick }: Props) => {
   return (
-    <EuiFlexGroup gutterSize="l" responsive={false}>
-      <EuiFlexItem style={{ minWidth: 50, wordWrap: 'break-word' }} grow={false}>
+    <EuiFlexGroup gutterSize="l" responsive={false} direction="column" justifyContent="spaceAround">
+      <EuiFlexItem style={{ minWidth: 50, wordWrap: 'break-word' }}>
         <AllAlertCounts count={activeAlertCount + recoveredAlertCount} />
       </EuiFlexItem>
-      <EuiFlexItem style={{ minWidth: 50, wordWrap: 'break-word' }} grow={false}>
+      <EuiFlexItem style={{ minWidth: 50, wordWrap: 'break-word' }}>
         {!!onActiveClick ? (
           <EuiLink
             onClick={(event: React.MouseEvent<HTMLAnchorElement>) =>
