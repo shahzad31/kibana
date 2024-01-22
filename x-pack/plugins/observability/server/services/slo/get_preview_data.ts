@@ -19,9 +19,8 @@ import {
 } from '@kbn/slo-schema';
 import { assertNever } from '@kbn/std';
 import moment from 'moment';
-import { ElasticsearchClient } from '@kbn/core/server';
 import { estypes } from '@elastic/elasticsearch';
-import { typedSearch } from '../../utils/queries';
+import { SloRequestHandlerContext } from '../../routes/types';
 import { APMTransactionDurationIndicator } from '../../domain/models';
 import { computeSLI } from '../../domain/services';
 import { InvalidQueryError } from '../../errors';
@@ -39,7 +38,7 @@ interface Options {
   interval: string;
 }
 export class GetPreviewData {
-  constructor(private esClient: ElasticsearchClient) {}
+  constructor(private sloContext: SloRequestHandlerContext) {}
 
   private async getAPMTransactionDurationPreviewData(
     indicator: APMTransactionDurationIndicator,

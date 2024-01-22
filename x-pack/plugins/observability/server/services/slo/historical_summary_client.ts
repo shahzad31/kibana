@@ -6,7 +6,6 @@
  */
 
 import { MsearchMultisearchBody } from '@elastic/elasticsearch/lib/api/typesWithBodyKey';
-import { ElasticsearchClient } from '@kbn/core/server';
 import {
   ALL_VALUE,
   calendarAlignedTimeWindowSchema,
@@ -20,6 +19,7 @@ import {
 import { assertNever } from '@kbn/std';
 import * as t from 'io-ts';
 import moment from 'moment';
+import { SloRequestHandlerContext } from '../../routes/types';
 import { SLO_DESTINATION_INDEX_PATTERN } from '../../../common/slo/constants';
 import { DateRange, HistoricalSummary, SLO, SLOId } from '../../domain/models';
 import {
@@ -60,7 +60,7 @@ export interface HistoricalSummaryClient {
 }
 
 export class DefaultHistoricalSummaryClient implements HistoricalSummaryClient {
-  constructor(private esClient: ElasticsearchClient) {}
+  constructor(private sloContext: SloRequestHandlerContext) {}
 
   async fetch(list: SLOWithInstanceId[]): Promise<HistoricalSummaryResponse> {
     const dateRangeBySlo = list.reduce<Record<SLOId, DateRange>>((acc, { sloId, slo }) => {
@@ -78,12 +78,12 @@ export class DefaultHistoricalSummaryClient implements HistoricalSummaryClient {
       return historicalSummary;
     }
 
-    const result = await this.esClient.msearch({ searches });
+    const result = await this.sloContext.esClient.msearch({ searches });
 
     for (let i = 0; i < result.responses.length; i++) {
       const { slo, sloId, instanceId } = list[i];
       if ('error' in result.responses[i]) {
-        // handle errorneous responses with an empty historical summary data
+        // handle erroneous responses with an empty historical summary data
         historicalSummary.push({ sloId, instanceId, data: [] });
         continue;
       }

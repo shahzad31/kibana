@@ -9,6 +9,7 @@ import { i18n } from '@kbn/i18n';
 import { FindSLOResponse } from '@kbn/slo-schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { FETCH_STATUS, useInspectorContext } from '@kbn/observability-shared-plugin/public';
 import { DEFAULT_SLO_PAGE_SIZE } from '../../../common/slo/constants';
 import { SLO_LONG_REFETCH_INTERVAL, SLO_SHORT_REFETCH_INTERVAL } from '../../constants';
 
@@ -49,6 +50,7 @@ export function useFetchSloList({
   const [stateRefetchInterval, setStateRefetchInterval] = useState<number>(
     SLO_SHORT_REFETCH_INTERVAL
   );
+  const inspectContext = useInspectorContext();
 
   const { isInitialLoading, isLoading, isError, isSuccess, isRefetching, data } = useQuery({
     queryKey: sloKeys.list({ kqlQuery, page, perPage, sortBy, sortDirection }),
@@ -62,6 +64,11 @@ export function useFetchSloList({
           ...(perPage && { perPage }),
         },
         signal,
+      });
+      inspectContext.addInspectorRequest?.({
+        data: response,
+        status: FETCH_STATUS.SUCCESS,
+        loading: false,
       });
 
       return response;

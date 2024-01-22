@@ -17,10 +17,11 @@ import {
 import { SpacesPluginStart } from '@kbn/spaces-plugin/server';
 import axios from 'axios';
 import * as t from 'io-ts';
+import { InspectResponse } from '../../typings/common';
 import { ObservabilityConfig } from '..';
 import { getHTTPResponseCode, ObservabilityError } from '../errors';
 import { ObservabilityRequestHandlerContext } from '../types';
-import { AbstractObservabilityServerRouteRepository } from './types';
+import { AbstractObservabilityServerRouteRepository, SloRequestHandlerContext } from './types';
 
 interface RegisterRoutes {
   config: ObservabilityConfig;
@@ -43,6 +44,17 @@ export function registerRoutes({ config, repository, core, logger, dependencies 
   const routes = Object.values(repository);
 
   const router = core.http.createRouter();
+
+  core.http.registerRouteHandlerContext<SloRequestHandlerContext, 'slo'>(
+    'slo',
+    async (context, request) => {
+      const esClient = (await context.core).elasticsearch.client.asCurrentUser;
+
+      const inspectableEsQueries: InspectResponse = [];
+
+      return { esSearch, inspectableEsQueries, esClient };
+    }
+  );
 
   routes.forEach((route) => {
     const { endpoint, options, handler, params } = route;

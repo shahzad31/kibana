@@ -361,14 +361,11 @@ const findSLORoute = createObservabilityServerRoute({
       (await dependencies.spaces?.spacesService?.getActiveSpace(request))?.id ?? 'default';
 
     const soClient = (await context.core).savedObjects.client;
-    const esClient = (await context.core).elasticsearch.client.asCurrentUser;
     const repository = new KibanaSavedObjectsSLORepository(soClient);
-    const summarySearchClient = new DefaultSummarySearchClient(esClient, logger, spaceId);
+    const summarySearchClient = new DefaultSummarySearchClient(await context.slo, logger, spaceId);
     const findSLO = new FindSLO(repository, summarySearchClient);
 
-    const response = await findSLO.execute(params?.query ?? {});
-
-    return response;
+    return await findSLO.execute(params?.query ?? {});
   },
 });
 
@@ -417,15 +414,12 @@ const fetchHistoricalSummary = createObservabilityServerRoute({
     await assertPlatinumLicense(context);
 
     const soClient = (await context.core).savedObjects.client;
-    const esClient = (await context.core).elasticsearch.client.asCurrentUser;
     const repository = new KibanaSavedObjectsSLORepository(soClient);
-    const historicalSummaryClient = new DefaultHistoricalSummaryClient(esClient);
+    const historicalSummaryClient = new DefaultHistoricalSummaryClient(await context.slo);
 
     const fetchSummaryData = new FetchHistoricalSummary(repository, historicalSummaryClient);
 
-    const response = await fetchSummaryData.execute(params.body);
-
-    return response;
+    return await fetchSummaryData.execute(params.body);
   },
 });
 
@@ -509,8 +503,8 @@ const getPreviewData = createObservabilityServerRoute({
   handler: async ({ context, params }) => {
     await assertPlatinumLicense(context);
 
-    const esClient = (await context.core).elasticsearch.client.asCurrentUser;
-    const service = new GetPreviewData(esClient);
+    const sloContext = await context.slo;
+    const service = new GetPreviewData(sloContext);
     return await service.execute(params.body);
   },
 });

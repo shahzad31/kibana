@@ -5,11 +5,12 @@
  * 2.0.
  */
 
-import { ElasticsearchClient, Logger } from '@kbn/core/server';
+import { Logger } from '@kbn/core/server';
 import { ALL_VALUE, Paginated, Pagination } from '@kbn/slo-schema';
 import { assertNever } from '@kbn/std';
 import _ from 'lodash';
 import { SearchTotalHits } from '@elastic/elasticsearch/lib/api/types';
+import { SloRequestHandlerContext } from '../../routes/types';
 import { SLO_SUMMARY_DESTINATION_INDEX_PATTERN } from '../../../common/slo/constants';
 import { SLOId, Status, Summary } from '../../domain/models';
 import { toHighPrecision } from '../../utils/number';
@@ -49,7 +50,7 @@ export interface SummarySearchClient {
 
 export class DefaultSummarySearchClient implements SummarySearchClient {
   constructor(
-    private esClient: ElasticsearchClient,
+    private sloContext: SloRequestHandlerContext,
     private logger: Logger,
     private spaceId: string
   ) {}
@@ -60,7 +61,7 @@ export class DefaultSummarySearchClient implements SummarySearchClient {
     pagination: Pagination
   ): Promise<Paginated<SLOSummary>> {
     try {
-      const summarySearch = await this.esClient.search<EsSummaryDocument>({
+      const summarySearch = await this.sloContext.esSearch<EsSummaryDocument>({
         index: SLO_SUMMARY_DESTINATION_INDEX_PATTERN,
         track_total_hits: true,
         query: {
@@ -94,7 +95,7 @@ export class DefaultSummarySearchClient implements SummarySearchClient {
       // Always attempt to delete temporary summary documents with an existing non-temp summary document
       // The temp summary documents are _eventually_ removed as we get through the real summary documents
       const summarySloIds = summaryDocuments.map((doc) => doc._source?.slo.id);
-      await this.esClient.deleteByQuery({
+      await this.sloContext.esClient.deleteByQuery({
         index: SLO_SUMMARY_DESTINATION_INDEX_PATTERN,
         wait_for_completion: false,
         query: {

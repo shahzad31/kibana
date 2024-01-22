@@ -13,6 +13,7 @@ import type {
 } from '@kbn/core/server';
 import type { AlertingApiRequestHandlerContext } from '@kbn/alerting-plugin/server';
 import type { LicensingApiRequestHandlerContext } from '@kbn/licensing-plugin/server';
+import { SloRequestHandlerContext } from './routes/types';
 
 export type {
   ObservabilityRouteCreateOptions,
@@ -29,6 +30,7 @@ export type ObservabilityRequestHandlerContext = CustomRequestHandlerContext<{
   licensing: LicensingApiRequestHandlerContext;
   alerting: AlertingApiRequestHandlerContext;
   core: Promise<CoreRequestHandlerContext>;
+  slo: SloRequestHandlerContext;
 }>;
 
 /**

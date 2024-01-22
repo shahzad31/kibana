@@ -5,8 +5,16 @@
  * 2.0.
  */
 import type { EndpointOf, ReturnOf, ServerRouteRepository } from '@kbn/server-route-repository';
-import { KibanaRequest, Logger } from '@kbn/core/server';
+import {
+  ElasticsearchClient,
+  KibanaRequest,
+  Logger,
+  RequestHandlerContext,
+} from '@kbn/core/server';
 
+import { ESSearchResponse } from '@kbn/es-types';
+import { estypes } from '@elastic/elasticsearch';
+import { InspectResponse } from '../../typings/common';
 import { ObservabilityServerRouteRepository } from './get_global_observability_server_route_repository';
 import { ObservabilityRequestHandlerContext } from '../types';
 import { RegisterRoutesDependencies } from './register_routes';
@@ -34,3 +42,17 @@ export type AbstractObservabilityServerRouteRepository = ServerRouteRepository;
 export type ObservabilityAPIReturnType<
   TEndpoint extends EndpointOf<ObservabilityServerRouteRepository>
 > = ReturnOf<ObservabilityServerRouteRepository, TEndpoint>;
+
+export interface SloRequestHandlerContext extends RequestHandlerContext {
+  esClient: ElasticsearchClient;
+  inspectableEsQueries: InspectResponse;
+  esSearch<
+    DocumentSource extends unknown,
+    TParams extends estypes.SearchRequest = estypes.SearchRequest
+  >(
+    params: TParams,
+    options?: {
+      operationName: string;
+    }
+  ): Promise<ESSearchResponse<DocumentSource, TParams>>;
+}
