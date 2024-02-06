@@ -16,15 +16,14 @@ import { useBreadcrumbs } from '@kbn/observability-shared-plugin/public';
 import { MaintenanceWindowCallout } from '@kbn/alerts-ui-shared';
 import { DEFAULT_APP_CATEGORIES } from '@kbn/core-application-common';
 
+import { AlertsSearchBarUI } from './components/alerts_search_bar';
 import { rulesLocatorID } from '../../../common';
 import { RulesParams } from '../../locators/rules';
 import { useKibana } from '../../utils/kibana_react';
 import { usePluginContext } from '../../hooks/use_plugin_context';
 import { useTimeBuckets } from '../../hooks/use_time_buckets';
 import { useGetFilteredRuleTypes } from '../../hooks/use_get_filtered_rule_types';
-import { useToasts } from '../../hooks/use_toast';
 import { renderRuleStats, RuleStatsState } from './components/rule_stats';
-import { ObservabilityAlertSearchBar } from '../../components/alert_search_bar/alert_search_bar';
 import {
   alertSearchBarStateContainer,
   Provider,
@@ -59,11 +58,9 @@ function InternalAlertsPage() {
     },
     triggersActionsUi: {
       alertsTableConfigurationRegistry,
-      getAlertsSearchBar: AlertsSearchBar,
       getAlertsStateTable: AlertsStateTable,
       getAlertSummaryWidget: AlertSummaryWidget,
     },
-    uiSettings,
   } = kibanaServices;
   const { ObservabilityPageTemplate } = usePluginContext();
   const alertSearchBarStateProps = useAlertSearchBarStateContainer(ALERTS_URL_STORAGE_KEY, {
@@ -92,7 +89,14 @@ function InternalAlertsPage() {
     error: 0,
     snoozed: 0,
   });
-  const [esQuery, setEsQuery] = useState<{ bool: BoolQuery }>();
+  const [esQuery, setEsQuery] = useState<{ bool: BoolQuery }>({
+    bool: {
+      must: [],
+      filter: [],
+      should: [],
+      must_not: [],
+    },
+  });
   const timeBuckets = useTimeBuckets();
   const bucketSize = useMemo(
     () =>
@@ -185,6 +189,13 @@ function InternalAlertsPage() {
             locators.get<RulesParams>(rulesLocatorID)
           ),
         }}
+        topSearchBar={
+          <AlertsSearchBarUI
+            {...alertSearchBarStateProps}
+            appName={ALERTS_SEARCH_BAR_ID}
+            onEsQueryChange={setEsQuery}
+          />
+        }
       >
         <HeaderMenu />
         <EuiFlexGroup direction="column" gutterSize="m">
@@ -192,14 +203,6 @@ function InternalAlertsPage() {
             <MaintenanceWindowCallout
               kibanaServices={kibanaServices}
               categories={[DEFAULT_APP_CATEGORIES.observability.id]}
-            />
-          </EuiFlexItem>
-          <EuiFlexItem>
-            <ObservabilityAlertSearchBar
-              {...alertSearchBarStateProps}
-              appName={ALERTS_SEARCH_BAR_ID}
-              onEsQueryChange={setEsQuery}
-              services={{ timeFilterService, AlertsSearchBar, useToasts, uiSettings }}
             />
           </EuiFlexItem>
           <EuiFlexItem>

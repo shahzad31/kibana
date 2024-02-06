@@ -11,6 +11,7 @@ import { EuiPanel, EuiSpacer } from '@elastic/eui';
 import { createHtmlPortalNode, InPortal, OutPortal } from 'react-reverse-portal';
 export interface Props {
   children: ReactNode;
+  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 export function SearchBarPortal({ children }: Props) {

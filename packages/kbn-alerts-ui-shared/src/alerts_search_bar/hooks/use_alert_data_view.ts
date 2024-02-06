@@ -118,18 +118,21 @@ export function useAlertDataView(props: UseAlertDataViewProps): UseAlertDataView
       isAlertFieldsSuccess &&
       isIndexNameSuccess
     ) {
-      setDataViews([
-        {
+      async function createDataView() {
+        const localDataview = await dataViewsService.create({
           title: (indexNames ?? []).join(','),
-          fieldFormatMap: {},
+          allowNoIndex: true,
+          // @ts-ignore
           fields: (alertFields ?? [])?.map((field) => {
             return {
               ...field,
               ...(field.esTypes && field.esTypes.includes('flattened') ? { type: 'string' } : {}),
             };
           }),
-        },
-      ] as unknown as DataView[]);
+        });
+        setDataViews([localDataview]);
+      }
+      createDataView();
     }
   }, [
     alertFields,
