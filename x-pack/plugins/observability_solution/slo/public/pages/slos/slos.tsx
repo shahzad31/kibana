@@ -9,6 +9,9 @@ import { i18n } from '@kbn/i18n';
 import React, { useEffect } from 'react';
 import { EuiSpacer } from '@elastic/eui';
 import { useBreadcrumbs } from '@kbn/observability-shared-plugin/public';
+import { SLOsManagementPage } from './management/slos_management';
+import { useSelectedTab } from './hooks/use_selected_tab';
+import { useSloOverviewTabs } from './hooks/use_slo_overview_tabs';
 import { SLOsOverview } from './components/slos_overview/slos_overview';
 import { paths } from '../../../common/locators/paths';
 import { HeaderMenu } from '../../components/header_menu/header_menu';
@@ -37,6 +40,8 @@ export function SlosPage() {
   const { isLoading, isError, data: sloList } = useFetchSloList({ perPage: 0 });
   const { total } = sloList ?? { total: 0 };
 
+  const { selectedTabId } = useSelectedTab();
+
   useBreadcrumbs([
     {
       href: basePath.prepend(paths.slos),
@@ -46,6 +51,10 @@ export function SlosPage() {
       deepLinkId: 'slo',
     },
   ]);
+
+  const { tabs } = useSloOverviewTabs({
+    selectedTabId,
+  });
 
   useEffect(() => {
     if ((!isLoading && total === 0) || hasAtLeast('platinum') === false || isError) {
@@ -63,6 +72,7 @@ export function SlosPage() {
       pageHeader={{
         pageTitle: i18n.translate('xpack.slo.slosPage.', { defaultMessage: 'SLOs' }),
         rightSideItems: [<CreateSloBtn />, <FeedbackButton />],
+        tabs,
       }}
       topSearchBar={<SloListSearchBar />}
     >
@@ -70,7 +80,7 @@ export function SlosPage() {
       <SloOutdatedCallout />
       <SLOsOverview />
       <EuiSpacer size="m" />
-      <SloList />
+      {selectedTabId === 'overview' ? <SloList /> : <SLOsManagementPage />}
     </ObservabilityPageTemplate>
   );
 }

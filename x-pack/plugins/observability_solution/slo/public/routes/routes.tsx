@@ -32,16 +32,16 @@ export const getRoutes = (
   };
 } => {
   return {
-    [SLOS_PATH]: {
+    [SLO_CREATE_PATH]: {
       handler: () => {
-        return <SlosPage />;
+        return <SloEditPage />;
       },
       params: {},
       exact: true,
     },
-    [SLO_CREATE_PATH]: {
+    [SLOS_PATH]: {
       handler: () => {
-        return <SloEditPage />;
+        return <SlosPage />;
       },
       params: {},
       exact: true,

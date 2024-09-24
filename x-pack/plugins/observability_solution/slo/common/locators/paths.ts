@@ -6,7 +6,7 @@
  */
 
 export const SLOS_BASE_PATH = '/app/slos';
-export const SLOS_PATH = '/' as const;
+export const SLOS_PATH = '/:tabId?' as const;
 export const SLOS_WELCOME_PATH = '/welcome' as const;
 export const SLO_DETAIL_PATH = '/:sloId/:tabId?' as const;
 export const SLO_CREATE_PATH = '/create' as const;
