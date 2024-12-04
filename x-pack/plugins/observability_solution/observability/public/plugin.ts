@@ -71,6 +71,7 @@ import type { UiActionsSetup, UiActionsStart } from '@kbn/ui-actions-plugin/publ
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
 import type { UsageCollectionSetup } from '@kbn/usage-collection-plugin/public';
 import type { StreamsPluginStart, StreamsPluginSetup } from '@kbn/streams-plugin/public';
+import { InvestigateAppPublicSetup } from '@kbn/investigate-app-plugin/public';
 import { observabilityAppId, observabilityFeatureId } from '../common';
 import {
   ALERTS_PATH,
@@ -126,6 +127,7 @@ export interface ObservabilityPublicPluginsSetup {
   serverless?: ServerlessPluginSetup;
   presentationUtil?: PresentationUtilPluginStart;
   streams?: StreamsPluginSetup;
+  investigate?: InvestigateAppPublicSetup;
 }
 export interface ObservabilityPublicPluginsStart {
   actionTypeRegistry: ActionTypeRegistryContract;
@@ -390,6 +392,18 @@ export class Plugin
                   ]
                 : [];
 
+              const investigateLink = pluginsSetup.investigate
+                ? [
+                    {
+                      label: i18n.translate('xpack.observability.investigateLinkTitle', {
+                        defaultMessage: 'Investigate',
+                      }),
+                      app: 'investigate',
+                      path: '',
+                    },
+                  ]
+                : [];
+
               // Reformat the visible links to be NavigationEntry objects instead of
               // AppDeepLink objects.
               //
@@ -427,6 +441,7 @@ export class Plugin
                     ...sloLink,
                     ...casesLink,
                     ...aiAssistantLink,
+                    ...investigateLink,
                   ],
                 },
               ];
