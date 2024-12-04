@@ -6,7 +6,7 @@
   "visibility": "private",
   "plugin": {
     "id": "investigate",
-    "server": true,
+    "server": false,
     "browser": true,
     "configPath": ["xpack", "investigate"],
     "requiredPlugins": [
