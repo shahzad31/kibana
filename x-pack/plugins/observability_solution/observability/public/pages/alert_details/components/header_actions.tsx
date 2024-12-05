@@ -242,12 +242,13 @@ export function HeaderActions({
                 data-test-subj="investigate-alert-button"
               >
                 <EuiText size="s">
-                  {i18n.translate('xpack.observability.alertDetails.investigateAlert', {
-                    defaultMessage:
-                      !investigations || investigations.results.length === 0
-                        ? 'Start investigation'
-                        : 'Ongoing investigation',
-                  })}
+                  {!investigations || investigations.results.length === 0
+                    ? i18n.translate('xpack.observability.alertDetails.investigateAlert.start', {
+                        defaultMessage: 'Start investigation',
+                      })
+                    : i18n.translate('xpack.observability.alertDetails.investigateAlert.onGoing', {
+                        defaultMessage: 'Ongoing investigation',
+                      })}
                 </EuiText>
               </EuiButton>
             </EuiFlexItem>
