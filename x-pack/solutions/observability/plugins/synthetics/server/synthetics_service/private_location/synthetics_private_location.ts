@@ -41,11 +41,7 @@ export interface FailedPolicyUpdate {
 }
 
 export class SyntheticsPrivateLocation {
-  private readonly server: SyntheticsServerSetup;
-
-  constructor(_server: SyntheticsServerSetup) {
-    this.server = _server;
-  }
+  constructor(private server: SyntheticsServerSetup) {}
 
   async buildNewPolicy(): Promise<NewPackagePolicy> {
     const soClient = this.server.coreStart.savedObjects.createInternalRepository();
@@ -75,7 +71,7 @@ export class SyntheticsPrivateLocation {
     return `${config.id}-${locId}-${spaceId}`;
   }
 
-  async generateNewPolicy(
+  async enrichPolicyWithData(
     config: HeartbeatConfig,
     privateLocation: PrivateLocation,
     newPolicyTemplate: NewPackagePolicy,
@@ -168,7 +164,7 @@ export class SyntheticsPrivateLocation {
             );
           }
 
-          const newPolicy = await this.generateNewPolicy(
+          const newPolicy = await this.enrichPolicyWithData(
             config,
             location,
             newPolicyTemplate,
@@ -245,7 +241,7 @@ export class SyntheticsPrivateLocation {
 
       const location = allPrivateLocations?.find((loc) => loc.id === privateLocation?.id)!;
 
-      const newPolicy = await this.generateNewPolicy(
+      const newPolicy = await this.enrichPolicyWithData(
         config,
         location,
         newPolicyTemplate,
@@ -278,11 +274,11 @@ export class SyntheticsPrivateLocation {
 
     const [newPolicyTemplate, existingPolicies] = await Promise.all([
       this.buildNewPolicy(),
-      this.getExistingPolicies(
-        configs.map(({ config }) => config),
+      this.getExistingPolicies({
+        configs: configs.map(({ config }) => config),
         allPrivateLocations,
-        spaceId
-      ),
+        spaceId,
+      }),
     ]);
 
     const policiesToUpdate: NewPackagePolicyWithId[] = [];
@@ -300,7 +296,7 @@ export class SyntheticsPrivateLocation {
         const hasPolicy = existingPolicies?.some((policy) => policy.id === currId);
         try {
           if (hasLocation) {
-            const newPolicy = await this.generateNewPolicy(
+            const newPolicy = await this.enrichPolicyWithData(
               config,
               privateLocation,
               newPolicyTemplate,
@@ -356,11 +352,15 @@ export class SyntheticsPrivateLocation {
     };
   }
 
-  async getExistingPolicies(
-    configs: HeartbeatConfig[],
-    allPrivateLocations: SyntheticsPrivateLocations,
-    spaceId: string
-  ) {
+  async getExistingPolicies({
+    spaceId,
+    configs,
+    allPrivateLocations,
+  }: {
+    spaceId: string;
+    configs: HeartbeatConfig[];
+    allPrivateLocations: SyntheticsPrivateLocations;
+  }) {
     const soClient = this.server.coreStart.savedObjects.createInternalRepository();
 
     const policyIds: string[] = [];

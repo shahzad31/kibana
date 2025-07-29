@@ -72,16 +72,16 @@ export class SyntheticsMonitorClient {
       }
     }
 
-    const newPolicies = this.privateLocationAPI.createPackagePolicies(
-      privateConfigs,
-      allPrivateLocations,
-      spaceId,
-      maintenanceWindows
-    );
+    // const newPolicies = this.privateLocationAPI.createPackagePolicies(
+    //   privateConfigs,
+    //   allPrivateLocations,
+    //   spaceId,
+    //   maintenanceWindows
+    // );
 
     const syncErrors = this.syntheticsService.addConfigs(publicConfigs, maintenanceWindows);
 
-    return await Promise.all([newPolicies, syncErrors]);
+    return await Promise.all([syncErrors]);
   }
 
   async editMonitors(
@@ -146,12 +146,12 @@ export class SyntheticsMonitorClient {
       await this.syntheticsService.deleteConfigs(deletedPublicConfigs);
     }
 
-    const privateEditPromise = this.privateLocationAPI.editMonitors(
-      privateConfigs,
-      allPrivateLocations,
-      spaceId,
-      maintenanceWindows
-    );
+    // const privateEditPromise = this.privateLocationAPI.editMonitors(
+    //   privateConfigs,
+    //   allPrivateLocations,
+    //   spaceId,
+    //   maintenanceWindows
+    // );
 
     const publicConfigsPromise = this.syntheticsService.editConfig(
       publicConfigs,
@@ -159,14 +159,14 @@ export class SyntheticsMonitorClient {
       maintenanceWindows
     );
 
-    const [publicSyncErrors, privateEditResponse] = await Promise.all([
+    const [publicSyncErrors] = await Promise.all([
       publicConfigsPromise,
-      privateEditPromise,
+      // privateEditPromise,
     ]);
 
-    const { failedUpdates: failedPolicyUpdates } = privateEditResponse;
+    // const { failedUpdates: failedPolicyUpdates } = privateEditResponse;
 
-    return { failedPolicyUpdates, publicSyncErrors };
+    return { failedPolicyUpdates: [], publicSyncErrors };
   }
   async deleteMonitors(monitors: SyntheticsMonitorWithId[], spaceId: string) {
     const privateDeletePromise = this.privateLocationAPI.deleteMonitors(monitors, spaceId);

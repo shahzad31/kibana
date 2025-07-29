@@ -90,15 +90,15 @@ export class AddEditMonitorAPI {
         spaceId
       );
 
-      const [monitorSavedObjectN, [packagePolicyResult, syncErrors]] = await Promise.all([
+      const [monitorSavedObjectN, [syncErrors]] = await Promise.all([
         newMonitorPromise,
         syncErrorsPromise,
       ]);
 
-      if (packagePolicyResult && (packagePolicyResult?.failed?.length ?? []) > 0) {
-        const failed = packagePolicyResult.failed.map((f) => f.error);
-        throw new Error(failed.join(', '));
-      }
+      // if (packagePolicyResult && (packagePolicyResult?.failed?.length ?? []) > 0) {
+      //   const failed = packagePolicyResult.failed.map((f) => f.error);
+      //   throw new Error(failed.join(', '));
+      // }
 
       monitorSavedObject = monitorSavedObjectN;
 
