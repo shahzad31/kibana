@@ -196,6 +196,17 @@ export class AddEditMonitorAPI {
         monitorLocations,
         allPublicLocations: syntheticsMonitorClient.syntheticsService.locations,
         allPrivateLocations: this.allPrivateLocations,
+      }).map((formattedLoc) => {
+        if (!formattedLoc.isServiceManaged) {
+          const prevLoc = prevLocations?.find((loc) => loc.id === formattedLoc.id);
+          if (prevLoc && 'packagePolicyId' in prevLoc) {
+            return {
+              ...formattedLoc,
+              packagePolicyId: prevLoc.packagePolicyId,
+            };
+          }
+        }
+        return formattedLoc;
       });
     }
 

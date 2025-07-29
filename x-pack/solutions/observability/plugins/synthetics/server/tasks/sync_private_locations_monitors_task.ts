@@ -15,7 +15,7 @@ import { ALL_SPACES_ID } from '@kbn/spaces-plugin/common/constants';
 import { ConcreteTaskInstance } from '@kbn/task-manager-plugin/server';
 import moment from 'moment';
 import { MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE } from '@kbn/alerting-plugin/common';
-import { syntheticsParamType } from '../../common/types/saved_objects';
+import { syntheticsMonitorSOTypes, syntheticsParamType } from '../../common/types/saved_objects';
 import { normalizeSecrets } from '../synthetics_service/utils';
 import type { PrivateLocationAttributes } from '../runtime_types/private_locations';
 import {
@@ -179,6 +179,124 @@ export class SyncPrivateLocationMonitorsTask {
     return { hasDataChanged, totalParams, totalMWs };
   };
 
+  /**
+   * Generic function to check if a resource has changed.
+   */
+  async hasResourceChanged({
+    soClient,
+    type,
+    lastStartedAt,
+    lastTotal,
+    filterKey,
+  }: {
+    soClient: SavedObjectsClientContract;
+    type: string | string[];
+    lastStartedAt: string;
+    lastTotal: number;
+    filterKey?: string;
+  }) {
+    const { logger } = this.serverSetup;
+    const filter =
+      filterKey && lastStartedAt ? `${type}.${filterKey} > "${lastStartedAt}"` : undefined;
+
+    const [edited, total] = await Promise.all([
+      soClient.find({
+        type,
+        perPage: 0,
+        namespaces: [ALL_SPACES_ID],
+        filter,
+        fields: [],
+      }),
+      soClient.find({
+        type,
+        perPage: 0,
+        namespaces: [ALL_SPACES_ID],
+        fields: [],
+      }),
+    ]);
+    logger.debug(`Found ${edited.total} ${type} updated and ${total.total} total ${type}`);
+    const updated = edited.total;
+    const noOfTotal = total.total;
+
+    const hasChanged = updated > 0 || noOfTotal !== lastTotal;
+
+    return {
+      hasChanged,
+      updated,
+      total: noOfTotal,
+    };
+  }
+
+  async hasAnyParamChanged({
+    soClient,
+    lastStartedAt,
+    lastTotalParams,
+  }: {
+    soClient: SavedObjectsClientContract;
+    lastStartedAt: string;
+    lastTotalParams: number;
+  }) {
+    const result = await this.hasResourceChanged({
+      soClient,
+      type: syntheticsParamType,
+      lastStartedAt,
+      lastTotal: lastTotalParams,
+      filterKey: 'updated_at',
+    });
+    return {
+      hasParamsChanges: result.hasChanged,
+      updatedParams: result.updated,
+      totalParams: result.total,
+    };
+  }
+
+  async hasMWsChanged({
+    soClient,
+    lastStartedAt,
+    lastTotalMWs,
+  }: {
+    soClient: SavedObjectsClientContract;
+    lastStartedAt: string;
+    lastTotalMWs: number;
+  }) {
+    const result = await this.hasResourceChanged({
+      soClient,
+      type: MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
+      lastStartedAt,
+      lastTotal: lastTotalMWs,
+      filterKey: 'updated_at',
+    });
+    return {
+      hasMWsChanged: result.hasChanged,
+      updatedMWs: result.updated,
+      totalMWs: result.total,
+    };
+  }
+
+  async hasMonitorConfigsChanged({
+    soClient,
+    lastStartedAt,
+    lastTotalConfigs,
+  }: {
+    soClient: SavedObjectsClientContract;
+    lastStartedAt: string;
+    lastTotalConfigs: number;
+  }): Promise<{}> {
+    const result = await this.hasResourceChanged({
+      soClient,
+      type: syntheticsMonitorSOTypes,
+      lastStartedAt,
+      lastTotal: lastTotalConfigs,
+      filterKey: 'updated_at',
+    });
+
+    return {
+      hasConfigsChanged: result.hasChanged,
+      updatedConfigs: result.updated,
+      totalConfigs: result.total,
+    };
+  }
+
   async syncGlobalParams({
     allPrivateLocations,
     encryptedSavedObjects,
@@ -298,87 +416,6 @@ export class SyncPrivateLocationMonitorsTask {
     }
 
     return { configsBySpaces, spaceIds };
-  }
-
-  async hasAnyParamChanged({
-    soClient,
-    lastStartedAt,
-    lastTotalParams,
-  }: {
-    soClient: SavedObjectsClientContract;
-    lastStartedAt: string;
-    lastTotalParams: number;
-  }) {
-    const { logger } = this.serverSetup;
-    const [editedParams, totalParams] = await Promise.all([
-      soClient.find({
-        type: syntheticsParamType,
-        perPage: 0,
-        namespaces: [ALL_SPACES_ID],
-        filter: `synthetics-param.updated_at > "${lastStartedAt}"`,
-        fields: [],
-      }),
-      soClient.find({
-        type: syntheticsParamType,
-        perPage: 0,
-        namespaces: [ALL_SPACES_ID],
-        fields: [],
-      }),
-    ]);
-    logger.debug(
-      `Found ${editedParams.total} params updated and ${totalParams.total} total params`
-    );
-    const updatedParams = editedParams.total;
-    const noOfParams = totalParams.total;
-
-    const hasParamsChanges = updatedParams > 0 || noOfParams !== lastTotalParams;
-
-    return {
-      hasParamsChanges,
-      updatedParams: editedParams.total,
-      totalParams: noOfParams,
-    };
-  }
-
-  async hasMWsChanged({
-    soClient,
-    lastStartedAt,
-    lastTotalMWs,
-  }: {
-    soClient: SavedObjectsClientContract;
-    lastStartedAt: string;
-    lastTotalMWs: number;
-  }) {
-    const { logger } = this.serverSetup;
-
-    const [editedMWs, totalMWs] = await Promise.all([
-      soClient.find({
-        type: MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
-        perPage: 0,
-        namespaces: [ALL_SPACES_ID],
-        filter: `${MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE}.updated_at > "${lastStartedAt}"`,
-        fields: [],
-      }),
-      soClient.find({
-        type: MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
-        perPage: 0,
-        namespaces: [ALL_SPACES_ID],
-        fields: [],
-      }),
-    ]);
-    logger.debug(
-      `Found ${editedMWs.total} maintenance windows updated and ${totalMWs.total} total maintenance windows`
-    );
-    const updatedMWs = editedMWs.total;
-    const noOfMWs = totalMWs.total;
-
-    const hasMWsChanged = updatedMWs > 0 || noOfMWs !== lastTotalMWs;
-
-    return {
-      hasMWsChanged,
-      updatedMWs,
-      totalMWs: noOfMWs,
-    };
   }
 }
 

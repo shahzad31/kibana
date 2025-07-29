@@ -260,7 +260,7 @@ export const getMonitorLocations = ({
 
   const allLocations = [...publicLocs, ...privateLocs]
     .filter((location) => location !== undefined)
-    .map((loc) => formatLocation(loc!)) as BrowserFields[ConfigKey.LOCATIONS];
+    .map((loc) => formatLocation(loc!, true)) as BrowserFields[ConfigKey.LOCATIONS];
 
   // return only unique locations
   return uniqBy(allLocations, 'id');

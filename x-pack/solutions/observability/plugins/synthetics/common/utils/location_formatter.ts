@@ -5,9 +5,10 @@
  * 2.0.
  */
 
+import { v4 as uuidV4 } from 'uuid';
 import { PrivateLocation, ServiceLocation } from '../runtime_types';
 
-export const formatLocation = (location: ServiceLocation | PrivateLocation) => {
+export const formatLocation = (location: ServiceLocation | PrivateLocation, isNew?: boolean) => {
   if ('agentPolicyId' in location) {
     return {
       id: location.id,
@@ -15,6 +16,15 @@ export const formatLocation = (location: ServiceLocation | PrivateLocation) => {
       geo: location.geo,
       isServiceManaged: location.isServiceManaged,
       agentPolicyId: location.agentPolicyId,
+      ...(location.packagePolicyId
+        ? {
+            packagePolicyId: location.packagePolicyId,
+          }
+        : isNew
+        ? {
+            packagePolicyId: uuidV4(),
+          }
+        : {}),
     };
   }
 

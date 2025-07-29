@@ -64,6 +64,11 @@ export class SyntheticsPrivateLocation {
   }
 
   getPolicyId(config: HeartbeatConfig, locId: string, spaceId: string) {
+    const { locations } = config;
+    const loc = locations.find((l) => l.id === locId);
+    if (loc && !loc.isServiceManaged && 'packagePolicyId' in loc && loc.packagePolicyId) {
+      return loc.packagePolicyId;
+    }
     if (config[ConfigKey.MONITOR_SOURCE_TYPE] === SourceType.PROJECT) {
       return `${config.id}-${locId}`;
     }
@@ -358,15 +363,15 @@ export class SyntheticsPrivateLocation {
   ) {
     const soClient = this.server.coreStart.savedObjects.createInternalRepository();
 
-    const listOfPolicies: string[] = [];
+    const policyIds: string[] = [];
     for (const config of configs) {
       for (const privateLocation of allPrivateLocations) {
         const currId = this.getPolicyId(config, privateLocation.id, spaceId);
-        listOfPolicies.push(currId);
+        policyIds.push(currId);
       }
     }
     return (
-      (await this.server.fleet.packagePolicyService.getByIDs(soClient, listOfPolicies, {
+      (await this.server.fleet.packagePolicyService.getByIDs(soClient, policyIds, {
         ignoreMissing: true,
       })) ?? []
     );
