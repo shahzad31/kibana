@@ -23,7 +23,6 @@ export const commonVars = {
 export const getTestProjectSyntheticsPolicyLightweight = (
   {
     name,
-    inputs = {},
     configId,
     id,
     locationId,
@@ -32,7 +31,6 @@ export const getTestProjectSyntheticsPolicyLightweight = (
     namespace,
   }: {
     name?: string;
-    inputs: Record<string, { value: string | boolean; type: string }>;
     configId: string;
     id: string;
     projectId?: string;
@@ -41,7 +39,6 @@ export const getTestProjectSyntheticsPolicyLightweight = (
     namespace?: string;
   } = {
     name: 'My Monitor 3',
-    inputs: {},
     configId: '',
     id: '',
     locationId: 'fleet_managed',

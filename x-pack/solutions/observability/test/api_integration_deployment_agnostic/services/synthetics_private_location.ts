@@ -10,6 +10,8 @@ import { X_ELASTIC_INTERNAL_ORIGIN_REQUEST } from '@kbn/core-http-common';
 import { privateLocationSavedObjectName } from '@kbn/synthetics-plugin/common/saved_objects/private_locations';
 import { SyntheticsPrivateLocations } from '@kbn/synthetics-plugin/common/runtime_types';
 import { KibanaSupertestProvider } from '@kbn/ftr-common-functional-services';
+import { PackagePolicy } from '@kbn/fleet-plugin/common';
+import expect from '@kbn/expect';
 import { DeploymentAgnosticFtrProviderContext } from '../ftr_provider_context';
 
 export const INSTALLED_VERSION = '1.4.0';
@@ -91,5 +93,39 @@ export class PrivateLocationTestService {
       .expect(200);
 
     return locations;
+  }
+
+  async getPackagePolicy(
+    monitorId: string,
+    fleetPolicyId: string,
+    { spaceId, exists } = { spaceId: 'default', exists: true }
+  ) {
+    let packagePolicy: PackagePolicy;
+    await this.retry.try(async () => {
+      const params = new URLSearchParams({
+        page: '1',
+        perPage: '2000',
+        kuery: 'ingest-package-policies.package.name: synthetics',
+      });
+      const apiResponse = await this.supertestWithAuth.get(
+        `/api/fleet/package_policies?${params.toString()}`
+      );
+      const packagePolicies = apiResponse.body.items;
+      if (exists) {
+        expect(packagePolicies.length).to.be.greaterThan(0);
+      }
+      const idToCheck = monitorId + '-' + fleetPolicyId;
+      packagePolicy = packagePolicies.find(
+        (pkgPolicy: PackagePolicy) =>
+          pkgPolicy.id === idToCheck + `-${spaceId}` || pkgPolicy.id === idToCheck
+      )!;
+      if (exists) {
+        expect(packagePolicy).not.to.be(undefined);
+      } else {
+        expect(packagePolicy).to.be(undefined);
+      }
+    });
+
+    return packagePolicy!;
   }
 }

@@ -22,12 +22,13 @@ import {
 } from '../runtime_types/private_locations';
 
 export const getPrivateLocations = async (
-  client: SavedObjectsClientContract
+  client: SavedObjectsClientContract,
+  spaceId?: string
 ): Promise<SyntheticsPrivateLocationsAttributes['locations']> => {
   try {
     const [results, legacyLocations] = await Promise.all([
-      getNewPrivateLocations(client),
-      getLegacyPrivateLocations(client),
+      getNewPrivateLocations(client, spaceId),
+      getLegacyPrivateLocations(client, spaceId),
     ]);
 
     return uniqBy([...results, ...legacyLocations], 'id');
@@ -39,10 +40,11 @@ export const getPrivateLocations = async (
   }
 };
 
-const getNewPrivateLocations = async (client: SavedObjectsClientContract) => {
+const getNewPrivateLocations = async (client: SavedObjectsClientContract, spaceId?: string) => {
   const finder = client.createPointInTimeFinder<PrivateLocationAttributes>({
     type: privateLocationSavedObjectName,
     perPage: 1000,
+    namespaces: spaceId ? [spaceId] : undefined,
   });
 
   const results: Array<
@@ -62,11 +64,12 @@ const getNewPrivateLocations = async (client: SavedObjectsClientContract) => {
   return results;
 };
 
-const getLegacyPrivateLocations = async (client: SavedObjectsClientContract) => {
+const getLegacyPrivateLocations = async (client: SavedObjectsClientContract, spaceId?: string) => {
   try {
     const obj = await client.get<SyntheticsPrivateLocationsAttributes>(
       legacyPrivateLocationsSavedObjectName,
-      legacyPrivateLocationsSavedObjectId
+      legacyPrivateLocationsSavedObjectId,
+      spaceId ? { namespace: spaceId } : {}
     );
     return obj?.attributes.locations ?? [];
   } catch (getErr) {

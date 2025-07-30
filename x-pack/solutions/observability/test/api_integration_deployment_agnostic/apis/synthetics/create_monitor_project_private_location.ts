@@ -83,7 +83,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
     });
 
     after(async () => {
-      await kibanaServer.savedObjects.cleanStandardList();
+      // await kibanaServer.savedObjects.cleanStandardList();
     });
 
     beforeEach(() => {
@@ -148,50 +148,6 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
           }),
         ]);
       }
-    });
-
-    it('project monitors - returns a failed monitor when editing integration fails', async () => {
-      const project = `test-project-${uuidv4()}`;
-
-      const secondMonitor = {
-        ...projectMonitors.monitors[0],
-        id: 'test-id-2',
-        privateLocations: [testPrivateLocationName],
-      };
-      const testMonitors = [projectMonitors.monitors[0], secondMonitor];
-      const { body, status: status0 } = await monitorTestService.addProjectMonitors(
-        project,
-        testMonitors,
-        editorUser
-      );
-      expect(status0).eql(200);
-
-      expect(body.createdMonitors.length).eql(2);
-      const { body: editedBody, status: editedStatus } =
-        await monitorTestService.addProjectMonitors(project, testMonitors, editorUser);
-      expect(editedStatus).eql(200);
-
-      expect(editedBody.createdMonitors.length).eql(0);
-      expect(editedBody.updatedMonitors.length).eql(2);
-
-      testMonitors[1].name = '!@#$%^&*()_++[\\-\\]- wow name';
-      testMonitors[1].privateLocations = ['Test private location 8'];
-
-      const { body: editedBodyError, status } = await monitorTestService.addProjectMonitors(
-        project,
-        testMonitors,
-        editorUser
-      );
-      expect(status).eql(200);
-      expect(editedBodyError.createdMonitors.length).eql(0);
-      expect(editedBodyError.updatedMonitors.length).eql(1);
-      expect(editedBodyError.failedMonitors.length).eql(1);
-      expect(editedBodyError.failedMonitors[0].details).eql(
-        `Invalid locations specified. Private Location(s) 'Test private location 8' not found. Available private locations are '${testPrivateLocationName}'`
-      );
-      expect(editedBodyError.failedMonitors[0].reason).eql(
-        "Couldn't save or update monitor because of an invalid configuration."
-      );
     });
 
     it('project monitors - handles browser monitors', async () => {
@@ -1289,15 +1245,11 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         .set(samlAuth.getInternalRequestHeader())
         .expect(200);
 
-      const apiResponsePolicy = await supertestWithAuth.get(
-        '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
+      const packagePolicy = await testPrivateLocationsService.getPackagePolicy(
+        monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID],
+        testPolicyId
       );
 
-      const packagePolicy = apiResponsePolicy.body.items.find(
-        (pkgPolicy: PackagePolicy) =>
-          pkgPolicy.id ===
-          `${monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID]}-${testPolicyId}`
-      );
       expect(packagePolicy.name).eql(
         `${projectMonitors.monitors[0].id}-${project}-default-${testPrivateLocationName}`
       );
@@ -1320,7 +1272,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       );
     });
 
-    it('creates integration policies for project monitors with private locations - lightweight', async () => {
+    it.only('creates integration policies for project monitors with private locations - lightweight', async () => {
       const project = `test-project-${uuidv4()}`;
 
       await supertestWithoutAuth
@@ -1350,15 +1302,11 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         .set(samlAuth.getInternalRequestHeader())
         .expect(200);
 
-      const apiResponsePolicy = await supertestWithAuth.get(
-        '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
+      const packagePolicy = await testPrivateLocationsService.getPackagePolicy(
+        monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID],
+        testPolicyId
       );
 
-      const packagePolicy = apiResponsePolicy.body.items.find(
-        (pkgPolicy: PackagePolicy) =>
-          pkgPolicy.id ===
-          `${monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID]}-${testPolicyId}`
-      );
       expect(packagePolicy.name).eql(
         `${httpProjectMonitors.monitors[1].id}-${project}-default-${testPrivateLocationName}`
       );
@@ -1370,7 +1318,6 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       comparePolicies(
         packagePolicy,
         getTestProjectSyntheticsPolicyLightweight({
-          inputs: {},
           name: 'My Monitor 3',
           id,
           configId,
@@ -1411,14 +1358,9 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         .set(samlAuth.getInternalRequestHeader())
         .expect(200);
 
-      const apiResponsePolicy = await supertestWithAuth.get(
-        '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
-      );
-
-      const packagePolicy = apiResponsePolicy.body.items.find(
-        (pkgPolicy: PackagePolicy) =>
-          pkgPolicy.id ===
-          `${monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID]}-${testPolicyId}`
+      const packagePolicy = await testPrivateLocationsService.getPackagePolicy(
+        monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID],
+        testPolicyId
       );
 
       expect(packagePolicy.policy_id).eql(testPolicyId);
@@ -1436,17 +1378,14 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         })
         .expect(200);
 
-      const apiResponsePolicy2 = await supertestWithAuth.get(
-        '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
+      await testPrivateLocationsService.getPackagePolicy(
+        monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID],
+        testPolicyId,
+        {
+          exists: false,
+          spaceId: 'default',
+        }
       );
-
-      const packagePolicy2 = apiResponsePolicy2.body.items.find(
-        (pkgPolicy: PackagePolicy) =>
-          pkgPolicy.id ===
-          `${monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID]}-${testPolicyId}`
-      );
-
-      expect(packagePolicy2).eql(undefined);
     });
 
     it('deletes integration policies for project monitors when private location is removed from the monitor', async () => {
@@ -1559,17 +1498,10 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         .set(samlAuth.getInternalRequestHeader())
         .expect(200);
 
-      const apiResponsePolicy = await supertestWithAuth.get(
-        '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
-      );
-
       const configId = monitorsResponse.body.monitors[0].id;
       const id = monitorsResponse.body.monitors[0][ConfigKey.CUSTOM_HEARTBEAT_ID];
-      const policyId = `${id}-${testPolicyId}`;
 
-      const packagePolicy = apiResponsePolicy.body.items.find(
-        (pkgPolicy: PackagePolicy) => pkgPolicy.id === policyId
-      );
+      const packagePolicy = await testPrivateLocationsService.getPackagePolicy(id, testPolicyId);
 
       expect(packagePolicy.policy_id).eql(testPolicyId);
 

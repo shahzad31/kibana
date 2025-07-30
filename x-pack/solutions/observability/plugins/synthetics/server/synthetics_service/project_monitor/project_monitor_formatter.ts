@@ -400,40 +400,11 @@ export class ProjectMonitorFormatter {
         }
       });
 
-      const { editedMonitors, failedConfigs } = await syncEditedMonitorBulk({
+      const { editedMonitors } = await syncEditedMonitorBulk({
         monitorsToUpdate,
         routeContext: this.routeContext,
-        privateLocations: this.privateLocations,
         spaceId: this.spaceId,
       });
-
-      if (failedConfigs && Object.keys(failedConfigs).length > 0) {
-        const failedConfigsIds = Object.keys(failedConfigs);
-        failedConfigsIds.forEach((id) => {
-          const { config, error } = failedConfigs[id];
-
-          const journeyId = config[ConfigKey.JOURNEY_ID];
-          this.failedMonitors.push({
-            reason: error?.message ?? FAILED_TO_UPDATE_MONITOR,
-            details: i18n.translate(
-              'xpack.synthetics.service.projectMonitors.failedToUpdateJourney',
-              {
-                defaultMessage: 'Failed to update journey: {journeyId}',
-                values: {
-                  journeyId,
-                },
-              }
-            ),
-            payload: config,
-          });
-        });
-
-        // remove failed monitors from the list of updated monitors
-        this.updatedMonitors.splice(
-          this.updatedMonitors.findIndex((monitorId) => failedConfigsIds.includes(monitorId)),
-          failedConfigsIds.length
-        );
-      }
 
       return {
         errors: [],

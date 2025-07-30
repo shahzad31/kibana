@@ -16,7 +16,6 @@ import {
 } from '../../synthetics_service/project_monitor/normalizers/common_fields';
 import { AddEditMonitorAPI, CreateMonitorPayLoad } from './add_monitor/add_monitor_api';
 import { ELASTIC_MANAGED_LOCATIONS_DISABLED } from './project_monitor/add_monitor_project';
-import { getPrivateLocations } from '../../synthetics_service/get_private_locations';
 import { mergeSourceMonitor } from './formatters/saved_object_to_monitor';
 import { RouteContext, SyntheticsRestApiRouteFactory } from '../types';
 import {
@@ -147,25 +146,14 @@ export const editSyntheticsMonitorRoute: SyntheticsRestApiRouteFactory = () => (
         revision: (previousMonitor.attributes[ConfigKey.REVISION] || 0) + 1,
       };
 
-      const {
-        publicSyncErrors,
-        failedPolicyUpdates,
-        editedMonitor: editedMonitorSavedObject,
-      } = await syncEditedMonitor({
-        routeContext,
-        decryptedPreviousMonitor: decryptedMonitorPrevMonitor,
-        normalizedMonitor: monitorWithRevision,
-        spaceId,
-      });
-      if (failedPolicyUpdates && failedPolicyUpdates.length > 0) {
-        const hasError = failedPolicyUpdates.find((update) => update.error);
-        await rollbackUpdate({
+      const { publicSyncErrors, editedMonitor: editedMonitorSavedObject } = await syncEditedMonitor(
+        {
           routeContext,
-          configId: monitorId,
-          attributes: decryptedMonitorPrevMonitor.attributes,
-        });
-        throw hasError?.error;
-      }
+          decryptedPreviousMonitor: decryptedMonitorPrevMonitor,
+          normalizedMonitor: monitorWithRevision,
+          spaceId,
+        }
+      );
 
       // Return service sync errors in OK response
       if (publicSyncErrors && publicSyncErrors.length > 0) {
@@ -245,8 +233,7 @@ export const syncEditedMonitor = async ({
   routeContext: RouteContext;
   spaceId: string;
 }) => {
-  const { server, savedObjectsClient, syntheticsMonitorClient, monitorConfigRepository } =
-    routeContext;
+  const { server, syntheticsMonitorClient, monitorConfigRepository } = routeContext;
   try {
     const monitorWithId = {
       ...normalizedMonitor,
@@ -263,8 +250,6 @@ export const syncEditedMonitor = async ({
       decryptedPreviousMonitor
     );
 
-    const allPrivateLocations = await getPrivateLocations(savedObjectsClient);
-
     const editSyncPromise = syntheticsMonitorClient.editMonitors(
       [
         {
@@ -273,13 +258,13 @@ export const syncEditedMonitor = async ({
           decryptedPreviousMonitor,
         },
       ],
-      allPrivateLocations,
       spaceId
     );
 
-    const [editedMonitorSavedObject, { publicSyncErrors, failedPolicyUpdates }] = await Promise.all(
-      [editedSOPromise, editSyncPromise]
-    );
+    const [editedMonitorSavedObject, publicSyncErrors] = await Promise.all([
+      editedSOPromise,
+      editSyncPromise,
+    ]);
 
     sendTelemetryEvents(
       server.logger,
@@ -294,7 +279,6 @@ export const syncEditedMonitor = async ({
     );
 
     return {
-      failedPolicyUpdates,
       publicSyncErrors,
       editedMonitor: {
         ...editedMonitorSavedObject,

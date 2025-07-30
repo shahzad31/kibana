@@ -5,6 +5,7 @@
  * 2.0.
  */
 import { SavedObject } from '@kbn/core/server';
+import { runSynPrivateLocationMonitorsTaskSoon } from '../../tasks/sync_private_locations_monitors_task';
 import { SyntheticsServerSetup } from '../../types';
 import { normalizeSecrets } from '../utils';
 import {
@@ -71,13 +72,9 @@ export class SyntheticsMonitorClient {
         publicConfigs.push(config);
       }
     }
-
-    // const newPolicies = this.privateLocationAPI.createPackagePolicies(
-    //   privateConfigs,
-    //   allPrivateLocations,
-    //   spaceId,
-    //   maintenanceWindows
-    // );
+    if (privateConfigs.length > 0) {
+      void runSynPrivateLocationMonitorsTaskSoon({ server: this.server });
+    }
 
     const syncErrors = this.syntheticsService.addConfigs(publicConfigs, maintenanceWindows);
 
@@ -90,7 +87,6 @@ export class SyntheticsMonitorClient {
       id: string;
       decryptedPreviousMonitor: SavedObject<SyntheticsMonitorWithSecretsAttributes>;
     }>,
-    allPrivateLocations: SyntheticsPrivateLocations,
     spaceId: string
   ) {
     const privateConfigs: Array<{ config: HeartbeatConfig; globalParams: Record<string, string> }> =
@@ -146,27 +142,11 @@ export class SyntheticsMonitorClient {
       await this.syntheticsService.deleteConfigs(deletedPublicConfigs);
     }
 
-    // const privateEditPromise = this.privateLocationAPI.editMonitors(
-    //   privateConfigs,
-    //   allPrivateLocations,
-    //   spaceId,
-    //   maintenanceWindows
-    // );
+    if (privateConfigs.length) {
+      void runSynPrivateLocationMonitorsTaskSoon({ server: this.server });
+    }
 
-    const publicConfigsPromise = this.syntheticsService.editConfig(
-      publicConfigs,
-      true,
-      maintenanceWindows
-    );
-
-    const [publicSyncErrors] = await Promise.all([
-      publicConfigsPromise,
-      // privateEditPromise,
-    ]);
-
-    // const { failedUpdates: failedPolicyUpdates } = privateEditResponse;
-
-    return { failedPolicyUpdates: [], publicSyncErrors };
+    return this.syntheticsService.editConfig(publicConfigs, true, maintenanceWindows);
   }
   async deleteMonitors(monitors: SyntheticsMonitorWithId[], spaceId: string) {
     const privateDeletePromise = this.privateLocationAPI.deleteMonitors(monitors, spaceId);

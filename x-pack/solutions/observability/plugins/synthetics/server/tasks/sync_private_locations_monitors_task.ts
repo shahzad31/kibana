@@ -15,6 +15,7 @@ import { ALL_SPACES_ID } from '@kbn/spaces-plugin/common/constants';
 import { ConcreteTaskInstance } from '@kbn/task-manager-plugin/server';
 import moment from 'moment';
 import { MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE } from '@kbn/alerting-plugin/common';
+import pRetry from 'p-retry';
 import { DeployPrivateLocationMonitors } from '../services/deploy_private_location_monitors';
 import { syntheticsMonitorSOTypes, syntheticsParamType } from '../../common/types/saved_objects';
 import { normalizeSecrets } from '../synthetics_service/utils';
@@ -87,7 +88,7 @@ export class SyncPrivateLocationMonitorsTask {
     const startedAt = taskInstance.startedAt || new Date();
     let lastTotalParams = taskInstance.state.lastTotalParams || 0;
     let lastTotalMWs = taskInstance.state.lastTotalMWs || 0;
-    const lastTotalConfigs = taskInstance.state.lastTotalConfigs || 0;
+    let lastTotalConfigs = taskInstance.state.lastTotalConfigs || 0;
     try {
       logger.debug(
         `Syncing private location monitors, last total params ${lastTotalParams}, last run ${lastStartedAt}`
@@ -95,16 +96,23 @@ export class SyncPrivateLocationMonitorsTask {
       const soClient = savedObjects.createInternalRepository([
         MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
       ]);
-      const allPrivateLocations = await getPrivateLocations(soClient);
+      const allPrivateLocations = await getPrivateLocations(soClient, ALL_SPACES_ID);
       if (allPrivateLocations.length > 0) {
-        const { totalMWs, totalParams, hasDataChanged, hasConfigsChanged } =
-          await this.hasAnyDataChanged({
-            soClient,
-            taskInstance,
-          });
+        const {
+          totalMWs,
+          totalParams,
+          totalConfigs,
+          hasParamsChanges,
+          hasMWsChanged,
+          hasConfigsChanged,
+        } = await this.hasAnyDataChanged({
+          soClient,
+          taskInstance,
+        });
         lastTotalParams = totalParams;
         lastTotalMWs = totalMWs;
-        if (hasDataChanged) {
+        lastTotalConfigs = totalConfigs;
+        if (hasParamsChanges || hasMWsChanged) {
           logger.debug(`Syncing private location monitors because data has changed`);
           await this.syncGlobalParams({
             allPrivateLocations,
@@ -133,7 +141,6 @@ export class SyncPrivateLocationMonitorsTask {
       logger.error(`Sync of private location monitors failed: ${error.message}`);
       return {
         error,
-        schedule: { interval: TASK_SCHEDULE },
         state: {
           lastStartedAt: startedAt.toISOString(),
           lastTotalParams,
@@ -143,7 +150,6 @@ export class SyncPrivateLocationMonitorsTask {
       };
     }
     return {
-      schedule: { interval: TASK_SCHEDULE },
       state: {
         lastStartedAt: startedAt.toISOString(),
         lastTotalParams,
@@ -153,7 +159,7 @@ export class SyncPrivateLocationMonitorsTask {
     };
   }
 
-  start = async () => {
+  async start() {
     const {
       logger,
       pluginsStart: { taskManager },
@@ -169,15 +175,16 @@ export class SyncPrivateLocationMonitorsTask {
       params: {},
     });
     logger.debug(`Sync private location monitors task scheduled successfully`);
-  };
+  }
 
-  hasAnyDataChanged = async ({
+  async hasAnyDataChanged({
     taskInstance,
     soClient,
   }: {
     taskInstance: CustomTaskInstance;
     soClient: SavedObjectsClientContract;
-  }) => {
+  }) {
+    const { logger } = this.serverSetup;
     const lastStartedAt =
       taskInstance.state.lastStartedAt || moment().subtract(10, 'minute').toISOString();
     const lastTotalParams = taskInstance.state.lastTotalParams || 0;
@@ -200,45 +207,55 @@ export class SyncPrivateLocationMonitorsTask {
       lastTotalConfigs,
     });
     const hasDataChanged = hasMWsChanged || hasParamsChanges || hasConfigsChanged;
-    return { hasDataChanged, hasConfigsChanged, totalParams, totalMWs, totalConfigs };
-  };
+    logger.debug(
+      `Data changed: ${hasDataChanged}, Params changed: ${hasParamsChanges}, MWs changed: ${hasMWsChanged}, Configs changed: ${hasConfigsChanged}`
+    );
+    return {
+      hasDataChanged,
+      hasMWsChanged,
+      hasParamsChanges,
+      hasConfigsChanged,
+      totalParams,
+      totalMWs,
+      totalConfigs,
+    };
+  }
 
   /**
    * Generic function to check if a resource has changed.
    */
   async hasResourceChanged({
     soClient,
-    type,
+    soTypes,
     lastStartedAt,
     lastTotal,
-    filterKey = 'updated_at',
   }: {
     soClient: SavedObjectsClientContract;
-    type: string | string[];
+    soTypes: string[];
     lastStartedAt: string;
     lastTotal: number;
-    filterKey?: string;
   }) {
     const { logger } = this.serverSetup;
-    const filter =
-      filterKey && lastStartedAt ? `${type}.${filterKey} > "${lastStartedAt}"` : undefined;
+    const filter = soTypes
+      .map((soType) => `${soType}.updated_at > "${lastStartedAt}"`)
+      .join(' or ');
 
     const [edited, total] = await Promise.all([
       soClient.find({
-        type,
+        type: soTypes,
         perPage: 0,
         namespaces: [ALL_SPACES_ID],
         filter,
         fields: [],
       }),
       soClient.find({
-        type,
+        type: soTypes,
         perPage: 0,
         namespaces: [ALL_SPACES_ID],
         fields: [],
       }),
     ]);
-    logger.debug(`Found ${edited.total} ${type} updated and ${total.total} total ${type}`);
+    logger.debug(`Found ${edited.total} ${soTypes} updated and ${total.total} total ${soTypes}`);
     const updated = edited.total;
     const noOfTotal = total.total;
 
@@ -262,7 +279,7 @@ export class SyncPrivateLocationMonitorsTask {
   }) {
     const result = await this.hasResourceChanged({
       soClient,
-      type: syntheticsParamType,
+      soTypes: [syntheticsParamType],
       lastStartedAt,
       lastTotal: lastTotalParams,
     });
@@ -284,7 +301,7 @@ export class SyncPrivateLocationMonitorsTask {
   }) {
     const result = await this.hasResourceChanged({
       soClient,
-      type: MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
+      soTypes: [MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE],
       lastStartedAt,
       lastTotal: lastTotalMWs,
     });
@@ -306,7 +323,7 @@ export class SyncPrivateLocationMonitorsTask {
   }) {
     const result = await this.hasResourceChanged({
       soClient,
-      type: syntheticsMonitorSOTypes,
+      soTypes: syntheticsMonitorSOTypes,
       lastStartedAt,
       lastTotal: lastTotalConfigs,
     });
@@ -445,18 +462,21 @@ export const runSynPrivateLocationMonitorsTaskSoon = async ({
 }: {
   server: SyntheticsServerSetup;
 }) => {
-  const {
-    logger,
-    pluginsStart: { taskManager },
-  } = server;
-  try {
-    logger.debug(`Scheduling Synthetics sync private location monitors task soon`);
-    await taskManager.runSoon(TASK_ID);
-    logger.debug(`Synthetics sync private location task scheduled successfully`);
-  } catch (error) {
-    logger.error(
-      `Error scheduling Synthetics sync private location monitors task: ${error.message}`,
-      { error }
-    );
-  }
+  const run = async () => {
+    const {
+      logger,
+      pluginsStart: { taskManager },
+    } = server;
+    try {
+      logger.debug(`Scheduling Synthetics sync private location monitors task soon`);
+      await taskManager.runSoon(TASK_ID);
+      logger.debug(`Synthetics sync private location task scheduled successfully`);
+    } catch (error) {
+      logger.error(
+        `Error scheduling Synthetics sync private location monitors task: ${error.message}`,
+        { error }
+      );
+    }
+  };
+  await pRetry(run, { retries: 3 });
 };
