@@ -83,7 +83,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
     });
 
     after(async () => {
-      // await kibanaServer.savedObjects.cleanStandardList();
+      await kibanaServer.savedObjects.cleanStandardList();
     });
 
     beforeEach(() => {
@@ -1272,7 +1272,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       );
     });
 
-    it.only('creates integration policies for project monitors with private locations - lightweight', async () => {
+    it('creates integration policies for project monitors with private locations - lightweight', async () => {
       const project = `test-project-${uuidv4()}`;
 
       await supertestWithoutAuth
