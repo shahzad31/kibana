@@ -636,10 +636,13 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
     created: PackagePolicy[];
     failed: Array<{ packagePolicy: NewPackagePolicy; error?: Error | SavedObjectError }>;
   }> {
-    const [useSpaceAwareness, savedObjectType, packageInfos] = await Promise.all([
+    const agentPolicyIds = new Set(packagePolicies.flatMap((pkgPolicy) => pkgPolicy.policy_ids));
+
+    const [useSpaceAwareness, savedObjectType, packageInfos, agentPolicies] = await Promise.all([
       isSpaceAwarenessEnabled(),
       getPackagePolicySavedObjectType(),
       getPackageInfoForPackagePolicies(packagePolicies, soClient),
+      agentPolicyService.getByIds(soClient, [...agentPolicyIds]),
     ]);
 
     await pMap(packagePolicies, async (packagePolicy) => {
@@ -660,9 +663,6 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
       await preflightCheckPackagePolicy(soClient, packagePolicy, basePkgInfo);
     });
 
-    const agentPolicyIds = new Set(packagePolicies.flatMap((pkgPolicy) => pkgPolicy.policy_ids));
-
-    const agentPolicies = await agentPolicyService.getByIds(soClient, [...agentPolicyIds]);
     const agentPoliciesIndexById = indexBy('id', agentPolicies);
     for (const agentPolicy of agentPolicies) {
       validateIsNotHostedPolicy(agentPolicy, options?.force);
@@ -702,7 +702,7 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
       savedObjectsClient: soClient,
     });
 
-    await pMap(packagePoliciesWithIds, async (packagePolicy) => {
+    packagePoliciesWithIds.forEach((packagePolicy) => {
       try {
         const packagePolicyId = packagePolicy.id ?? uuidv4();
         const agentPolicyIdsOfPackagePolicy = packagePolicy.policy_ids;
@@ -730,7 +730,7 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
         canDeployCustomPackageAsAgentlessOrThrow(packagePolicy, pkgInfo);
 
         inputs = pkgInfo
-          ? await _compilePackagePolicyInputs(pkgInfo, packagePolicy.vars || {}, inputs, assetsMap)
+          ? _compilePackagePolicyInputs(pkgInfo, packagePolicy.vars || {}, inputs, assetsMap)
           : inputs;
 
         const elasticsearch = pkgInfo?.elasticsearch;
@@ -1513,7 +1513,23 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
     }>;
   }> {
     const logger = this.getLogger('bulkUpdate');
-    const savedObjectType = await getPackagePolicySavedObjectType();
+
+    const getOldPackagePolicies = async () => {
+      return options?.oldPackagePolicies
+        ? options?.oldPackagePolicies
+        : await this.getByIDs(
+            soClient,
+            packagePolicyUpdates.map((p) => p.id)
+          );
+    };
+
+    const [savedObjectType, oldPackagePolicies, packageInfos, secretStorageEnabled] =
+      await Promise.all([
+        getPackagePolicySavedObjectType(),
+        getOldPackagePolicies(),
+        getPackageInfoForPackagePolicies(packagePolicyUpdates, soClient, true),
+        isSecretStorageEnabled(esClient, soClient),
+      ]);
 
     logger.debug(
       () =>
@@ -1531,22 +1547,9 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
       });
     }
 
-    const oldPackagePolicies = options?.oldPackagePolicies
-      ? options?.oldPackagePolicies
-      : await this.getByIDs(
-          soClient,
-          packagePolicyUpdates.map((p) => p.id)
-        );
-
     if (!oldPackagePolicies || oldPackagePolicies.length === 0) {
       throw new PackagePolicyNotFoundError('Package policy not found');
     }
-
-    const packageInfos = await getPackageInfoForPackagePolicies(
-      packagePolicyUpdates,
-      soClient,
-      true
-    );
 
     const oldPackageInfos = await getPackageInfoForPackagePolicies(
       oldPackagePolicies,
@@ -1582,8 +1585,6 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
     const previousPolicyRevisionsToUpdate: Array<
       SavedObjectsBulkUpdateObject<PackagePolicySOAttributes>
     > = [];
-
-    const secretStorageEnabled = await isSecretStorageEnabled(esClient, soClient);
 
     const assetsToInstallFn: Array<() => Promise<void>> = [];
 
@@ -2291,7 +2292,7 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
     });
     let pkgInstall = pkgInstallObj?.attributes;
     if (!pkgInstall && options?.installMissingPackage) {
-      const esClient = await appContextService.getInternalUserESClient();
+      const esClient = appContextService.getInternalUserESClient();
       const result = await ensureInstalledPackage({
         esClient,
         pkgName,
@@ -2307,6 +2308,7 @@ class PackagePolicyClientImpl implements PackagePolicyClient {
         pkgName: pkgInstall.name,
         pkgVersion: pkgInstall.version,
         prerelease: true,
+        skipArchive: true,
       });
 
       if (packageInfo) {

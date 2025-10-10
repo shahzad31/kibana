@@ -4,11 +4,12 @@
  * 2.0; you may not use this file except in compliance with the Elastic License
  * 2.0.
  */
-import type { NewPackagePolicy } from '@kbn/fleet-plugin/common';
+import type { NewPackagePolicy, PackagePolicy } from '@kbn/fleet-plugin/common';
 import type { NewPackagePolicyWithId } from '@kbn/fleet-plugin/server/services/package_policy';
 import { cloneDeep } from 'lodash';
 import type { SavedObjectError } from '@kbn/core-saved-objects-common';
 import type { MaintenanceWindow } from '@kbn/alerting-plugin/server/application/maintenance_window/types';
+import { withSpan } from '@kbn/apm-utils';
 import { DEFAULT_NAMESPACE_STRING } from '../../../common/constants/monitor_defaults';
 import {
   BROWSER_TEST_NOW_RUN,
@@ -72,7 +73,7 @@ export class SyntheticsPrivateLocation {
     return `${config.id}-${locId}-${spaceId}`;
   }
 
-  async generateNewPolicy(
+  generateNewPolicy(
     config: HeartbeatConfig,
     privateLocation: PrivateLocation,
     newPolicyTemplate: NewPackagePolicy,
@@ -81,7 +82,7 @@ export class SyntheticsPrivateLocation {
     maintenanceWindows: MaintenanceWindow[],
     testRunId?: string,
     runOnce?: boolean
-  ): Promise<NewPackagePolicy | null> {
+  ): NewPackagePolicy | null {
     const { label: locName } = privateLocation;
 
     const newPolicy = cloneDeep(newPolicyTemplate);
@@ -102,7 +103,7 @@ export class SyntheticsPrivateLocation {
       }
       const configNamespace = config[ConfigKey.NAMESPACE];
 
-      newPolicy.namespace = await this.getPolicyNamespace(configNamespace);
+      newPolicy.namespace = this.getPolicyNamespace(configNamespace);
 
       const { formattedPolicy } = formatSyntheticsPolicy(
         newPolicy,
@@ -165,7 +166,7 @@ export class SyntheticsPrivateLocation {
               );
             }
 
-            const newPolicy = await this.generateNewPolicy(
+            const newPolicy = this.generateNewPolicy(
               config,
               location,
               newPolicyTemplate,
@@ -243,7 +244,7 @@ export class SyntheticsPrivateLocation {
 
       const location = allPrivateLocations?.find((loc) => loc.id === privateLocation?.id)!;
 
-      const newPolicy = await this.generateNewPolicy(
+      const newPolicy = this.generateNewPolicy(
         config,
         location,
         newPolicyTemplate,
@@ -274,89 +275,93 @@ export class SyntheticsPrivateLocation {
       return {};
     }
 
-    return this.runWithCache(async () => {
-      const [newPolicyTemplate, existingPolicies] = await Promise.all([
-        this.buildNewPolicy(),
-        this.getExistingPolicies(
-          configs.map(({ config }) => config),
-          allPrivateLocations,
-          spaceId
-        ),
-      ]);
+    return withSpan('private_location_edit_monitors', async () => {
+      return this.runWithCache(async () => {
+        const [newPolicyTemplate, existingPolicies] = await Promise.all([
+          this.buildNewPolicy(),
+          this.getExistingPolicies(
+            configs.map(({ config }) => config),
+            allPrivateLocations,
+            spaceId
+          ),
+        ]);
 
-      const policiesToUpdate: NewPackagePolicyWithId[] = [];
-      const policiesToCreate: NewPackagePolicyWithId[] = [];
-      const policiesToDelete: string[] = [];
+        const policiesToUpdate: NewPackagePolicyWithId[] = [];
+        const policiesToCreate: NewPackagePolicyWithId[] = [];
+        const policiesToDelete: string[] = [];
 
-      for (const { config, globalParams } of configs) {
-        const { locations } = config;
-
-        const monitorPrivateLocations = locations.filter((loc) => !loc.isServiceManaged);
-
-        for (const privateLocation of allPrivateLocations) {
-          const hasLocation = monitorPrivateLocations?.some((loc) => loc.id === privateLocation.id);
-          const currId = this.getPolicyId(config, privateLocation.id, spaceId);
-          const hasPolicy = existingPolicies?.some((policy) => policy.id === currId);
-          try {
-            if (hasLocation) {
-              const newPolicy = await this.generateNewPolicy(
-                config,
-                privateLocation,
-                newPolicyTemplate,
-                spaceId,
-                globalParams,
-                maintenanceWindows
-              );
-
-              if (!newPolicy) {
-                throwAddEditError(hasPolicy, privateLocation.label);
-              }
-
-              if (hasPolicy) {
-                policiesToUpdate.push({ ...newPolicy, id: currId } as NewPackagePolicyWithId);
-              } else {
-                policiesToCreate.push({ ...newPolicy, id: currId } as NewPackagePolicyWithId);
-              }
-            } else if (hasPolicy) {
-              policiesToDelete.push(currId);
-            }
-          } catch (e) {
-            this.server.logger.error(e);
-            throwAddEditError(hasPolicy, privateLocation.label, config[ConfigKey.NAME]);
-          }
-        }
-      }
-
-      this.server.logger.debug(
-        `[editingMonitors] Creating ${policiesToCreate.length} policies, updating ${policiesToUpdate.length} policies, and deleting ${policiesToDelete.length} policies`
-      );
-
-      const [_createResponse, failedUpdatesRes, _deleteResponse] = await Promise.all([
-        this.createPolicyBulk(policiesToCreate),
-        this.updatePolicyBulk(policiesToUpdate),
-        this.deletePolicyBulk(policiesToDelete),
-      ]);
-
-      const failedUpdates = failedUpdatesRes?.map(({ packagePolicy, error }) => {
-        const policyConfig = configs.find(({ config }) => {
+        for (const { config, globalParams } of configs) {
           const { locations } = config;
 
           const monitorPrivateLocations = locations.filter((loc) => !loc.isServiceManaged);
-          for (const privateLocation of monitorPrivateLocations) {
+
+          for (const privateLocation of allPrivateLocations) {
+            const hasLocation = monitorPrivateLocations?.some(
+              (loc) => loc.id === privateLocation.id
+            );
             const currId = this.getPolicyId(config, privateLocation.id, spaceId);
-            return currId === packagePolicy.id;
+            const hasPolicy = existingPolicies?.some((policy) => policy.id === currId);
+            try {
+              if (hasLocation) {
+                const newPolicy = this.generateNewPolicy(
+                  config,
+                  privateLocation,
+                  newPolicyTemplate,
+                  spaceId,
+                  globalParams,
+                  maintenanceWindows
+                );
+
+                if (!newPolicy) {
+                  throwAddEditError(hasPolicy, privateLocation.label);
+                }
+
+                if (hasPolicy) {
+                  policiesToUpdate.push({ ...newPolicy, id: currId } as NewPackagePolicyWithId);
+                } else {
+                  policiesToCreate.push({ ...newPolicy, id: currId } as NewPackagePolicyWithId);
+                }
+              } else if (hasPolicy) {
+                policiesToDelete.push(currId);
+              }
+            } catch (e) {
+              this.server.logger.error(e);
+              throwAddEditError(hasPolicy, privateLocation.label, config[ConfigKey.NAME]);
+            }
           }
+        }
+
+        this.server.logger.debug(
+          `[editingMonitors] Creating ${policiesToCreate.length} policies, updating ${policiesToUpdate.length} policies, and deleting ${policiesToDelete.length} policies`
+        );
+
+        const [_createResponse, failedUpdatesRes, _deleteResponse] = await Promise.all([
+          this.createPolicyBulk(policiesToCreate),
+          this.updatePolicyBulk(policiesToUpdate, existingPolicies),
+          this.deletePolicyBulk(policiesToDelete),
+        ]);
+
+        const failedUpdates = failedUpdatesRes?.map(({ packagePolicy, error }) => {
+          const policyConfig = configs.find(({ config }) => {
+            const { locations } = config;
+
+            const monitorPrivateLocations = locations.filter((loc) => !loc.isServiceManaged);
+            for (const privateLocation of monitorPrivateLocations) {
+              const currId = this.getPolicyId(config, privateLocation.id, spaceId);
+              return currId === packagePolicy.id;
+            }
+          });
+          return {
+            error,
+            packagePolicy,
+            config: policyConfig?.config,
+          };
         });
+
         return {
-          error,
-          packagePolicy,
-          config: policyConfig?.config,
+          failedUpdates,
         };
       });
-
-      return {
-        failedUpdates,
-      };
     });
   }
 
@@ -396,21 +401,33 @@ export class SyntheticsPrivateLocation {
     }
   }
 
-  async updatePolicyBulk(policiesToUpdate: NewPackagePolicyWithId[]) {
-    const soClient = this.server.coreStart.savedObjects.createInternalRepository();
-    const esClient = this.server.coreStart.elasticsearch.client.asInternalUser;
-    if (policiesToUpdate.length > 0) {
-      const { failedPolicies } = await this.server.fleet.packagePolicyService.bulkUpdate(
-        soClient,
-        esClient,
-        policiesToUpdate,
-        {
-          force: true,
-          asyncDeploy: true,
-        }
+  private async updatePolicyBulk(
+    policiesToUpdate: NewPackagePolicyWithId[],
+    existingPolicies?: PackagePolicy[]
+  ) {
+    return withSpan('private_location_update_policy_bulk', async () => {
+      const hasAllExisting = policiesToUpdate.every((policy) =>
+        existingPolicies?.some((oldPolicy) => oldPolicy.id === policy.id)
       );
-      return failedPolicies;
-    }
+      const oldPackagePolicies = existingPolicies?.filter((oldPolicy) =>
+        policiesToUpdate.some((policy) => oldPolicy.id === policy.id)
+      );
+      const soClient = this.server.coreStart.savedObjects.createInternalRepository();
+      const esClient = this.server.coreStart.elasticsearch.client.asInternalUser;
+      if (policiesToUpdate.length > 0) {
+        const { failedPolicies } = await this.server.fleet.packagePolicyService.bulkUpdate(
+          soClient,
+          esClient,
+          policiesToUpdate,
+          {
+            force: true,
+            asyncDeploy: true,
+            ...(hasAllExisting ? { oldPackagePolicies } : {}),
+          }
+        );
+        return failedPolicies;
+      }
+    });
   }
 
   async deletePolicyBulk(policyIdsToDelete: string[]) {
@@ -473,7 +490,7 @@ export class SyntheticsPrivateLocation {
     return await getAgentPoliciesAsInternalUser({ server: this.server });
   }
 
-  async getPolicyNamespace(configNamespace: string) {
+  getPolicyNamespace(configNamespace: string) {
     if (configNamespace && configNamespace !== DEFAULT_NAMESPACE_STRING) {
       return configNamespace;
     }

@@ -205,7 +205,12 @@ class AgentPolicyService {
     );
 
     const savedObjectType = await getAgentPolicySavedObjectType();
-    const existingAgentPolicy = await this.get(soClient, id, true);
+    // if skipValidation and asyncDeploy are both true, we skip withPackagePolicies
+    const existingAgentPolicy = await this.get(
+      soClient,
+      id,
+      !(options.skipValidation && options.asyncDeploy)
+    );
 
     auditLoggingService.writeCustomSoAuditLog({
       action: 'update',
@@ -241,7 +246,7 @@ class AgentPolicyService {
         getAllowedOutputTypesForAgentPolicy({ ...existingAgentPolicy, ...agentPolicy })
       );
     }
-    await soClient
+    const newAgentPolicySO = await soClient
       .update<AgentPolicySOAttributes>(savedObjectType, id, {
         ...agentPolicy,
         ...(options.bumpRevision ? { revision: existingAgentPolicy.revision + 1 } : {}),
@@ -253,7 +258,9 @@ class AgentPolicyService {
       })
       .catch(catchAndSetErrorStackTrace.withMessage(`SO update to agent policy [${id}] failed`));
 
-    const newAgentPolicy = await this.get(soClient, id, false);
+    const newAgentPolicy = mapAgentPolicySavedObjectToAgentPolicy(
+      newAgentPolicySO as SavedObject<AgentPolicySOAttributes>
+    );
 
     logger.debug(`Agent policy [${id}] Saved Object was updated successfully`);
 
