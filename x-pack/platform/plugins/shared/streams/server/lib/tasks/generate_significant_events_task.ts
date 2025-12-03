@@ -6,19 +6,16 @@
  */
 
 import type { TaskManagerSetupContract } from '@kbn/task-manager-plugin/server/plugin';
+import type { Logger } from '@kbn/core/server';
 import type {
   ConcreteTaskInstance,
   IntervalSchedule,
   RruleSchedule,
 } from '@kbn/task-manager-plugin/server';
-import moment from 'moment';
-import { MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE } from '@kbn/maintenance-windows-plugin/common';
 import pRetry from 'p-retry';
-import type { SyntheticsMonitorClient } from '../synthetics_service/synthetics_monitor/synthetics_monitor_client';
-import type { SyntheticsServerSetup } from '../types';
 
 const TASK_TYPE = 'Stream:GenerateSignificantEventsTask';
-export const PRIVATE_LOCATIONS_SYNC_TASK_ID = `${TASK_TYPE}-single-instance`;
+export const GENERATE_SIGNIFICANT_EVENTS_TASK_ID = `${TASK_TYPE}-single-instance`;
 const TASK_SCHEDULE = '60m';
 
 type TaskState = Record<string, unknown>;
@@ -27,17 +24,12 @@ export type CustomTaskInstance = Omit<ConcreteTaskInstance, 'state'> & {
   state: Partial<TaskState>;
 };
 
-export class SyncPrivateLocationMonitorsTask {
-  constructor(
-    public serverSetup: SyntheticsServerSetup,
-    public taskManager: TaskManagerSetupContract,
-    public syntheticsMonitorClient: SyntheticsMonitorClient
-  ) {
+export class GenerateSignificantEventsTask {
+  constructor(public taskManager: TaskManagerSetupContract, public logger: Logger) {
     taskManager.registerTaskDefinitions({
       [TASK_TYPE]: {
-        title: 'Synthetics Sync Global Params Task',
-        description:
-          'This task is executed so that we can sync private location monitors for example when global params are updated',
+        title: 'Generate Significant Events Task',
+        description: 'Generates significant events for stream',
         timeout: '5m',
         maxAttempts: 1,
         createTaskRunner: ({ taskInstance }) => {
@@ -62,39 +54,21 @@ export class SyncPrivateLocationMonitorsTask {
       )}`
     );
 
-    const {
-      coreStart: { savedObjects },
-      encryptedSavedObjects,
-      logger,
-    } = this.serverSetup;
-    const lastStartedAt =
-      taskInstance.state.lastStartedAt || moment().subtract(10, 'minute').toISOString();
-    const startedAt = taskInstance.startedAt || new Date();
-
-    const taskState = {
-      lastStartedAt: startedAt.toISOString(),
-      lastTotalParams: taskInstance.state.lastTotalParams || 0,
-      lastTotalMWs: taskInstance.state.lastTotalMWs || 0,
-      hasAlreadyDoneCleanup: taskInstance.state.hasAlreadyDoneCleanup || false,
-      maxCleanUpRetries: taskInstance.state.maxCleanUpRetries || 3,
-    };
-
     try {
-      const soClient = savedObjects.createInternalRepository([
-        MAINTENANCE_WINDOW_SAVED_OBJECT_TYPE,
-      ]);
     } catch (error) {
-      logger.error(`Sync of private location monitors failed: ${error.message}`);
+      this.logger.error(`Error running Generate Significant Events Task: ${error.message}`, {
+        error,
+      });
       return {
         error,
-        state: taskState,
+        state: {},
         schedule: {
           interval: TASK_SCHEDULE,
         },
       };
     }
     return {
-      state: taskState,
+      state: {},
       schedule: {
         interval: TASK_SCHEDULE,
       },
@@ -105,9 +79,9 @@ export class SyncPrivateLocationMonitorsTask {
     const {
       pluginsStart: { taskManager },
     } = this.serverSetup;
-    this.debugLog(`Scheduling private location task`);
+    this.debugLog(`Scheduling Generate Significant Events Task`);
     await taskManager.ensureScheduled({
-      id: PRIVATE_LOCATIONS_SYNC_TASK_ID,
+      id: GENERATE_SIGNIFICANT_EVENTS_TASK_ID,
       state: {},
       schedule: {
         interval: TASK_SCHEDULE,
@@ -115,15 +89,15 @@ export class SyncPrivateLocationMonitorsTask {
       taskType: TASK_TYPE,
       params: {},
     });
-    this.debugLog(`Sync private location monitors task scheduled successfully`);
+    this.debugLog('Generate Significant Events Task scheduled successfully');
   };
 
   debugLog = (message: string) => {
-    this.serverSetup.logger.debug(`[SyncPrivateLocationMonitorsTask] ${message}`);
+    this.serverSetup.logger.debug(`[GenerateSignificantEventsTask] ${message}`);
   };
 }
 
-export const runSynPrivateLocationMonitorsTaskSoon = async ({
+export const runGenerateSignificantEventsTaskSoon = async ({
   server,
   retries = 5,
 }: {
@@ -137,9 +111,9 @@ export const runSynPrivateLocationMonitorsTaskSoon = async ({
           logger,
           pluginsStart: { taskManager },
         } = server;
-        logger.debug(`Scheduling Synthetics sync private location monitors task soon`);
-        await taskManager.runSoon(PRIVATE_LOCATIONS_SYNC_TASK_ID);
-        logger.debug(`Synthetics sync private location task scheduled successfully`);
+        logger.debug(`Scheduling Generate Significant Events Task to run soon`);
+        await taskManager.runSoon(GENERATE_SIGNIFICANT_EVENTS_TASK_ID);
+        logger.debug(` Generate Significant Events Task scheduled to run soon`);
       },
       {
         retries,
@@ -147,7 +121,7 @@ export const runSynPrivateLocationMonitorsTaskSoon = async ({
     );
   } catch (error) {
     server.logger.error(
-      `Error scheduling Synthetics sync private location monitors task: ${error.message}`,
+      `Error scheduling Generate Significant Events Task to run soon: ${error.message}`,
       { error }
     );
   }
