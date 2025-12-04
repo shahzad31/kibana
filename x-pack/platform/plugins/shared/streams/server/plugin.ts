@@ -18,6 +18,7 @@ import { DEFAULT_APP_CATEGORIES } from '@kbn/core/server';
 import { i18n } from '@kbn/i18n';
 import { STREAMS_RULE_TYPE_IDS } from '@kbn/rule-data-utils';
 import { registerRoutes } from '@kbn/server-route-repository';
+import { StreamsTasksService } from './lib/tasks/streams_tasks_service';
 import type { StreamsConfig } from '../common/config';
 import { configSchema, exposeToBrowserConfig } from '../common/config';
 import {
@@ -73,12 +74,14 @@ export class StreamsPlugin
   private ebtTelemetryService = new EbtTelemetryService();
   private statsTelemetryService = new StatsTelemetryService();
   private processorSuggestionsService: ProcessorSuggestionsService;
+  private streamsTasksService?: StreamsTasksService;
 
   constructor(context: PluginInitializerContext<StreamsConfig>) {
     this.isDev = context.env.mode.dev;
     this.config = context.config.get();
     this.logger = context.logger.get();
     this.processorSuggestionsService = new ProcessorSuggestionsService();
+    this.streamsTasksService = new StreamsTasksService(this.logger);
   }
 
   public setup(
@@ -231,6 +234,8 @@ export class StreamsPlugin
     });
 
     registerFeatureFlags(core, this.logger);
+
+    this.streamsTasksService?.registerTasks(plugins.taskManager);
 
     if (plugins.globalSearch) {
       plugins.globalSearch.registerResultProvider(

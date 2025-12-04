@@ -75,25 +75,8 @@ export class GenerateSignificantEventsTask {
     };
   }
 
-  start = async () => {
-    const {
-      pluginsStart: { taskManager },
-    } = this.serverSetup;
-    this.debugLog(`Scheduling Generate Significant Events Task`);
-    await taskManager.ensureScheduled({
-      id: GENERATE_SIGNIFICANT_EVENTS_TASK_ID,
-      state: {},
-      schedule: {
-        interval: TASK_SCHEDULE,
-      },
-      taskType: TASK_TYPE,
-      params: {},
-    });
-    this.debugLog('Generate Significant Events Task scheduled successfully');
-  };
-
   debugLog = (message: string) => {
-    this.serverSetup.logger.debug(`[GenerateSignificantEventsTask] ${message}`);
+    this.logger.debug(`[GenerateSignificantEventsTask] ${message}`);
   };
 }
 
@@ -101,7 +84,7 @@ export const runGenerateSignificantEventsTaskSoon = async ({
   server,
   retries = 5,
 }: {
-  server: SyntheticsServerSetup;
+  taskManagerStart: taskManager;
   retries?: number;
 }) => {
   try {
