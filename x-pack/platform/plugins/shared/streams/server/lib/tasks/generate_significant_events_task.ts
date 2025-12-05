@@ -5,7 +5,10 @@
  * 2.0.
  */
 
-import type { TaskManagerSetupContract } from '@kbn/task-manager-plugin/server/plugin';
+import type {
+  TaskManagerSetupContract,
+  TaskManagerStartContract,
+} from '@kbn/task-manager-plugin/server/plugin';
 import type { Logger } from '@kbn/core/server';
 import type {
   ConcreteTaskInstance,
@@ -81,21 +84,19 @@ export class GenerateSignificantEventsTask {
 }
 
 export const runGenerateSignificantEventsTaskSoon = async ({
-  server,
+  taskManagerStart,
+  logger,
   retries = 5,
 }: {
-  taskManagerStart: taskManager;
+  taskManagerStart: TaskManagerStartContract;
   retries?: number;
+  logger: Logger;
 }) => {
   try {
     await pRetry(
       async () => {
-        const {
-          logger,
-          pluginsStart: { taskManager },
-        } = server;
         logger.debug(`Scheduling Generate Significant Events Task to run soon`);
-        await taskManager.runSoon(GENERATE_SIGNIFICANT_EVENTS_TASK_ID);
+        await taskManagerStart.runSoon(GENERATE_SIGNIFICANT_EVENTS_TASK_ID);
         logger.debug(` Generate Significant Events Task scheduled to run soon`);
       },
       {
@@ -103,7 +104,7 @@ export const runGenerateSignificantEventsTaskSoon = async ({
       }
     );
   } catch (error) {
-    server.logger.error(
+    logger.error(
       `Error scheduling Generate Significant Events Task to run soon: ${error.message}`,
       { error }
     );
