@@ -13,6 +13,7 @@ import {
 import { z } from '@kbn/zod';
 import { conditionSchema } from '@kbn/streamlang';
 import { from as fromRxjs, map } from 'rxjs';
+import { runGenerateSignificantEventsTaskSoon } from '../../../lib/tasks/generate_significant_events_task';
 import { STREAMS_API_PRIVILEGES } from '../../../../common/constants';
 import { generateSignificantEventDefinitions } from '../../../lib/significant_events/generate_significant_events';
 import { previewSignificantEvents } from '../../../lib/significant_events/preview_significant_events';
@@ -188,6 +189,8 @@ const generateSignificantEventsRoute = createServerRoute({
     await streamsClient.ensureStream(params.path.name);
 
     const definition = await streamsClient.getStream(params.path.name);
+
+    runGenerateSignificantEventsTaskSoon;
 
     return fromRxjs(
       generateSignificantEventDefinitions(

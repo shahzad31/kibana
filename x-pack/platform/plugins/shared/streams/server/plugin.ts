@@ -163,6 +163,63 @@ export class StreamsPlugin
 
     core.pricing.registerProductFeatures(STREAMS_TIERED_FEATURES);
 
+    const getScopedClients = async ({
+      request,
+    }: {
+      request: KibanaRequest;
+    }): Promise<RouteHandlerScopedClients> => {
+      const [
+        [coreStart, pluginsStart],
+        assetClient,
+        attachmentClient,
+        featureClient,
+        contentClient,
+      ] = await Promise.all([
+        core.getStartServices(),
+        assetService.getClientWithRequest({ request }),
+        attachmentService.getClientWithRequest({ request }),
+        featureService.getClientWithRequest({ request }),
+        contentService.getClient(),
+      ]);
+
+      const [queryClient, uiSettingsClient] = await Promise.all([
+        queryService.getClientWithRequest({
+          request,
+          assetClient,
+        }),
+        coreStart.uiSettings.asScopedToClient(coreStart.savedObjects.getScopedClient(request)),
+      ]);
+
+      const streamsClient = await streamsService.getClientWithRequest({
+        request,
+        assetClient,
+        attachmentClient,
+        queryClient,
+        featureClient,
+      });
+
+      const scopedClusterClient = coreStart.elasticsearch.client.asScoped(request);
+      const soClient = coreStart.savedObjects.getScopedClient(request);
+      const inferenceClient = pluginsStart.inference.getClient({ request });
+      const licensing = pluginsStart.licensing;
+      const fieldsMetadataClient = await pluginsStart.fieldsMetadata.getClient(request);
+
+      return {
+        scopedClusterClient,
+        soClient,
+        assetClient,
+        attachmentClient,
+        streamsClient,
+        featureClient,
+        inferenceClient,
+        contentClient,
+        queryClient,
+        fieldsMetadataClient,
+        licensing,
+        uiSettingsClient,
+      };
+    };
+
     registerRoutes({
       repository: streamsRouteRepository,
       dependencies: {
@@ -171,62 +228,7 @@ export class StreamsPlugin
         server: this.server,
         telemetry: this.ebtTelemetryService.getClient(),
         processorSuggestions: this.processorSuggestionsService,
-        getScopedClients: async ({
-          request,
-        }: {
-          request: KibanaRequest;
-        }): Promise<RouteHandlerScopedClients> => {
-          const [
-            [coreStart, pluginsStart],
-            assetClient,
-            attachmentClient,
-            featureClient,
-            contentClient,
-          ] = await Promise.all([
-            core.getStartServices(),
-            assetService.getClientWithRequest({ request }),
-            attachmentService.getClientWithRequest({ request }),
-            featureService.getClientWithRequest({ request }),
-            contentService.getClient(),
-          ]);
-
-          const [queryClient, uiSettingsClient] = await Promise.all([
-            queryService.getClientWithRequest({
-              request,
-              assetClient,
-            }),
-            coreStart.uiSettings.asScopedToClient(coreStart.savedObjects.getScopedClient(request)),
-          ]);
-
-          const streamsClient = await streamsService.getClientWithRequest({
-            request,
-            assetClient,
-            attachmentClient,
-            queryClient,
-            featureClient,
-          });
-
-          const scopedClusterClient = coreStart.elasticsearch.client.asScoped(request);
-          const soClient = coreStart.savedObjects.getScopedClient(request);
-          const inferenceClient = pluginsStart.inference.getClient({ request });
-          const licensing = pluginsStart.licensing;
-          const fieldsMetadataClient = await pluginsStart.fieldsMetadata.getClient(request);
-
-          return {
-            scopedClusterClient,
-            soClient,
-            assetClient,
-            attachmentClient,
-            streamsClient,
-            featureClient,
-            inferenceClient,
-            contentClient,
-            queryClient,
-            fieldsMetadataClient,
-            licensing,
-            uiSettingsClient,
-          };
-        },
+        getScopedClients,
       },
       core,
       logger: this.logger,
@@ -235,7 +237,7 @@ export class StreamsPlugin
 
     registerFeatureFlags(core, this.logger);
 
-    this.streamsTasksService?.registerTasks(plugins.taskManager);
+    this.streamsTasksService?.registerTasks(plugins.taskManager, getScopedClients);
 
     if (plugins.globalSearch) {
       plugins.globalSearch.registerResultProvider(
