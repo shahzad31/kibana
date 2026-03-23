@@ -7,20 +7,20 @@
 
 import * as t from 'io-ts';
 import { dateType } from './common';
-import { timeWindowSchema } from './time_window';
-import { budgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSchema } from './slo';
+import { rollingTimeWindowSchema } from './time_window';
+import { occurrencesBudgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSchema } from './slo';
 
 const compositeSloMemberSchema = t.intersection([
   t.type({
     sloId: sloIdSchema,
-    sloRevision: t.number,
   }),
   t.partial({
+    instanceId: t.string,
     weight: t.number,
   }),
 ]);
 
-const compositeMethodSchema = t.union([t.literal('weightedAverage'), t.literal('leastHealthy')]);
+const compositeMethodSchema = t.literal('weightedAverage');
 
 const requiredCompositeSloFields = t.type({
   id: sloIdSchema,
@@ -28,8 +28,8 @@ const requiredCompositeSloFields = t.type({
   description: t.string,
   members: t.array(compositeSloMemberSchema),
   compositeMethod: compositeMethodSchema,
-  timeWindow: timeWindowSchema,
-  budgetingMethod: budgetingMethodSchema,
+  timeWindow: rollingTimeWindowSchema,
+  budgetingMethod: occurrencesBudgetingMethodSchema,
   objective: objectiveSchema,
   tags: tagsSchema,
   enabled: t.boolean,

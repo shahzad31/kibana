@@ -13,7 +13,7 @@ export const SO_SLO_COMPOSITE_TYPE = 'slo-composite';
 
 export const sloComposite: SavedObjectsType = {
   name: SO_SLO_COMPOSITE_TYPE,
-  hidden: false,
+  hidden: true,
   namespaceType: 'multiple-isolated',
   modelVersions: {
     1: {
