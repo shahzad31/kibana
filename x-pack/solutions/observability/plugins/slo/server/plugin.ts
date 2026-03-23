@@ -245,7 +245,10 @@ export class SLOPlugin
         },
       },
       logger: this.logger,
-      repository: getSloServerRouteRepository({ isServerless: this.isServerless }),
+      repository: getSloServerRouteRepository({
+        isServerless: this.isServerless,
+        isCompositeSloEnabled,
+      }),
       isDev: this.isDev,
     });
 
