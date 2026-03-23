@@ -90,12 +90,13 @@ export class SLOPlugin
   ): SLOServerSetup {
     const lockManager = new LockManagerService(core, this.logger);
     const alertsLocator = plugins.share.url.locators.create(new AlertsLocatorDefinition());
+    const isCompositeSloEnabled = this.config.experimental?.compositeSlo?.enabled === true;
 
     const savedObjectTypes = [
       SO_SLO_TYPE,
       SO_SLO_SETTINGS_TYPE,
       SO_SLO_TEMPLATE_TYPE,
-      SO_SLO_COMPOSITE_TYPE,
+      ...(isCompositeSloEnabled ? [SO_SLO_COMPOSITE_TYPE] : []),
     ];
 
     const alertingFeatures = sloRuleTypes.map((ruleTypeId) => ({
@@ -160,7 +161,9 @@ export class SLOPlugin
 
     core.savedObjects.registerType(slo);
     core.savedObjects.registerType(sloSettings);
-    core.savedObjects.registerType(sloComposite);
+    if (isCompositeSloEnabled) {
+      core.savedObjects.registerType(sloComposite);
+    }
 
     registerBurnRateRule(plugins.alerting, core.http.basePath, this.logger, ruleDataService, {
       alertsLocator,
