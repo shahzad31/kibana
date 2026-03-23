@@ -20,10 +20,7 @@ const compositeSloMemberSchema = t.intersection([
   }),
 ]);
 
-const compositeMethodSchema = t.union([
-  t.literal('weightedAverage'),
-  t.literal('leastHealthy'),
-]);
+const compositeMethodSchema = t.union([t.literal('weightedAverage'), t.literal('leastHealthy')]);
 
 const requiredCompositeSloFields = t.type({
   id: sloIdSchema,
