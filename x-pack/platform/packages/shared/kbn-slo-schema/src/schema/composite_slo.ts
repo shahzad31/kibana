@@ -13,16 +13,16 @@ import { occurrencesBudgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSch
 const compositeSloMemberSchema = t.intersection([
   t.type({
     sloId: sloIdSchema,
+    weight: t.number,
   }),
   t.partial({
     instanceId: t.string,
-    weight: t.number,
   }),
 ]);
 
 const compositeMethodSchema = t.literal('weightedAverage');
 
-const requiredCompositeSloFields = t.type({
+const compositeSloDefinitionSchema = t.type({
   id: sloIdSchema,
   name: t.string,
   description: t.string,
@@ -33,21 +33,12 @@ const requiredCompositeSloFields = t.type({
   objective: objectiveSchema,
   tags: tagsSchema,
   enabled: t.boolean,
-  revision: t.number,
   createdAt: dateType,
   updatedAt: dateType,
-  version: t.number,
-});
-
-const optionalCompositeSloFields = t.partial({
   createdBy: t.string,
   updatedBy: t.string,
+  version: t.number,
 });
-
-const compositeSloDefinitionSchema = t.intersection([
-  requiredCompositeSloFields,
-  optionalCompositeSloFields,
-]);
 
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
 
