@@ -34,6 +34,8 @@ export const findCompositeSLORoute = createSloServerRoute({
       search: query.search,
       pagination: { page, perPage },
       tags,
+      sortBy: query.sortBy,
+      sortDirection: query.sortDirection,
     });
   },
 });

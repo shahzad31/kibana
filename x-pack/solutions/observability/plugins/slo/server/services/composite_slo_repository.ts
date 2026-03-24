@@ -18,6 +18,8 @@ interface SearchParams {
   pagination: Pagination;
   search?: string;
   tags?: string[];
+  sortBy?: 'name' | 'createdAt' | 'updatedAt';
+  sortDirection?: 'asc' | 'desc';
 }
 
 export interface CompositeSLORepository {
@@ -112,20 +114,23 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
     search,
     pagination,
     tags = [],
+    sortBy = 'createdAt',
+    sortDirection = 'desc',
   }: SearchParams): Promise<Paginated<CompositeSLODefinition>> {
     const filter = [];
     if (tags.length > 0) {
       filter.push(`${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${tags.join(' OR ')})`);
     }
 
+    const sortField = sortBy === 'name' ? 'name.keyword' : sortBy;
     const response = await this.soClient.find<StoredCompositeSLODefinition>({
       type: SO_SLO_COMPOSITE_TYPE,
       page: pagination.page,
       perPage: pagination.perPage,
       ...(search && { search, searchFields: ['name'] }),
       ...(filter.length && { filter: filter.join(' AND ') }),
-      sortField: 'id',
-      sortOrder: 'asc',
+      sortField,
+      sortOrder: sortDirection,
     });
 
     return {

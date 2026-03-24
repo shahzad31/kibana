@@ -37,7 +37,6 @@ const compositeSloDefinitionSchema = t.type({
   updatedAt: dateType,
   createdBy: t.string,
   updatedBy: t.string,
-  version: t.number,
 });
 
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
