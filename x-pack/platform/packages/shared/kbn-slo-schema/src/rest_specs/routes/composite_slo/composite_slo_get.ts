@@ -5,8 +5,8 @@
  * 2.0.
  */
 import * as t from 'io-ts';
-import { sloIdSchema } from '../../schema/slo';
-import { compositeSloDefinitionSchema } from '../../schema/composite_slo';
+import { sloIdSchema } from '../../../schema/slo';
+import { compositeSloDefinitionSchema } from '../../../schema/composite_slo';
 
 const getCompositeSLOParamsSchema = t.type({
   path: t.type({

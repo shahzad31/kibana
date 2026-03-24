@@ -5,13 +5,17 @@
  * 2.0.
  */
 import * as t from 'io-ts';
-import { timeWindowSchema } from '../../schema';
-import { budgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSchema } from '../../schema/slo';
+import {
+  occurrencesBudgetingMethodSchema,
+  rollingTimeWindowSchema,
+  targetSchema,
+} from '../../../schema';
+import { sloIdSchema, tagsSchema } from '../../../schema/slo';
 import {
   compositeSloMemberSchema,
   compositeMethodSchema,
   compositeSloDefinitionSchema,
-} from '../../schema/composite_slo';
+} from '../../../schema/composite_slo';
 
 const updateCompositeSLOParamsSchema = t.type({
   path: t.type({
@@ -22,9 +26,9 @@ const updateCompositeSLOParamsSchema = t.type({
     description: t.string,
     members: t.array(compositeSloMemberSchema),
     compositeMethod: compositeMethodSchema,
-    timeWindow: timeWindowSchema,
-    budgetingMethod: budgetingMethodSchema,
-    objective: objectiveSchema,
+    timeWindow: rollingTimeWindowSchema,
+    budgetingMethod: occurrencesBudgetingMethodSchema,
+    objective: targetSchema,
     tags: tagsSchema,
     enabled: t.boolean,
   }),

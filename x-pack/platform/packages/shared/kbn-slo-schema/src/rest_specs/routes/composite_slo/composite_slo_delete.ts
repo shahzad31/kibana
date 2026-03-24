@@ -5,7 +5,7 @@
  * 2.0.
  */
 import * as t from 'io-ts';
-import { sloIdSchema } from '../../schema/slo';
+import { sloIdSchema } from '../../../schema/slo';
 
 const deleteCompositeSLOParamsSchema = t.type({
   path: t.type({

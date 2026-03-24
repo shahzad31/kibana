@@ -5,7 +5,7 @@
  * 2.0.
  */
 import * as t from 'io-ts';
-import { compositeSloDefinitionSchema } from '../../schema/composite_slo';
+import { compositeSloDefinitionSchema } from '../../../schema/composite_slo';
 
 const sortDirectionSchema = t.union([t.literal('asc'), t.literal('desc')]);
 const sortBySchema = t.union([t.literal('name'), t.literal('createdAt'), t.literal('updatedAt')]);

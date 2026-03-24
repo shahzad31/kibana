@@ -5,9 +5,13 @@
  * 2.0.
  */
 import * as t from 'io-ts';
-import { timeWindowSchema } from '../../schema';
-import { budgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSchema } from '../../schema/slo';
-import { compositeSloMemberSchema, compositeMethodSchema } from '../../schema/composite_slo';
+import {
+  occurrencesBudgetingMethodSchema,
+  rollingTimeWindowSchema,
+  targetSchema,
+} from '../../../schema';
+import { sloIdSchema, tagsSchema } from '../../../schema/slo';
+import { compositeSloMemberSchema, compositeMethodSchema } from '../../../schema/composite_slo';
 
 const createCompositeSLOParamsSchema = t.type({
   body: t.intersection([
@@ -16,9 +20,9 @@ const createCompositeSLOParamsSchema = t.type({
       description: t.string,
       members: t.array(compositeSloMemberSchema),
       compositeMethod: compositeMethodSchema,
-      timeWindow: timeWindowSchema,
-      budgetingMethod: budgetingMethodSchema,
-      objective: objectiveSchema,
+      timeWindow: rollingTimeWindowSchema,
+      budgetingMethod: occurrencesBudgetingMethodSchema,
+      objective: targetSchema,
     }),
     t.partial({
       id: sloIdSchema,

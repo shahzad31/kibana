@@ -27,7 +27,7 @@ export const createCompositeSLORoute = createSloServerRoute({
     const repository = new DefaultCompositeSLORepository(soClient, logger);
 
     const core = await context.core;
-    const userId = core.security.authc.getCurrentUser()?.username;
+    const userId = core.security.authc.getCurrentUser()?.username!;
     const now = new Date();
 
     const compositeSlo = {
@@ -35,12 +35,11 @@ export const createCompositeSLORoute = createSloServerRoute({
       id: params.body.id ?? uuidv4(),
       tags: params.body.tags ?? [],
       enabled: params.body.enabled ?? true,
-      revision: 1,
       version: 1,
       createdAt: now,
       updatedAt: now,
-      createdBy: userId ?? undefined,
-      updatedBy: userId ?? undefined,
+      createdBy: userId,
+      updatedBy: userId,
     };
 
     await repository.create(compositeSlo);
