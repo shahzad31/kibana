@@ -6,9 +6,9 @@
  */
 
 import { findCompositeSLOParamsSchema } from '@kbn/slo-schema';
-import { DefaultCompositeSLORepository } from '../../services/composite_slo_repository';
-import { createSloServerRoute } from '../create_slo_server_route';
-import { assertPlatinumLicense } from './utils/assert_platinum_license';
+import { DefaultCompositeSLORepository } from '../../../services/composite_slo_repository';
+import { createSloServerRoute } from '../../create_slo_server_route';
+import { assertPlatinumLicense } from '../utils/assert_platinum_license';
 
 export const findCompositeSLORoute = createSloServerRoute({
   endpoint: 'GET /api/observability/slos/composite 2023-10-31',

@@ -7,9 +7,9 @@
 
 import { createCompositeSLOParamsSchema } from '@kbn/slo-schema';
 import { v4 as uuidv4 } from 'uuid';
-import { DefaultCompositeSLORepository } from '../../services/composite_slo_repository';
-import { createSloServerRoute } from '../create_slo_server_route';
-import { assertPlatinumLicense } from './utils/assert_platinum_license';
+import { DefaultCompositeSLORepository } from '../../../services/composite_slo_repository';
+import { createSloServerRoute } from '../../create_slo_server_route';
+import { assertPlatinumLicense } from '../utils/assert_platinum_license';
 
 export const createCompositeSLORoute = createSloServerRoute({
   endpoint: 'POST /api/observability/slos/composite 2023-10-31',
