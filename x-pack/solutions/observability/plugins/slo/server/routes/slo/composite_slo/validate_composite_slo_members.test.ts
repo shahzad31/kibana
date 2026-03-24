@@ -36,12 +36,12 @@ describe('validateCompositeSloMembers', () => {
   });
 
   it('throws when only one member is provided', () => {
-    expect(() =>
-      validateCompositeSloMembers([{ sloId: 'slo-1', weight: 1 }])
-    ).toThrow(IllegalArgumentError);
-    expect(() =>
-      validateCompositeSloMembers([{ sloId: 'slo-1', weight: 1 }])
-    ).toThrow('A composite SLO requires at least 2 members, got 1');
+    expect(() => validateCompositeSloMembers([{ sloId: 'slo-1', weight: 1 }])).toThrow(
+      IllegalArgumentError
+    );
+    expect(() => validateCompositeSloMembers([{ sloId: 'slo-1', weight: 1 }])).toThrow(
+      'A composite SLO requires at least 2 members, got 1'
+    );
   });
 
   it('throws when a member has zero weight', () => {
