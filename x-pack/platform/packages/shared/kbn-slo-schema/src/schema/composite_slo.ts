@@ -7,47 +7,38 @@
 
 import * as t from 'io-ts';
 import { dateType } from './common';
-import { timeWindowSchema } from './time_window';
-import { budgetingMethodSchema, objectiveSchema, sloIdSchema, tagsSchema } from './slo';
+import { rollingTimeWindowSchema } from './time_window';
+import { occurrencesBudgetingMethodSchema, sloIdSchema, tagsSchema, targetSchema } from './slo';
 
 const compositeSloMemberSchema = t.intersection([
   t.type({
     sloId: sloIdSchema,
-    sloRevision: t.number,
+    weight: t.number,
   }),
   t.partial({
-    weight: t.number,
+    instanceId: t.string,
   }),
 ]);
 
-const compositeMethodSchema = t.union([t.literal('weightedAverage'), t.literal('leastHealthy')]);
+const compositeMethodSchema = t.literal('weightedAverage');
 
-const requiredCompositeSloFields = t.type({
+const compositeSloDefinitionSchema = t.type({
   id: sloIdSchema,
   name: t.string,
   description: t.string,
   members: t.array(compositeSloMemberSchema),
   compositeMethod: compositeMethodSchema,
-  timeWindow: timeWindowSchema,
-  budgetingMethod: budgetingMethodSchema,
-  objective: objectiveSchema,
+  timeWindow: rollingTimeWindowSchema,
+  budgetingMethod: occurrencesBudgetingMethodSchema,
+  objective: targetSchema,
   tags: tagsSchema,
   enabled: t.boolean,
-  revision: t.number,
   createdAt: dateType,
   updatedAt: dateType,
-  version: t.number,
-});
-
-const optionalCompositeSloFields = t.partial({
   createdBy: t.string,
   updatedBy: t.string,
+  version: t.number,
 });
-
-const compositeSloDefinitionSchema = t.intersection([
-  requiredCompositeSloFields,
-  optionalCompositeSloFields,
-]);
 
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
 

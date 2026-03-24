@@ -13,7 +13,7 @@ export const SO_SLO_COMPOSITE_TYPE = 'slo-composite';
 
 export const sloComposite: SavedObjectsType = {
   name: SO_SLO_COMPOSITE_TYPE,
-  hidden: false,
+  hidden: true,
   namespaceType: 'multiple-isolated',
   modelVersions: {
     1: {
@@ -29,6 +29,13 @@ export const sloComposite: SavedObjectsType = {
             enabled: { type: 'boolean' },
             tags: { type: 'keyword' },
             version: { type: 'long' },
+            members: {
+              properties: {
+                sloId: { type: 'keyword' },
+                weight: { type: 'float' },
+                instanceId: { type: 'keyword' },
+              },
+            },
           },
         },
       ],
@@ -43,8 +50,8 @@ export const sloComposite: SavedObjectsType = {
       members: {
         properties: {
           sloId: { type: 'keyword' },
-          sloRevision: { type: 'long' },
           weight: { type: 'float' },
+          instanceId: { type: 'keyword' },
         },
       },
       compositeMethod: { type: 'keyword' },
