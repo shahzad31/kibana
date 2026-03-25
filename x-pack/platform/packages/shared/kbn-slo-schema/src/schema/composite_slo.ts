@@ -35,6 +35,8 @@ const compositeSloDefinitionSchema = t.type({
   enabled: t.boolean,
   createdAt: dateType,
   updatedAt: dateType,
+  createdBy: t.string,
+  updatedBy: t.string,
   version: t.number,
 });
 
