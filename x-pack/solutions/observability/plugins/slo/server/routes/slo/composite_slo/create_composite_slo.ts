@@ -62,6 +62,7 @@ export const createCompositeSLORoute = createSloServerRoute({
       id: params.body.id ?? uuidv4(),
       tags: params.body.tags ?? [],
       enabled: params.body.enabled ?? true,
+      version: 1,
       createdAt: now,
       updatedAt: now,
       createdBy: userId,

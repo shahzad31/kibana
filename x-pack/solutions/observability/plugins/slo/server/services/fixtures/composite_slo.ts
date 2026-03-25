@@ -31,6 +31,7 @@ export const createCompositeSlo = (
     updatedAt: now,
     createdBy: 'testuser',
     updatedBy: 'testuser',
+    version: 1,
     ...overrides,
   };
 };
