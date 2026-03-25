@@ -18,14 +18,12 @@ describe('validateCompositeSloMembers', () => {
     ).not.toThrow();
   });
 
-  it('does not throw for members with fractional positive weights', () => {
-    expect(() =>
-      validateCompositeSloMembers([
-        { sloId: 'slo-1', weight: 0.5 },
-        { sloId: 'slo-2', weight: 0.5 },
-        { sloId: 'slo-3', weight: 1.5 },
-      ])
-    ).not.toThrow();
+  it('does not throw for exactly 25 members', () => {
+    const members = Array.from({ length: 25 }, (_, i) => ({
+      sloId: `slo-${i}`,
+      weight: 1,
+    }));
+    expect(() => validateCompositeSloMembers(members)).not.toThrow();
   });
 
   it('throws when members array is empty', () => {
@@ -44,6 +42,17 @@ describe('validateCompositeSloMembers', () => {
     ).toThrow('A composite SLO requires at least 2 members, got 1');
   });
 
+  it('throws when more than 25 members are provided', () => {
+    const members = Array.from({ length: 26 }, (_, i) => ({
+      sloId: `slo-${i}`,
+      weight: 1,
+    }));
+    expect(() => validateCompositeSloMembers(members)).toThrow(IllegalArgumentError);
+    expect(() => validateCompositeSloMembers(members)).toThrow(
+      'A composite SLO supports at most 25 members, got 26'
+    );
+  });
+
   it('throws when a member has zero weight', () => {
     expect(() =>
       validateCompositeSloMembers([
@@ -56,7 +65,7 @@ describe('validateCompositeSloMembers', () => {
         { sloId: 'slo-1', weight: 1 },
         { sloId: 'slo-2', weight: 0 },
       ])
-    ).toThrow('Member weight must be a positive number, got 0 for SLO [slo-2]');
+    ).toThrow('Member weight must be a positive integer, got 0 for SLO [slo-2]');
   });
 
   it('throws when a member has negative weight', () => {
@@ -71,6 +80,21 @@ describe('validateCompositeSloMembers', () => {
         { sloId: 'slo-1', weight: 1 },
         { sloId: 'slo-2', weight: -3 },
       ])
-    ).toThrow('Member weight must be a positive number, got -3 for SLO [slo-2]');
+    ).toThrow('Member weight must be a positive integer, got -3 for SLO [slo-2]');
+  });
+
+  it('throws when a member has a fractional weight', () => {
+    expect(() =>
+      validateCompositeSloMembers([
+        { sloId: 'slo-1', weight: 1 },
+        { sloId: 'slo-2', weight: 1.5 },
+      ])
+    ).toThrow(IllegalArgumentError);
+    expect(() =>
+      validateCompositeSloMembers([
+        { sloId: 'slo-1', weight: 1 },
+        { sloId: 'slo-2', weight: 1.5 },
+      ])
+    ).toThrow('Member weight must be a positive integer, got 1.5 for SLO [slo-2]');
   });
 });

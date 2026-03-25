@@ -12,7 +12,7 @@ import { assertPlatinumLicense } from '../utils/assert_platinum_license';
 import { validateCompositeSloMembers } from './create_composite_slo';
 
 export const updateCompositeSLORoute = createSloServerRoute({
-  endpoint: 'PUT /api/observability/slos/composite/{id} 2023-10-31',
+  endpoint: 'PUT /api/observability/slo_composites/{id} 2023-10-31',
   options: { access: 'public' },
   security: {
     authz: {
@@ -34,7 +34,6 @@ export const updateCompositeSLORoute = createSloServerRoute({
     const updated = {
       ...existing,
       ...params.body,
-      id: existing.id,
       updatedAt: new Date(),
       updatedBy: userId ?? existing.updatedBy,
     };

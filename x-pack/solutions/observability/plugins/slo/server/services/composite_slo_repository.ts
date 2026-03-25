@@ -127,8 +127,8 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       type: SO_SLO_COMPOSITE_TYPE,
       page: pagination.page,
       perPage: pagination.perPage,
-      ...(search && { search, searchFields: ['name'] }),
-      ...(filter.length && { filter: filter.join(' AND ') }),
+      ...(search ? { search, searchFields: ['name'] } : {}),
+      ...(filter.length > 0 ? { filter: filter.join(' AND ') } : {}),
       sortField,
       sortOrder: sortDirection,
     });

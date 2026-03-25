@@ -11,7 +11,11 @@ import {
   targetSchema,
 } from '../../../schema';
 import { sloIdSchema, tagsSchema } from '../../../schema/slo';
-import { compositeSloMemberSchema, compositeMethodSchema } from '../../../schema/composite_slo';
+import {
+  compositeSloMemberSchema,
+  compositeMethodSchema,
+  compositeSloDefinitionSchema,
+} from '../../../schema/composite_slo';
 
 const createCompositeSLOParamsSchema = t.type({
   body: t.intersection([
@@ -32,13 +36,11 @@ const createCompositeSLOParamsSchema = t.type({
   ]),
 });
 
-const createCompositeSLOResponseSchema = t.type({
-  id: sloIdSchema,
-});
+const createCompositeSLOResponseSchema = compositeSloDefinitionSchema;
 
 type CreateCompositeSLOInput = t.OutputOf<typeof createCompositeSLOParamsSchema.props.body>;
 type CreateCompositeSLOParams = t.TypeOf<typeof createCompositeSLOParamsSchema.props.body>;
-type CreateCompositeSLOResponse = t.TypeOf<typeof createCompositeSLOResponseSchema>;
+type CreateCompositeSLOResponse = t.OutputOf<typeof createCompositeSLOResponseSchema>;
 
 export { createCompositeSLOParamsSchema, createCompositeSLOResponseSchema };
 export type { CreateCompositeSLOInput, CreateCompositeSLOParams, CreateCompositeSLOResponse };

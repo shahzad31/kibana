@@ -14,6 +14,7 @@ import { createSloServerRoute } from '../../create_slo_server_route';
 import { assertPlatinumLicense } from '../utils/assert_platinum_license';
 
 const MIN_MEMBERS = 2;
+const MAX_MEMBERS = 25;
 
 export const validateCompositeSloMembers = (members: CompositeSLOMember[]): void => {
   if (members.length < MIN_MEMBERS) {
@@ -21,17 +22,22 @@ export const validateCompositeSloMembers = (members: CompositeSLOMember[]): void
       `A composite SLO requires at least ${MIN_MEMBERS} members, got ${members.length}`
     );
   }
+  if (members.length > MAX_MEMBERS) {
+    throw new IllegalArgumentError(
+      `A composite SLO supports at most ${MAX_MEMBERS} members, got ${members.length}`
+    );
+  }
   for (const member of members) {
-    if (member.weight <= 0) {
+    if (!Number.isInteger(member.weight) || member.weight <= 0) {
       throw new IllegalArgumentError(
-        `Member weight must be a positive number, got ${member.weight} for SLO [${member.sloId}]`
+        `Member weight must be a positive integer, got ${member.weight} for SLO [${member.sloId}]`
       );
     }
   }
 };
 
 export const createCompositeSLORoute = createSloServerRoute({
-  endpoint: 'POST /api/observability/slos/composite 2023-10-31',
+  endpoint: 'POST /api/observability/slo_composites 2023-10-31',
   options: { access: 'public' },
   security: {
     authz: {
@@ -62,8 +68,6 @@ export const createCompositeSLORoute = createSloServerRoute({
       updatedBy: userId,
     };
 
-    await repository.create(compositeSlo);
-
-    return { id: compositeSlo.id };
+    return await repository.create(compositeSlo);
   },
 });

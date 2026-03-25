@@ -11,7 +11,7 @@ import { createSloServerRoute } from '../../create_slo_server_route';
 import { assertPlatinumLicense } from '../utils/assert_platinum_license';
 
 export const getCompositeSLORoute = createSloServerRoute({
-  endpoint: 'GET /api/observability/slos/composite/{id} 2023-10-31',
+  endpoint: 'GET /api/observability/slo_composites/{id} 2023-10-31',
   options: { access: 'public' },
   security: {
     authz: {
