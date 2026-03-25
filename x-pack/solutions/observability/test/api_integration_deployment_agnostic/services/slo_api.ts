@@ -410,11 +410,7 @@ export function SloApiProvider({ getService }: DeploymentAgnosticFtrProviderCont
       return body;
     },
 
-    async deleteCompositeSlo(
-      id: string,
-      roleAuthc: RoleCredentials,
-      expectedStatus: number = 204
-    ) {
+    async deleteCompositeSlo(id: string, roleAuthc: RoleCredentials, expectedStatus: number = 204) {
       return await supertestWithoutAuth
         .delete(`/api/observability/slo_composites/${id}`)
         .set(roleAuthc.apiKeyHeader)
