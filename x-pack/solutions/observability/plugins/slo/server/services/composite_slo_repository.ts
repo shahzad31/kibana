@@ -121,7 +121,9 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
     const filter = [];
     if (tags.length > 0) {
       filter.push(
-        `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${tags.map((tag) => escapeKuery(tag)).join(' OR ')})`
+        `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${tags
+          .map((tag) => escapeKuery(tag))
+          .join(' OR ')})`
       );
     }
 
