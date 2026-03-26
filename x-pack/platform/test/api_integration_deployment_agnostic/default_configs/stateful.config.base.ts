@@ -41,6 +41,10 @@ interface CreateTestConfigOptions<T> {
   junit: { reportName: string };
   suiteTags?: { include?: string[]; exclude?: string[] };
   indexRefreshInterval?: string | false;
+  /** Additional Elasticsearch server args merged into the default stateful test cluster args */
+  esTestCluster?: { serverArgs?: string[] };
+  /** Additional Kibana server CLI args merged into the default stateful test server args */
+  kbnTestServer?: { serverArgs?: string[] };
 }
 
 export function createStatefulTestConfig<T extends DeploymentAgnosticCommonServices>(
@@ -115,7 +119,6 @@ export function createStatefulTestConfig<T extends DeploymentAgnosticCommonServi
           `xpack.security.authc.realms.saml.${MOCK_IDP_REALM_NAME}.attributes.name=${MOCK_IDP_ATTRIBUTE_NAME}`,
           `xpack.security.authc.realms.saml.${MOCK_IDP_REALM_NAME}.attributes.mail=${MOCK_IDP_ATTRIBUTE_EMAIL}`,
           `path.repo=${AI_ASSISTANT_SNAPSHOT_REPO_PATH},${STREAMS_SNAPSHOT_REPO_PATH}`,
-          // @ts-expect-error - allow custom ES server args from test configs
           ...(options?.esTestCluster?.serverArgs ?? []),
         ],
         files: [
@@ -153,7 +156,6 @@ export function createStatefulTestConfig<T extends DeploymentAgnosticCommonServi
           ...(dockerRegistryPort
             ? [`--xpack.fleet.registryUrl=http://localhost:${dockerRegistryPort}`]
             : []),
-          // @ts-expect-error
           ...(options?.kbnTestServer?.serverArgs ?? []),
         ],
       },

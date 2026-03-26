@@ -420,9 +420,17 @@ export function SloApiProvider({ getService }: DeploymentAgnosticFtrProviderCont
     },
 
     async deleteAllCompositeSlos(roleAuthc: RoleCredentials) {
-      const response = await this.findCompositeSlos(roleAuthc);
-      for (const { id } of response.results) {
-        await this.deleteCompositeSlo(id, roleAuthc);
+      while (true) {
+        const response = await this.findCompositeSlos(roleAuthc, {
+          page: '1',
+          perPage: '100',
+        });
+        if (response.results.length === 0) {
+          break;
+        }
+        for (const { id } of response.results) {
+          await this.deleteCompositeSlo(id, roleAuthc);
+        }
       }
     },
 

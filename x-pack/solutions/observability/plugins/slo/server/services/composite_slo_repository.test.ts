@@ -7,6 +7,7 @@
 
 import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
 import { savedObjectsClientMock } from '@kbn/core-saved-objects-api-server-mocks';
+import { escapeKuery } from '@kbn/es-query';
 import { loggerMock } from '@kbn/logging-mocks';
 import type { Logger } from '@kbn/core/server';
 import { storedCompositeSloDefinitionSchema } from '@kbn/slo-schema';
@@ -111,7 +112,7 @@ describe('DefaultCompositeSLORepository', () => {
       expect(soClient.find).toHaveBeenCalledWith(
         expect.objectContaining({
           type: SO_SLO_COMPOSITE_TYPE,
-          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${compositeSlo.id})`,
+          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${escapeKuery(compositeSlo.id)})`,
         })
       );
     });
@@ -220,7 +221,7 @@ describe('DefaultCompositeSLORepository', () => {
 
       expect(soClient.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (critical OR production)`,
+          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${escapeKuery('critical')} OR ${escapeKuery('production')})`,
         })
       );
     });

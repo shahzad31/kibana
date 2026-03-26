@@ -7,6 +7,7 @@
 
 import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
 import type { Logger } from '@kbn/core/server';
+import { escapeKuery } from '@kbn/es-query';
 import type { Paginated, Pagination } from '@kbn/slo-schema';
 import { compositeSloDefinitionSchema, storedCompositeSloDefinitionSchema } from '@kbn/slo-schema';
 import { isLeft } from 'fp-ts/Either';
@@ -37,7 +38,7 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
     const existingResponse = await this.soClient.find<StoredCompositeSLODefinition>({
       type: SO_SLO_COMPOSITE_TYPE,
       perPage: 1,
-      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${compositeSlo.id})`,
+      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${escapeKuery(compositeSlo.id)})`,
     });
 
     if (existingResponse.total > 0) {
@@ -57,7 +58,7 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
     const findResponse = await this.soClient.find<StoredCompositeSLODefinition>({
       type: SO_SLO_COMPOSITE_TYPE,
       perPage: 1,
-      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${compositeSlo.id})`,
+      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${escapeKuery(compositeSlo.id)})`,
     });
 
     if (findResponse.total === 0) {
@@ -80,7 +81,7 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       type: SO_SLO_COMPOSITE_TYPE,
       page: 1,
       perPage: 1,
-      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${id})`,
+      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${escapeKuery(id)})`,
     });
 
     if (response.total === 0) {
@@ -100,7 +101,7 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       type: SO_SLO_COMPOSITE_TYPE,
       page: 1,
       perPage: 1,
-      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${id})`,
+      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${escapeKuery(id)})`,
     });
 
     if (response.total === 0) {
@@ -119,7 +120,9 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
   }: SearchParams): Promise<Paginated<CompositeSLODefinition>> {
     const filter = [];
     if (tags.length > 0) {
-      filter.push(`${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${tags.join(' OR ')})`);
+      filter.push(
+        `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${tags.map((tag) => escapeKuery(tag)).join(' OR ')})`
+      );
     }
 
     const sortField = sortBy === 'name' ? 'name.keyword' : sortBy;

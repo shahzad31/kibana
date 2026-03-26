@@ -14,7 +14,6 @@ export default createStatefulTestConfig<typeof services>({
   junit: {
     reportName: 'Stateful Observability - Deployment-agnostic API Integration Tests',
   },
-  // @ts-expect-error
   kbnTestServer: {
     serverArgs: ['--xpack.slo.experimental.compositeSlo.enabled=true'],
   },
