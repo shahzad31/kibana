@@ -221,7 +221,9 @@ describe('DefaultCompositeSLORepository', () => {
 
       expect(soClient.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${escapeKuery('critical')} OR ${escapeKuery('production')})`,
+          filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.tags: (${escapeKuery(
+            'critical'
+          )} OR ${escapeKuery('production')})`,
         })
       );
     });
