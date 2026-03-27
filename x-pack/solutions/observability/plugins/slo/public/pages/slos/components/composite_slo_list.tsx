@@ -9,6 +9,8 @@ import {
   EuiBasicTable,
   EuiBasicTableColumn,
   EuiBadge,
+  EuiButtonIcon,
+  type CriteriaWithPagination,
   EuiFlexGroup,
   EuiFlexItem,
   EuiLoadingSpinner,
@@ -17,8 +19,8 @@ import {
 } from '@elastic/eui';
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
-import type { FindCompositeSLOResponse } from '@kbn/slo-schema';
-import React, { useMemo, useState } from 'react';
+import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-schema';
+import React, { useCallback, useMemo, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
 import { useFetchCompositeSloDetails } from '../../../hooks/use_fetch_composite_slo_details';
@@ -35,6 +37,7 @@ export const CompositeSloList = () => {
 
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(25);
+  const [expandedRows, setExpandedRows] = useState<Record<string, React.ReactNode>>({});
 
   const { data, isLoading, isError } = useFetchCompositeSloList({
     page: page + 1,
@@ -48,8 +51,64 @@ export const CompositeSloList = () => {
   const { detailsById, isLoading: isDetailsLoading } =
     useFetchCompositeSloDetails(compositeIds);
 
+  const toggleExpandRow = useCallback(
+    (item: CompositeSLOItem) => {
+      setExpandedRows((prev) => {
+        const next = { ...prev };
+        if (next[item.id]) {
+          delete next[item.id];
+          return next;
+        }
+
+        const details = detailsById.get(item.id);
+        if (!details || !details.components?.length) {
+          next[item.id] = (
+            <EuiText size="s" color="subdued" style={{ padding: 16 }}>
+              {i18n.translate('xpack.slo.compositeSloList.noComponents', {
+                defaultMessage: 'No member SLI data available',
+              })}
+            </EuiText>
+          );
+          return next;
+        }
+
+        next[item.id] = (
+          <MemberComponentsTable
+            components={details.components}
+            percentFormat={percentFormat}
+          />
+        );
+        return next;
+      });
+    },
+    [detailsById, percentFormat]
+  );
+
   const columns: Array<EuiBasicTableColumn<CompositeSLOItem>> = useMemo(
     () => [
+      {
+        width: '40px',
+        isExpander: true,
+        render: (item: CompositeSLOItem) => {
+          const isExpanded = !!expandedRows[item.id];
+          return (
+            <EuiButtonIcon
+              data-test-subj={`compositeSloExpandRow-${item.id}`}
+              onClick={() => toggleExpandRow(item)}
+              aria-label={
+                isExpanded
+                  ? i18n.translate('xpack.slo.compositeSloList.collapseRow', {
+                      defaultMessage: 'Collapse',
+                    })
+                  : i18n.translate('xpack.slo.compositeSloList.expandRow', {
+                      defaultMessage: 'Expand',
+                    })
+              }
+              iconType={isExpanded ? 'arrowDown' : 'arrowRight'}
+            />
+          );
+        },
+      },
       {
         field: 'summary.status',
         name: i18n.translate('xpack.slo.compositeSloList.columns.status', {
@@ -151,7 +210,7 @@ export const CompositeSloList = () => {
         },
       },
     ],
-    [detailsById, percentFormat]
+    [detailsById, expandedRows, percentFormat, toggleExpandRow]
   );
 
   if (isLoading) {
@@ -179,6 +238,8 @@ export const CompositeSloList = () => {
       data-test-subj="compositeSloList"
       items={results}
       columns={columns}
+      itemId="id"
+      itemIdToExpandedRowMap={expandedRows}
       rowHeader="name"
       loading={isDetailsLoading}
       pagination={{
@@ -187,15 +248,88 @@ export const CompositeSloList = () => {
         totalItemCount: total,
         pageSizeOptions: [10, 25, 50],
       }}
-      onChange={({ page: pagination }) => {
+      onChange={({ page: pagination }: CriteriaWithPagination<CompositeSLOItem>) => {
         if (pagination) {
-          setPage(pagination.pageIndex);
-          setPerPage(pagination.pageSize);
+          setPage(pagination.index);
+          setPerPage(pagination.size);
         }
       }}
       noItemsMessage={i18n.translate('xpack.slo.compositeSloList.noItems', {
         defaultMessage: 'No composite SLOs found',
       })}
+    />
+  );
+};
+
+const getMemberColumns = (
+  percentFormat: string
+): Array<EuiBasicTableColumn<CompositeSLOComponent>> => [
+  {
+    field: 'name',
+    name: i18n.translate('xpack.slo.compositeSloList.members.name', {
+      defaultMessage: 'Member SLO',
+    }),
+    truncateText: true,
+  },
+  {
+    field: 'instanceId',
+    name: i18n.translate('xpack.slo.compositeSloList.members.instanceId', {
+      defaultMessage: 'Instance',
+    }),
+    width: '220px',
+    render: (instanceId?: string) => instanceId ?? NOT_AVAILABLE_LABEL,
+  },
+  {
+    field: 'weight',
+    name: i18n.translate('xpack.slo.compositeSloList.members.weight', {
+      defaultMessage: 'Weight',
+    }),
+    width: '80px',
+  },
+  {
+    field: 'normalisedWeight',
+    name: i18n.translate('xpack.slo.compositeSloList.members.normalisedWeight', {
+      defaultMessage: 'Normalised weight',
+    }),
+    width: '140px',
+    render: (value: number) =>
+      value === -1 ? NOT_AVAILABLE_LABEL : numeral(value).format(percentFormat),
+  },
+  {
+    field: 'sliValue',
+    name: i18n.translate('xpack.slo.compositeSloList.members.sliValue', {
+      defaultMessage: 'SLI value',
+    }),
+    width: '100px',
+    render: (value: number) =>
+      value === -1 ? NOT_AVAILABLE_LABEL : numeral(value).format(percentFormat),
+  },
+  {
+    field: 'contribution',
+    name: i18n.translate('xpack.slo.compositeSloList.members.contribution', {
+      defaultMessage: 'Contribution',
+    }),
+    width: '110px',
+    render: (value: number) => numeral(value).format(percentFormat),
+  },
+];
+
+const MemberComponentsTable = ({
+  components,
+  percentFormat,
+}: {
+  components: CompositeSLOComponent[];
+  percentFormat: string;
+}) => {
+  const columns = useMemo(() => getMemberColumns(percentFormat), [percentFormat]);
+
+  return (
+    <EuiBasicTable
+      data-test-subj="compositeSloMembersTable"
+      items={components}
+      columns={columns}
+      itemId="id"
+      compressed
     />
   );
 };
