@@ -20,7 +20,7 @@ import {
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
 import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-schema';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
 import { useFetchCompositeHistoricalSummary } from '../../../hooks/use_fetch_composite_historical_summary';
@@ -29,6 +29,10 @@ import { useFetchCompositeSloList } from '../../../hooks/use_fetch_composite_slo
 import { useKibana } from '../../../hooks/use_kibana';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
 import { SloSparkline } from './slo_sparkline';
+
+const SLODetailsFlyout = lazy(
+  () => import('../../../pages/slo_details/shared_flyout/slo_details_flyout')
+);
 
 type CompositeSLOItem = FindCompositeSLOResponse['results'][number];
 
@@ -190,8 +194,7 @@ export function CompositeSloList() {
           const historicalData = historicalSummaryById.get(item.id);
           const details = detailsById.get(item.id);
           const isFailed =
-            details?.summary.status === 'VIOLATED' ||
-            details?.summary.status === 'DEGRADING';
+            details?.summary.status === 'VIOLATED' || details?.summary.status === 'DEGRADING';
           return (
             <SloSparkline
               chart="line"
@@ -231,7 +234,14 @@ export function CompositeSloList() {
         },
       },
     ],
-    [detailsById, expandedRows, historicalSummaryById, isHistoricalLoading, percentFormat, toggleExpandRow]
+    [
+      detailsById,
+      expandedRows,
+      historicalSummaryById,
+      isHistoricalLoading,
+      percentFormat,
+      toggleExpandRow,
+    ]
   );
 
   if (isLoading) {
@@ -344,14 +354,33 @@ function MemberComponentsTable({
   percentFormat: string;
 }) {
   const columns = useMemo(() => getMemberColumns(percentFormat), [percentFormat]);
+  const [selectedMember, setSelectedMember] = useState<CompositeSLOComponent | null>(null);
 
   return (
-    <EuiBasicTable
-      data-test-subj="compositeSloMembersTable"
-      items={components}
-      columns={columns}
-      itemId="id"
-      compressed
-    />
+    <div css={{ padding: '16px' }}>
+      <EuiBasicTable
+        tableCaption={i18n.translate('xpack.slo.compositeSloList.members.tableCaption', {
+          defaultMessage: 'Member SLOs',
+        })}
+        data-test-subj="compositeSloMembersTable"
+        items={components}
+        columns={columns}
+        itemId="id"
+        compressed
+        rowProps={(item: CompositeSLOComponent) => ({
+          onClick: () => setSelectedMember(item),
+          style: { cursor: 'pointer' },
+        })}
+      />
+      {selectedMember && (
+        <Suspense fallback={<EuiLoadingSpinner size="m" />}>
+          <SLODetailsFlyout
+            sloId={selectedMember.id}
+            sloInstanceId={selectedMember.instanceId}
+            onClose={() => setSelectedMember(null)}
+          />
+        </Suspense>
+      )}
+    </div>
   );
 }
