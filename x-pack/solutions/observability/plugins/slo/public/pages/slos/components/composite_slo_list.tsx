@@ -51,8 +51,10 @@ const columns: Array<EuiBasicTableColumn<CompositeSLOItem>> = [
       defaultMessage: 'Time window',
     }),
     width: '140px',
-    render: (timeWindow: CompositeSLOItem['timeWindow']) =>
-      `${timeWindow.duration} (${timeWindow.type})`,
+    render: (timeWindow: Record<string, unknown>) => {
+      const duration = timeWindow.duration as Record<string, unknown>;
+      return `${duration.value}${duration.unit} (${timeWindow.type})`;
+    },
   },
   {
     field: 'members',
