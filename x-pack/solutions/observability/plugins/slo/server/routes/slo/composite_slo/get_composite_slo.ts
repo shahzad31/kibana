@@ -38,11 +38,7 @@ export const getCompositeSLORoute = createSloServerRoute({
       scopedClusterClient.asCurrentUser,
       burnRatesClient
     );
-    const getCompositeSLO = new GetCompositeSLO(
-      compositeSloRepository,
-      repository,
-      summaryClient
-    );
+    const getCompositeSLO = new GetCompositeSLO(compositeSloRepository, repository, summaryClient);
 
     return await getCompositeSLO.execute(params.path.id);
   },

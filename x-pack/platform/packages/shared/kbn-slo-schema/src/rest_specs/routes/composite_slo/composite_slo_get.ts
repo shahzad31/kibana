@@ -10,6 +10,13 @@ import {
   compositeSloDefinitionSchema,
   compositeSloSummarySchema,
 } from '../../../schema/composite_slo';
+import { sloIdSchema } from '../../../schema/slo';
+
+const getCompositeSLOParamsSchema = t.type({
+  path: t.type({
+    id: sloIdSchema,
+  }),
+});
 
 const getCompositeSLOResponseSchema = t.intersection([
   compositeSloDefinitionSchema,
@@ -21,5 +28,5 @@ const getCompositeSLOResponseSchema = t.intersection([
 
 type GetCompositeSLOResponse = t.OutputOf<typeof getCompositeSLOResponseSchema>;
 
-export { getCompositeSLOResponseSchema };
+export { getCompositeSLOParamsSchema, getCompositeSLOResponseSchema };
 export type { GetCompositeSLOResponse };
