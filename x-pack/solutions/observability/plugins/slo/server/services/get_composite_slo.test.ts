@@ -15,7 +15,7 @@ import {
 } from './mocks';
 import type { CompositeSLORepository } from './composite_slo_repository';
 import type { SLODefinitionRepository } from './slo_definition_repository';
-import type { SummaryClient } from './summary_client';
+import type { BurnRateWindow, SummaryClient } from './summary_client';
 import type { Summary } from '../domain/models';
 
 const buildSummary = (overrides: Partial<Summary> = {}): Summary => ({
@@ -26,6 +26,22 @@ const buildSummary = (overrides: Partial<Summary> = {}): Summary => ({
   oneHourBurnRate: 0.9,
   oneDayBurnRate: 0.8,
   ...overrides,
+});
+
+const buildBurnRateWindows = (slis: {
+  '5m': number;
+  '1h': number;
+  '1d': number;
+}): BurnRateWindow[] => [
+  { name: '5m', burnRate: 0, sli: slis['5m'] },
+  { name: '1h', burnRate: 0, sli: slis['1h'] },
+  { name: '1d', burnRate: 0, sli: slis['1d'] },
+];
+
+const DEFAULT_BURN_RATE_WINDOWS = buildBurnRateWindows({
+  '5m': 0.995,
+  '1h': 0.995,
+  '1d': 0.995,
 });
 
 describe('GetCompositeSLO', () => {
@@ -41,7 +57,7 @@ describe('GetCompositeSLO', () => {
     getCompositeSLO = new GetCompositeSLO(mockCompositeRepo, mockSloRepo, mockSummaryClient);
   });
 
-  it('computes weighted SLI from component SLOs', async () => {
+  it('derives composite burn rates from composite per-window SLIs and composite target', async () => {
     const sloA = createSLO({
       id: 'slo-a-xxxxxxxx',
       name: 'Service A',
@@ -74,6 +90,11 @@ describe('GetCompositeSLO', () => {
           oneHourBurnRate: 0.8,
           oneDayBurnRate: 0.5,
         }),
+        burnRateWindows: buildBurnRateWindows({
+          '5m': 0.999,
+          '1h': 0.9992,
+          '1d': 0.9995,
+        }),
       })
       .mockResolvedValueOnce({
         groupings: {},
@@ -84,21 +105,31 @@ describe('GetCompositeSLO', () => {
           oneHourBurnRate: 1.5,
           oneDayBurnRate: 1.0,
         }),
+        burnRateWindows: buildBurnRateWindows({
+          '5m': 0.998,
+          '1h': 0.9985,
+          '1d': 0.999,
+        }),
       });
 
     const result = await getCompositeSLO.execute(composite.id);
 
     // normalisedWeight: sloA = 6/10 = 0.6, sloB = 4/10 = 0.4
-    // compositeSLI = 0.6 * 0.995 + 0.4 * 0.98 = 0.597 + 0.392 = 0.989
+    // compositeSLI = 0.6 * 0.995 + 0.4 * 0.98 = 0.989 (below target of 0.99)
+    // consumed = (1 - 0.989) / 0.01 = 1.1 → budget exhausted → VIOLATED
     expect(result.summary.sliValue).toBeCloseTo(0.989, 3);
-    expect(result.summary.status).toBe('DEGRADING');
+    expect(result.summary.status).toBe('VIOLATED');
 
-    // composite 5m burn rate = 0.6 * 1.0 + 0.4 * 2.0 = 1.4
-    expect(result.summary.fiveMinuteBurnRate).toBeCloseTo(1.4, 3);
-    // composite 1h burn rate = 0.6 * 0.8 + 0.4 * 1.5 = 1.08
-    expect(result.summary.oneHourBurnRate).toBeCloseTo(1.08, 3);
-    // composite 1d burn rate = 0.6 * 0.5 + 0.4 * 1.0 = 0.7
-    expect(result.summary.oneDayBurnRate).toBeCloseTo(0.7, 3);
+    // composite 5m SLI  = 0.6 * 0.999  + 0.4 * 0.998  = 0.9986
+    // composite 1h SLI  = 0.6 * 0.9992 + 0.4 * 0.9985 = 0.99892
+    // composite 1d SLI  = 0.6 * 0.9995 + 0.4 * 0.999  = 0.9993
+    // composite error budget = 1 - 0.99 = 0.01
+    // composite 5m burn rate = (1 - 0.9986) / 0.01 = 0.14
+    expect(result.summary.fiveMinuteBurnRate).toBeCloseTo(0.14, 3);
+    // composite 1h burn rate = (1 - 0.99892) / 0.01 = 0.108
+    expect(result.summary.oneHourBurnRate).toBeCloseTo(0.108, 3);
+    // composite 1d burn rate = (1 - 0.9993) / 0.01 = 0.07
+    expect(result.summary.oneDayBurnRate).toBeCloseTo(0.07, 3);
 
     expect(result.components).toHaveLength(2);
     expect(result.components[0]).toMatchObject({
@@ -113,6 +144,59 @@ describe('GetCompositeSLO', () => {
       weight: 4,
       normalisedWeight: 0.4,
     });
+  });
+
+  it('produces consistent burn rates when member targets differ from composite target', async () => {
+    const sloA = createSLO({
+      id: 'slo-a-xxxxxxxx',
+      name: 'High Target',
+      indicator: createAPMTransactionErrorRateIndicator(),
+      objective: { target: 0.999 },
+    });
+    const sloB = createSLO({
+      id: 'slo-b-xxxxxxxx',
+      name: 'Low Target',
+      indicator: createAPMTransactionErrorRateIndicator(),
+      objective: { target: 0.90 },
+    });
+
+    const composite = createCompositeSlo({
+      members: [
+        { sloId: sloA.id, weight: 1 },
+        { sloId: sloB.id, weight: 1 },
+      ],
+      objective: { target: 0.95 },
+    });
+
+    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
+
+    // sloA: 5m SLI = 0.990 → member burn rate = 0.010/0.001 = 10.0
+    // sloB: 5m SLI = 0.95  → member burn rate = 0.05/0.10 = 0.5
+    // Old approach: 0.5 * 10.0 + 0.5 * 0.5 = 5.25 (misleadingly high!)
+    mockSummaryClient.computeSummary
+      .mockResolvedValueOnce({
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.990, fiveMinuteBurnRate: 10.0 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': 0.990, '1h': 0.995, '1d': 0.998 }),
+      })
+      .mockResolvedValueOnce({
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.95, fiveMinuteBurnRate: 0.5 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': 0.95, '1h': 0.96, '1d': 0.97 }),
+      });
+
+    const result = await getCompositeSLO.execute(composite.id);
+
+    // composite 5m SLI = 0.5 * 0.990 + 0.5 * 0.95 = 0.97
+    // composite error budget = 1 - 0.95 = 0.05
+    // composite 5m burn rate = (1 - 0.97) / 0.05 = 0.6
+    // The composite is healthy (SLI 97% vs target 95%), burn rate < 1
+    expect(result.summary.fiveMinuteBurnRate).toBeCloseTo(0.6, 3);
+    expect(result.summary.oneHourBurnRate).toBeCloseTo(0.45, 3);
+    expect(result.summary.oneDayBurnRate).toBeCloseTo(0.32, 3);
   });
 
   it('computes error budget from composite SLI and target', async () => {
@@ -133,6 +217,7 @@ describe('GetCompositeSLO', () => {
       groupings: {},
       meta: {},
       summary: buildSummary({ sliValue: 0.995 }),
+      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
     });
 
     const result = await getCompositeSLO.execute(composite.id);
@@ -173,11 +258,13 @@ describe('GetCompositeSLO', () => {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: 0.995 }),
+        burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
       })
       .mockResolvedValueOnce({
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
       });
 
     const result = await getCompositeSLO.execute(composite.id);
@@ -217,11 +304,13 @@ describe('GetCompositeSLO', () => {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
       })
       .mockResolvedValueOnce({
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
       });
 
     const result = await getCompositeSLO.execute(composite.id);
@@ -253,6 +342,7 @@ describe('GetCompositeSLO', () => {
       groupings: {},
       meta: {},
       summary: buildSummary({ sliValue: 0.995 }),
+      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
     });
 
     const result = await getCompositeSLO.execute(composite.id);
@@ -281,6 +371,7 @@ describe('GetCompositeSLO', () => {
       groupings: {},
       meta: {},
       summary: buildSummary({ sliValue: 0.999 }),
+      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
     });
 
     const result = await getCompositeSLO.execute(composite.id);
@@ -310,6 +401,7 @@ describe('GetCompositeSLO', () => {
       groupings: {},
       meta: {},
       summary: buildSummary({ sliValue: 0.95 }),
+      burnRateWindows: buildBurnRateWindows({ '5m': 0.95, '1h': 0.95, '1d': 0.95 }),
     });
 
     const result = await getCompositeSLO.execute(composite.id);
