@@ -33,10 +33,17 @@ interface Params {
   remoteName?: string;
 }
 
+export interface BurnRateWindow {
+  name: string;
+  burnRate: number;
+  sli: number;
+}
+
 interface SummaryResult {
   summary: Summary;
   groupings: Groupings;
   meta: Meta;
+  burnRateWindows: BurnRateWindow[];
 }
 
 // This is called "SummaryClient" but is responsible for:
@@ -139,6 +146,7 @@ export class DefaultSummaryClient implements SummaryClient {
       },
       groupings: groupings ? getFlattenedGroupings({ groupBy: slo.groupBy, groupings }) : {},
       meta: getMetaFields(slo, source ?? {}),
+      burnRateWindows: burnRates,
     };
   }
 }
