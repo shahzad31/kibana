@@ -51,100 +51,148 @@ export interface SummaryClient {
   computeSummaries(paramsList: Params[]): Promise<SummaryResult[]>;
 }
 
+const DEFAULT_BURN_RATE_WINDOWS = [
+  { name: '5m', duration: new Duration(5, DurationUnit.Minute) },
+  { name: '1h', duration: new Duration(1, DurationUnit.Hour) },
+  { name: '1d', duration: new Duration(1, DurationUnit.Day) },
+];
+
+interface ResolvedParams {
+  slo: SLODefinition;
+  instanceId?: string;
+  remoteName?: string;
+  dateRange: DateRange;
+  shouldIncludeInstanceIdFilter: boolean;
+  index: string;
+}
+
+const resolveIndex = (remoteName?: string) =>
+  remoteName
+    ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}`
+    : SLI_DESTINATION_INDEX_PATTERN;
+
+const resolveParams = ({ slo, instanceId, remoteName }: Params): ResolvedParams => {
+  const dateRange = toDateRange(slo.timeWindow);
+  const isDefinedWithGroupBy = ![slo.groupBy].flat().includes(ALL_VALUE);
+  const hasInstanceId = instanceId !== ALL_VALUE;
+  const shouldIncludeInstanceIdFilter = isDefinedWithGroupBy && hasInstanceId;
+
+  return {
+    slo,
+    instanceId,
+    remoteName,
+    dateRange,
+    shouldIncludeInstanceIdFilter,
+    index: resolveIndex(remoteName),
+  };
+};
+
+const buildSearchBody = ({
+  slo,
+  instanceId,
+  dateRange,
+  shouldIncludeInstanceIdFilter,
+}: ResolvedParams) => {
+  const instanceIdFilter = shouldIncludeInstanceIdFilter
+    ? [{ term: { 'slo.instanceId': instanceId } }]
+    : [];
+
+  return {
+    size: 0 as const,
+    query: {
+      bool: {
+        filter: [
+          { term: { 'slo.id': slo.id } },
+          { term: { 'slo.revision': slo.revision } },
+          {
+            range: {
+              '@timestamp': {
+                gte: dateRange.from.toISOString(),
+                lte: dateRange.to.toISOString(),
+              },
+            },
+          },
+          ...instanceIdFilter,
+        ],
+      },
+    },
+    aggs: {
+      ...(shouldIncludeInstanceIdFilter && {
+        last_doc: {
+          top_hits: {
+            sort: [{ '@timestamp': { order: 'desc' as const } }],
+            _source: {
+              includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
+            },
+            size: 1,
+          },
+        },
+      }),
+      ...buildAggs(slo),
+    },
+  };
+};
+
+type SummaryAggregations = {
+  good: AggregationsSumAggregate;
+  total: AggregationsSumAggregate;
+  last_doc?: AggregationsTopHitsAggregate;
+};
+
+const toSummaryResult = (
+  slo: SLODefinition,
+  dateRange: DateRange,
+  aggregations: SummaryAggregations | undefined,
+  burnRates: BurnRateWindow[]
+): SummaryResult => {
+  const source = aggregations?.last_doc?.hits?.hits?.[0]?._source as
+    | {
+        slo?: { groupings?: Groupings };
+        monitor?: { id?: string };
+        config_id?: string;
+        observer?: { name?: string };
+      }
+    | undefined;
+  const groupings = source?.slo?.groupings;
+
+  const sliValue = computeSliValue(slo, dateRange, aggregations);
+  const errorBudget = computeErrorBudget(slo, sliValue);
+
+  return {
+    summary: {
+      sliValue,
+      errorBudget,
+      status: computeSummaryStatus(slo.objective, sliValue, errorBudget),
+      fiveMinuteBurnRate: getBurnRate('5m', burnRates),
+      oneHourBurnRate: getBurnRate('1h', burnRates),
+      oneDayBurnRate: getBurnRate('1d', burnRates),
+    },
+    groupings: groupings ? getFlattenedGroupings({ groupBy: slo.groupBy, groupings }) : {},
+    meta: getMetaFields(slo, source ?? {}),
+    burnRateWindows: burnRates,
+  };
+};
+
 export class DefaultSummaryClient implements SummaryClient {
   constructor(private esClient: ElasticsearchClient, private burnRatesClient: BurnRatesClient) {}
 
-  async computeSummary({ slo, instanceId, remoteName }: Params): Promise<SummaryResult> {
-    const dateRange = toDateRange(slo.timeWindow);
-    const isDefinedWithGroupBy = ![slo.groupBy].flat().includes(ALL_VALUE);
-    const hasInstanceId = instanceId !== ALL_VALUE;
-    const shouldIncludeInstanceIdFilter = isDefinedWithGroupBy && hasInstanceId;
+  async computeSummary(params: Params): Promise<SummaryResult> {
+    const resolved = resolveParams(params);
+    const { slo, instanceId, remoteName, dateRange, index } = resolved;
 
-    const instanceIdFilter = shouldIncludeInstanceIdFilter
-      ? [{ term: { 'slo.instanceId': instanceId } }]
-      : [];
-
-    const result = await this.esClient.search<
-      any,
-      {
-        good: AggregationsSumAggregate;
-        total: AggregationsSumAggregate;
-        last_doc: AggregationsTopHitsAggregate;
-      }
-    >({
-      index: remoteName
-        ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}`
-        : SLI_DESTINATION_INDEX_PATTERN,
-      size: 0,
-      query: {
-        bool: {
-          filter: [
-            { term: { 'slo.id': slo.id } },
-            { term: { 'slo.revision': slo.revision } },
-            {
-              range: {
-                '@timestamp': {
-                  gte: dateRange.from.toISOString(),
-                  lte: dateRange.to.toISOString(),
-                },
-              },
-            },
-            ...instanceIdFilter,
-          ],
-        },
-      },
-      aggs: {
-        ...(shouldIncludeInstanceIdFilter && {
-          last_doc: {
-            top_hits: {
-              sort: [
-                {
-                  '@timestamp': {
-                    order: 'desc',
-                  },
-                },
-              ],
-              _source: {
-                includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
-              },
-              size: 1,
-            },
-          },
-        }),
-        ...buildAggs(slo),
-      },
+    const result = await this.esClient.search<any, SummaryAggregations>({
+      index,
+      ...buildSearchBody(resolved),
     });
-
-    const source = result.aggregations?.last_doc?.hits?.hits?.[0]?._source;
-    const groupings = source?.slo?.groupings;
-
-    const sliValue = computeSliValue(slo, dateRange, result.aggregations);
-    const errorBudget = computeErrorBudget(slo, sliValue);
 
     const burnRates = await this.burnRatesClient.calculate(
       slo,
       instanceId ?? ALL_VALUE,
-      [
-        { name: '5m', duration: new Duration(5, DurationUnit.Minute) },
-        { name: '1h', duration: new Duration(1, DurationUnit.Hour) },
-        { name: '1d', duration: new Duration(1, DurationUnit.Day) },
-      ],
+      DEFAULT_BURN_RATE_WINDOWS,
       remoteName
     );
 
-    return {
-      summary: {
-        sliValue,
-        errorBudget,
-        status: computeSummaryStatus(slo.objective, sliValue, errorBudget),
-        fiveMinuteBurnRate: getBurnRate('5m', burnRates),
-        oneHourBurnRate: getBurnRate('1h', burnRates),
-        oneDayBurnRate: getBurnRate('1d', burnRates),
-      },
-      groupings: groupings ? getFlattenedGroupings({ groupBy: slo.groupBy, groupings }) : {},
-      meta: getMetaFields(slo, source ?? {}),
-      burnRateWindows: burnRates,
-    };
+    return toSummaryResult(slo, dateRange, result.aggregations, burnRates);
   }
 
   async computeSummaries(paramsList: Params[]): Promise<SummaryResult[]> {
@@ -152,120 +200,36 @@ export class DefaultSummaryClient implements SummaryClient {
       return [];
     }
 
-    const perItemMeta = paramsList.map(({ slo, instanceId, remoteName }) => {
-      const dateRange = toDateRange(slo.timeWindow);
-      const isDefinedWithGroupBy = ![slo.groupBy].flat().includes(ALL_VALUE);
-      const hasInstanceId = instanceId !== ALL_VALUE;
-      const shouldIncludeInstanceIdFilter = isDefinedWithGroupBy && hasInstanceId;
-      const index = remoteName
-        ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}`
-        : SLI_DESTINATION_INDEX_PATTERN;
+    const resolvedList = paramsList.map(resolveParams);
 
-      return { slo, instanceId, remoteName, dateRange, shouldIncludeInstanceIdFilter, index };
-    });
-
-    const summarySearches = perItemMeta.flatMap(
-      ({ slo, instanceId, dateRange, shouldIncludeInstanceIdFilter, index }) => {
-        const instanceIdFilter = shouldIncludeInstanceIdFilter
-          ? [{ term: { 'slo.instanceId': instanceId } }]
-          : [];
-
-        return [
-          { index },
-          {
-            size: 0,
-            query: {
-              bool: {
-                filter: [
-                  { term: { 'slo.id': slo.id } },
-                  { term: { 'slo.revision': slo.revision } },
-                  {
-                    range: {
-                      '@timestamp': {
-                        gte: dateRange.from.toISOString(),
-                        lte: dateRange.to.toISOString(),
-                      },
-                    },
-                  },
-                  ...instanceIdFilter,
-                ],
-              },
-            },
-            aggs: {
-              ...(shouldIncludeInstanceIdFilter && {
-                last_doc: {
-                  top_hits: {
-                    sort: [{ '@timestamp': { order: 'desc' as const } }],
-                    _source: {
-                      includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
-                    },
-                    size: 1,
-                  },
-                },
-              }),
-              ...buildAggs(slo),
-            },
-          },
-        ];
-      }
-    );
+    const summarySearches = resolvedList.flatMap((resolved) => [
+      { index: resolved.index },
+      buildSearchBody(resolved),
+    ]);
 
     const summaryResult = await this.esClient.msearch({ searches: summarySearches });
 
-    const burnRateBatchParams = paramsList.map(({ slo, instanceId, remoteName }) => ({
+    const burnRateBatchParams = resolvedList.map(({ slo, instanceId, remoteName }) => ({
       slo,
       instanceId: instanceId ?? ALL_VALUE,
-      lookbackWindows: [
-        { name: '5m', duration: new Duration(5, DurationUnit.Minute) },
-        { name: '1h', duration: new Duration(1, DurationUnit.Hour) },
-        { name: '1d', duration: new Duration(1, DurationUnit.Day) },
-      ],
+      lookbackWindows: DEFAULT_BURN_RATE_WINDOWS,
       remoteName,
     }));
 
     const allBurnRates = await this.burnRatesClient.calculateBatch(burnRateBatchParams);
 
-    return perItemMeta.map(({ slo, dateRange }, i) => {
+    return resolvedList.map(({ slo, dateRange }, i) => {
       const response = summaryResult.responses[i];
       if ('error' in response) {
         return buildNoDataResult(slo);
       }
 
-      const aggregations = response.aggregations as
-        | {
-            good: AggregationsSumAggregate;
-            total: AggregationsSumAggregate;
-            last_doc?: AggregationsTopHitsAggregate;
-          }
-        | undefined;
-
-      const source = aggregations?.last_doc?.hits?.hits?.[0]?._source as
-        | {
-            slo?: { groupings?: Groupings };
-            monitor?: { id?: string };
-            config_id?: string;
-            observer?: { name?: string };
-          }
-        | undefined;
-      const groupings = source?.slo?.groupings;
-
-      const sliValue = computeSliValue(slo, dateRange, aggregations);
-      const errorBudget = computeErrorBudget(slo, sliValue);
-      const burnRates = allBurnRates[i];
-
-      return {
-        summary: {
-          sliValue,
-          errorBudget,
-          status: computeSummaryStatus(slo.objective, sliValue, errorBudget),
-          fiveMinuteBurnRate: getBurnRate('5m', burnRates),
-          oneHourBurnRate: getBurnRate('1h', burnRates),
-          oneDayBurnRate: getBurnRate('1d', burnRates),
-        },
-        groupings: groupings ? getFlattenedGroupings({ groupBy: slo.groupBy, groupings }) : {},
-        meta: getMetaFields(slo, source ?? {}),
-        burnRateWindows: burnRates,
-      };
+      return toSummaryResult(
+        slo,
+        dateRange,
+        response.aggregations as SummaryAggregations | undefined,
+        allBurnRates[i]
+      );
     });
   }
 }
