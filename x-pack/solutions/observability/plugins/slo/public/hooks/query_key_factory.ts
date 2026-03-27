@@ -116,6 +116,9 @@ export const sloKeys = {
       ...sloKeys.allHealthScanResults(),
       { scanId, size, searchAfter, problematic, allSpaces },
     ] as const,
+  compositeLists: () => [...sloKeys.all, 'compositeList'] as const,
+  compositeList: (filters: { page: number; perPage: number; search?: string }) =>
+    [...sloKeys.compositeLists(), filters] as const,
 };
 
 export type SloKeys = typeof sloKeys;
