@@ -67,9 +67,7 @@ interface ResolvedParams {
 }
 
 const resolveIndex = (remoteName?: string) =>
-  remoteName
-    ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}`
-    : SLI_DESTINATION_INDEX_PATTERN;
+  remoteName ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}` : SLI_DESTINATION_INDEX_PATTERN;
 
 const resolveParams = ({ slo, instanceId, remoteName }: Params): ResolvedParams => {
   const dateRange = toDateRange(slo.timeWindow);
@@ -133,11 +131,11 @@ const buildSearchBody = ({
   };
 };
 
-type SummaryAggregations = {
+interface SummaryAggregations {
   good: AggregationsSumAggregate;
   total: AggregationsSumAggregate;
   last_doc?: AggregationsTopHitsAggregate;
-};
+}
 
 const toSummaryResult = (
   slo: SLODefinition,
