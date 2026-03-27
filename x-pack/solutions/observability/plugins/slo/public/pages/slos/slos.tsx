@@ -8,9 +8,14 @@
 import { EuiSpacer, EuiTab, EuiTabs } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { useBreadcrumbs } from '@kbn/observability-shared-plugin/public';
-import { paths, SLOS_WELCOME_PATH } from '@kbn/slo-shared-plugin/common/locators/paths';
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import {
+  paths,
+  SLOS_COMPOSITE_PATH,
+  SLOS_PATH,
+  SLOS_WELCOME_PATH,
+} from '@kbn/slo-shared-plugin/common/locators/paths';
+import React, { useEffect } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import { HeaderMenu } from '../../components/header_menu/header_menu';
 import { SloOutdatedCallout } from '../../components/slo/slo_outdated_callout';
 import { useFetchSloDefinitions } from '../../hooks/use_fetch_slo_definitions';
@@ -29,16 +34,18 @@ export const SLO_PAGE_ID = 'slo-page-container';
 
 type TabId = 'slos' | 'compositeSlos';
 
-const tabs: Array<{ id: TabId; label: string }> = [
+const tabs: Array<{ id: TabId; label: string; path: string }> = [
   {
     id: 'slos',
     label: i18n.translate('xpack.slo.slosPage.tabs.slos', { defaultMessage: 'SLOs' }),
+    path: SLOS_PATH,
   },
   {
     id: 'compositeSlos',
     label: i18n.translate('xpack.slo.slosPage.tabs.compositeSlos', {
       defaultMessage: 'Composite SLOs',
     }),
+    path: SLOS_COMPOSITE_PATH,
   },
 ];
 
@@ -51,8 +58,10 @@ export function SlosPage() {
   const { hasAtLeast } = useLicense();
   const { data: permissions } = usePermissions();
   const history = useHistory();
+  const location = useLocation();
   const isCompositeSloEnabled = experimentalFeatures?.compositeSlo?.enabled ?? false;
-  const [selectedTabId, setSelectedTabId] = useState<TabId>('slos');
+  const selectedTabId: TabId =
+    location.pathname === SLOS_COMPOSITE_PATH ? 'compositeSlos' : 'slos';
 
   const {
     data: { total } = { total: 0 },
@@ -100,11 +109,11 @@ export function SlosPage() {
       {isCompositeSloEnabled && (
         <>
           <EuiTabs>
-            {tabs.map(({ id, label }) => (
+            {tabs.map(({ id, label, path }) => (
               <EuiTab
                 key={id}
                 isSelected={id === selectedTabId}
-                onClick={() => setSelectedTabId(id)}
+                onClick={() => history.push(path)}
                 data-test-subj={`sloTab-${id}`}
               >
                 {label}

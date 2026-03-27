@@ -119,6 +119,8 @@ export const sloKeys = {
   compositeLists: () => [...sloKeys.all, 'compositeList'] as const,
   compositeList: (filters: { page: number; perPage: number; search?: string }) =>
     [...sloKeys.compositeLists(), filters] as const,
+  compositeDetails: () => [...sloKeys.all, 'compositeDetail'] as const,
+  compositeDetail: (id: string) => [...sloKeys.compositeDetails(), id] as const,
 };
 
 export type SloKeys = typeof sloKeys;
