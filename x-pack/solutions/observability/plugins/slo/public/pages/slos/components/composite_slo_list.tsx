@@ -31,13 +31,6 @@ const columns: Array<EuiBasicTableColumn<CompositeSLOItem>> = [
     sortable: true,
   },
   {
-    field: 'compositeMethod',
-    name: i18n.translate('xpack.slo.compositeSloList.columns.method', {
-      defaultMessage: 'Method',
-    }),
-    width: '150px',
-  },
-  {
     field: 'objective',
     name: i18n.translate('xpack.slo.compositeSloList.columns.objective', {
       defaultMessage: 'Objective',
