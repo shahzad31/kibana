@@ -6,7 +6,7 @@
  */
 
 import * as t from 'io-ts';
-import { dateType } from './common';
+import { dateType, errorBudgetSchema, statusSchema } from './common';
 import { rollingTimeWindowSchema } from './time_window';
 import { occurrencesBudgetingMethodSchema, sloIdSchema, tagsSchema, targetSchema } from './slo';
 
@@ -42,12 +42,39 @@ const compositeSloDefinitionSchema = t.type({
 
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
 
+const compositeSloComponentSchema = t.intersection([
+  t.type({
+    id: t.string,
+    name: t.string,
+    weight: t.number,
+    normalisedWeight: t.number,
+    sliValue: t.number,
+    contribution: t.number,
+  }),
+  t.partial({
+    instanceId: t.string,
+  }),
+]);
+
+const compositeSloSummarySchema = t.type({
+  sliValue: t.number,
+  errorBudget: errorBudgetSchema,
+  status: statusSchema,
+  fiveMinuteBurnRate: t.number,
+  oneHourBurnRate: t.number,
+  oneDayBurnRate: t.number,
+});
+
 export type CompositeSLOMember = t.TypeOf<typeof compositeSloMemberSchema>;
 export type CompositeMethod = t.TypeOf<typeof compositeMethodSchema>;
+export type CompositeSLOComponent = t.TypeOf<typeof compositeSloComponentSchema>;
+export type CompositeSLOSummary = t.TypeOf<typeof compositeSloSummarySchema>;
 
 export {
   compositeSloMemberSchema,
   compositeMethodSchema,
   compositeSloDefinitionSchema,
   storedCompositeSloDefinitionSchema,
+  compositeSloComponentSchema,
+  compositeSloSummarySchema,
 };
