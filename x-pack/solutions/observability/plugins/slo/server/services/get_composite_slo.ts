@@ -46,25 +46,23 @@ export class GetCompositeSLO {
 
     const memberDefinitionMap = new Map(memberDefinitions.map((slo) => [slo.id, slo]));
 
-    const memberSummaries = await Promise.all(
-      compositeSlo.members
-        .filter((member) => memberDefinitionMap.has(member.sloId))
-        .map(async (member) => {
-          const slo = memberDefinitionMap.get(member.sloId)!;
-          const instanceId = member.instanceId ?? ALL_VALUE;
-          const { summary, burnRateWindows } = await this.summaryClient.computeSummary({
-            slo,
-            instanceId,
-          });
-
-          return {
-            member,
-            sloName: slo.name,
-            summary,
-            burnRateWindows,
-          };
-        })
+    const activeMembers = compositeSlo.members.filter((member) =>
+      memberDefinitionMap.has(member.sloId)
     );
+
+    const summaryParams = activeMembers.map((member) => ({
+      slo: memberDefinitionMap.get(member.sloId)!,
+      instanceId: member.instanceId ?? ALL_VALUE,
+    }));
+
+    const summaryResults = await this.summaryClient.computeSummaries(summaryParams);
+
+    const memberSummaries: MemberSummaryData[] = activeMembers.map((member, i) => ({
+      member,
+      sloName: memberDefinitionMap.get(member.sloId)!.name,
+      summary: summaryResults[i].summary,
+      burnRateWindows: summaryResults[i].burnRateWindows,
+    }));
 
     const { compositeSummary, components } = this.computeWeightedAggregate(
       compositeSlo,

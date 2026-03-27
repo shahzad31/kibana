@@ -80,8 +80,8 @@ describe('GetCompositeSLO', () => {
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
-    mockSummaryClient.computeSummary
-      .mockResolvedValueOnce({
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({
@@ -95,8 +95,8 @@ describe('GetCompositeSLO', () => {
           '1h': 0.9992,
           '1d': 0.9995,
         }),
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({
@@ -110,7 +110,8 @@ describe('GetCompositeSLO', () => {
           '1h': 0.9985,
           '1d': 0.999,
         }),
-      });
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -157,7 +158,7 @@ describe('GetCompositeSLO', () => {
       id: 'slo-b-xxxxxxxx',
       name: 'Low Target',
       indicator: createAPMTransactionErrorRateIndicator(),
-      objective: { target: 0.90 },
+      objective: { target: 0.9 },
     });
 
     const composite = createCompositeSlo({
@@ -174,19 +175,20 @@ describe('GetCompositeSLO', () => {
     // sloA: 5m SLI = 0.990 → member burn rate = 0.010/0.001 = 10.0
     // sloB: 5m SLI = 0.95  → member burn rate = 0.05/0.10 = 0.5
     // Old approach: 0.5 * 10.0 + 0.5 * 0.5 = 5.25 (misleadingly high!)
-    mockSummaryClient.computeSummary
-      .mockResolvedValueOnce({
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
         groupings: {},
         meta: {},
-        summary: buildSummary({ sliValue: 0.990, fiveMinuteBurnRate: 10.0 }),
-        burnRateWindows: buildBurnRateWindows({ '5m': 0.990, '1h': 0.995, '1d': 0.998 }),
-      })
-      .mockResolvedValueOnce({
+        summary: buildSummary({ sliValue: 0.99, fiveMinuteBurnRate: 10.0 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': 0.99, '1h': 0.995, '1d': 0.998 }),
+      },
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: 0.95, fiveMinuteBurnRate: 0.5 }),
         burnRateWindows: buildBurnRateWindows({ '5m': 0.95, '1h': 0.96, '1d': 0.97 }),
-      });
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -213,12 +215,14 @@ describe('GetCompositeSLO', () => {
 
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
-    mockSummaryClient.computeSummary.mockResolvedValueOnce({
-      groupings: {},
-      meta: {},
-      summary: buildSummary({ sliValue: 0.995 }),
-      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
-    });
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.995 }),
+        burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -253,19 +257,20 @@ describe('GetCompositeSLO', () => {
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
-    mockSummaryClient.computeSummary
-      .mockResolvedValueOnce({
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: 0.995 }),
         burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
         burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
-      });
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -299,19 +304,20 @@ describe('GetCompositeSLO', () => {
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
-    mockSummaryClient.computeSummary
-      .mockResolvedValueOnce({
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
         burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         groupings: {},
         meta: {},
         summary: buildSummary({ sliValue: -1 }),
         burnRateWindows: buildBurnRateWindows({ '5m': -1, '1h': -1, '1d': -1 }),
-      });
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -338,12 +344,14 @@ describe('GetCompositeSLO', () => {
     // findAllByIds only returns sloA; deleted SLO is not returned
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
 
-    mockSummaryClient.computeSummary.mockResolvedValueOnce({
-      groupings: {},
-      meta: {},
-      summary: buildSummary({ sliValue: 0.995 }),
-      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
-    });
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.995 }),
+        burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
@@ -367,19 +375,23 @@ describe('GetCompositeSLO', () => {
 
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
-    mockSummaryClient.computeSummary.mockResolvedValueOnce({
-      groupings: {},
-      meta: {},
-      summary: buildSummary({ sliValue: 0.999 }),
-      burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
-    });
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.999 }),
+        burnRateWindows: DEFAULT_BURN_RATE_WINDOWS,
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 
-    expect(mockSummaryClient.computeSummary).toHaveBeenCalledWith({
-      slo: sloA,
-      instanceId: 'my-instance',
-    });
+    expect(mockSummaryClient.computeSummaries).toHaveBeenCalledWith([
+      {
+        slo: sloA,
+        instanceId: 'my-instance',
+      },
+    ]);
     expect(result.components[0].instanceId).toBe('my-instance');
   });
 
@@ -397,12 +409,14 @@ describe('GetCompositeSLO', () => {
 
     mockCompositeRepo.findById.mockResolvedValue(composite);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
-    mockSummaryClient.computeSummary.mockResolvedValueOnce({
-      groupings: {},
-      meta: {},
-      summary: buildSummary({ sliValue: 0.95 }),
-      burnRateWindows: buildBurnRateWindows({ '5m': 0.95, '1h': 0.95, '1d': 0.95 }),
-    });
+    mockSummaryClient.computeSummaries.mockResolvedValueOnce([
+      {
+        groupings: {},
+        meta: {},
+        summary: buildSummary({ sliValue: 0.95 }),
+        burnRateWindows: buildBurnRateWindows({ '5m': 0.95, '1h': 0.95, '1d': 0.95 }),
+      },
+    ]);
 
     const result = await getCompositeSLO.execute(composite.id);
 

@@ -57,6 +57,7 @@ const createSLODefinitionRepositoryMock = (): jest.Mocked<SLODefinitionRepositor
 const createSummaryClientMock = (): jest.Mocked<SummaryClient> => {
   return {
     computeSummary: jest.fn(),
+    computeSummaries: jest.fn(),
   };
 };
 
@@ -69,6 +70,7 @@ const createSummarySearchClientMock = (): jest.Mocked<SummarySearchClient> => {
 const createBurnRatesClientMock = (): jest.Mocked<BurnRatesClient> => {
   return {
     calculate: jest.fn(),
+    calculateBatch: jest.fn(),
   };
 };
 

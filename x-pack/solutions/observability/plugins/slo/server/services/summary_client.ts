@@ -46,12 +46,9 @@ interface SummaryResult {
   burnRateWindows: BurnRateWindow[];
 }
 
-// This is called "SummaryClient" but is responsible for:
-// - computing summary
-// - formatting groupings
-// - adding extra Meta parameter for synthetics
 export interface SummaryClient {
   computeSummary(params: Params): Promise<SummaryResult>;
+  computeSummaries(paramsList: Params[]): Promise<SummaryResult[]>;
 }
 
 export class DefaultSummaryClient implements SummaryClient {
@@ -149,6 +146,144 @@ export class DefaultSummaryClient implements SummaryClient {
       burnRateWindows: burnRates,
     };
   }
+
+  async computeSummaries(paramsList: Params[]): Promise<SummaryResult[]> {
+    if (paramsList.length === 0) {
+      return [];
+    }
+
+    const perItemMeta = paramsList.map(({ slo, instanceId, remoteName }) => {
+      const dateRange = toDateRange(slo.timeWindow);
+      const isDefinedWithGroupBy = ![slo.groupBy].flat().includes(ALL_VALUE);
+      const hasInstanceId = instanceId !== ALL_VALUE;
+      const shouldIncludeInstanceIdFilter = isDefinedWithGroupBy && hasInstanceId;
+      const index = remoteName
+        ? `${remoteName}:${SLI_DESTINATION_INDEX_PATTERN}`
+        : SLI_DESTINATION_INDEX_PATTERN;
+
+      return { slo, instanceId, remoteName, dateRange, shouldIncludeInstanceIdFilter, index };
+    });
+
+    const summarySearches = perItemMeta.flatMap(
+      ({ slo, instanceId, dateRange, shouldIncludeInstanceIdFilter, index }) => {
+        const instanceIdFilter = shouldIncludeInstanceIdFilter
+          ? [{ term: { 'slo.instanceId': instanceId } }]
+          : [];
+
+        return [
+          { index },
+          {
+            size: 0,
+            query: {
+              bool: {
+                filter: [
+                  { term: { 'slo.id': slo.id } },
+                  { term: { 'slo.revision': slo.revision } },
+                  {
+                    range: {
+                      '@timestamp': {
+                        gte: dateRange.from.toISOString(),
+                        lte: dateRange.to.toISOString(),
+                      },
+                    },
+                  },
+                  ...instanceIdFilter,
+                ],
+              },
+            },
+            aggs: {
+              ...(shouldIncludeInstanceIdFilter && {
+                last_doc: {
+                  top_hits: {
+                    sort: [{ '@timestamp': { order: 'desc' as const } }],
+                    _source: {
+                      includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
+                    },
+                    size: 1,
+                  },
+                },
+              }),
+              ...buildAggs(slo),
+            },
+          },
+        ];
+      }
+    );
+
+    const summaryResult = await this.esClient.msearch({ searches: summarySearches });
+
+    const burnRateBatchParams = paramsList.map(({ slo, instanceId, remoteName }) => ({
+      slo,
+      instanceId: instanceId ?? ALL_VALUE,
+      lookbackWindows: [
+        { name: '5m', duration: new Duration(5, DurationUnit.Minute) },
+        { name: '1h', duration: new Duration(1, DurationUnit.Hour) },
+        { name: '1d', duration: new Duration(1, DurationUnit.Day) },
+      ],
+      remoteName,
+    }));
+
+    const allBurnRates = await this.burnRatesClient.calculateBatch(burnRateBatchParams);
+
+    return perItemMeta.map(({ slo, dateRange }, i) => {
+      const response = summaryResult.responses[i];
+      if ('error' in response) {
+        return buildNoDataResult(slo);
+      }
+
+      const aggregations = response.aggregations as
+        | {
+            good: AggregationsSumAggregate;
+            total: AggregationsSumAggregate;
+            last_doc?: AggregationsTopHitsAggregate;
+          }
+        | undefined;
+
+      const source = aggregations?.last_doc?.hits?.hits?.[0]?._source as
+        | {
+            slo?: { groupings?: Groupings };
+            monitor?: { id?: string };
+            config_id?: string;
+            observer?: { name?: string };
+          }
+        | undefined;
+      const groupings = source?.slo?.groupings;
+
+      const sliValue = computeSliValue(slo, dateRange, aggregations);
+      const errorBudget = computeErrorBudget(slo, sliValue);
+      const burnRates = allBurnRates[i];
+
+      return {
+        summary: {
+          sliValue,
+          errorBudget,
+          status: computeSummaryStatus(slo.objective, sliValue, errorBudget),
+          fiveMinuteBurnRate: getBurnRate('5m', burnRates),
+          oneHourBurnRate: getBurnRate('1h', burnRates),
+          oneDayBurnRate: getBurnRate('1d', burnRates),
+        },
+        groupings: groupings ? getFlattenedGroupings({ groupBy: slo.groupBy, groupings }) : {},
+        meta: getMetaFields(slo, source ?? {}),
+        burnRateWindows: burnRates,
+      };
+    });
+  }
+}
+
+function buildNoDataResult(slo: SLODefinition): SummaryResult {
+  return {
+    summary: {
+      sliValue: -1,
+      errorBudget: { initial: 0, consumed: 0, remaining: 0, isEstimated: false },
+      status: 'NO_DATA',
+      fiveMinuteBurnRate: 0,
+      oneHourBurnRate: 0,
+      oneDayBurnRate: 0,
+    },
+    groupings: {},
+    meta: getMetaFields(slo, {}),
+    burnRateWindows: [],
+  };
 }
 
 function buildAggs(slo: SLODefinition) {
