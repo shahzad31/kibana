@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { i18n } from '@kbn/i18n';
 import { useKibana } from '@kbn/kibana-react-plugin/public';
 import { EuiComboBox, EuiFormRow } from '@elastic/eui';
@@ -14,6 +14,7 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import usePrevious from 'react-use/lib/usePrevious';
 import { ALL_SPACES_ID } from '@kbn/security-plugin/public';
+import { ALL_SPACES_LABEL } from '../../monitor_add_edit/fields/monitor_spaces';
 import { selectAgentPolicies } from '../../../state/agent_policies';
 import type { ClientPluginsStart } from '../../../../../plugin';
 
@@ -41,8 +42,11 @@ export const SpaceSelector = <T extends FieldValues>({
   });
 
   const prevAgentPolicyId = usePrevious(selectedAgentPolicyId);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
+    cancelledRef.current = false;
+
     if (
       selectedAgentPolicyId !== prevAgentPolicyId &&
       selectedAgentPolicyId &&
@@ -52,28 +56,53 @@ export const SpaceSelector = <T extends FieldValues>({
       if (isDisabled) return;
       const selectedPolicy = agentPolicies.find((policy) => policy.id === selectedAgentPolicyId);
       if (!selectedPolicy) {
-        throw new Error('Selected agent policy not found, this should never happen');
+        return;
       }
 
       data.spacesDataPromise.then(({ spacesMap }) => {
+        if (cancelledRef.current) return;
+
         const policySpaceIds = selectedPolicy.spaceIds || [];
-        const spaceOptions: { id: string; label: string }[] = [];
         const spaceOptionBySpaceId: Record<string, { id: string; label: string }> = {};
         spacesMap.forEach((spaceData, spaceId) => {
           spaceOptionBySpaceId[spaceId] = { id: spaceId, label: spaceData.name };
         });
 
-        // If the policy belongs to all spaces or fleet agent policies are not space aware, show all spaces
+        let spaceOptions: Array<{ id: string; label: string }>;
         if (policySpaceIds.includes(ALL_SPACES_ID) || !policySpaceIds.length) {
-          spaceOptions.push(...Object.values(spaceOptionBySpaceId));
+          spaceOptions = Object.values(spaceOptionBySpaceId);
+          setSpacesList([
+            ...spaceOptions,
+            ...(policySpaceIds.includes(ALL_SPACES_ID)
+              ? [
+                  {
+                    id: ALL_SPACES_ID,
+                    label: ALL_SPACES_LABEL,
+                  },
+                ]
+              : []),
+          ]);
         } else {
-          spaceOptions.push(...policySpaceIds.map((spaceId) => spaceOptionBySpaceId[spaceId]));
+          spaceOptions = policySpaceIds
+            .map((spaceId) => spaceOptionBySpaceId[spaceId])
+            .filter(Boolean);
+          setSpacesList([
+            ...spaceOptions,
+            {
+              id: ALL_SPACES_ID,
+              label: ALL_SPACES_LABEL,
+            },
+          ]);
         }
-        setSpacesList(spaceOptions);
         setValue(NAMESPACES_NAME, spaceOptions.map((space) => space.id) as PathValue<T, Path<T>>);
       });
     }
+
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [
+    NAMESPACES_NAME,
     agentPolicies,
     data?.spacesDataPromise,
     isDisabled,
