@@ -27,3 +27,4 @@ export * from './search_slo_definitions';
 export * from './slo_definition_client';
 export * from './get_composite_slo';
 export * from './composite_slo_repository';
+export * from './composite_historical_summary_client';

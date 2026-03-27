@@ -5,9 +5,9 @@
  * 2.0.
  */
 
+import type { EuiBasicTableColumn } from '@elastic/eui';
 import {
   EuiBasicTable,
-  EuiBasicTableColumn,
   EuiBadge,
   EuiButtonIcon,
   type CriteriaWithPagination,
@@ -23,16 +23,17 @@ import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-s
 import React, { useCallback, useMemo, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
+import { useFetchCompositeHistoricalSummary } from '../../../hooks/use_fetch_composite_historical_summary';
 import { useFetchCompositeSloDetails } from '../../../hooks/use_fetch_composite_slo_details';
 import { useFetchCompositeSloList } from '../../../hooks/use_fetch_composite_slo_list';
 import { useKibana } from '../../../hooks/use_kibana';
+import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
+import { SloSparkline } from './slo_sparkline';
 
 type CompositeSLOItem = FindCompositeSLOResponse['results'][number];
 
-export const CompositeSloList = () => {
-  const {
-    uiSettings,
-  } = useKibana().services;
+export function CompositeSloList() {
+  const { uiSettings } = useKibana().services;
   const percentFormat = uiSettings.get('format:percent:defaultPattern');
 
   const [page, setPage] = useState(0);
@@ -48,8 +49,9 @@ export const CompositeSloList = () => {
   const total = data?.total ?? 0;
 
   const compositeIds = useMemo(() => results.map((item) => item.id), [results]);
-  const { detailsById, isLoading: isDetailsLoading } =
-    useFetchCompositeSloDetails(compositeIds);
+  const { detailsById, isLoading: isDetailsLoading } = useFetchCompositeSloDetails(compositeIds);
+  const { historicalSummaryById, isLoading: isHistoricalLoading } =
+    useFetchCompositeHistoricalSummary(compositeIds);
 
   const toggleExpandRow = useCallback(
     (item: CompositeSLOItem) => {
@@ -73,10 +75,7 @@ export const CompositeSloList = () => {
         }
 
         next[item.id] = (
-          <MemberComponentsTable
-            components={details.components}
-            percentFormat={percentFormat}
-          />
+          <MemberComponentsTable components={details.components} percentFormat={percentFormat} />
         );
         return next;
       });
@@ -183,6 +182,28 @@ export const CompositeSloList = () => {
         },
       },
       {
+        name: i18n.translate('xpack.slo.compositeSloList.columns.historicalSli', {
+          defaultMessage: 'Historical SLI',
+        }),
+        width: '80px',
+        render: (item: CompositeSLOItem) => {
+          const historicalData = historicalSummaryById.get(item.id);
+          const details = detailsById.get(item.id);
+          const isFailed =
+            details?.summary.status === 'VIOLATED' ||
+            details?.summary.status === 'DEGRADING';
+          return (
+            <SloSparkline
+              chart="line"
+              id={`composite-historical-sli-${item.id}`}
+              state={isFailed ? 'error' : 'success'}
+              data={formatHistoricalData(historicalData, 'sli_value')}
+              isLoading={isHistoricalLoading}
+            />
+          );
+        },
+      },
+      {
         field: 'summary.errorBudget.remaining',
         name: i18n.translate('xpack.slo.compositeSloList.columns.budgetRemaining', {
           defaultMessage: 'Budget remaining',
@@ -210,7 +231,7 @@ export const CompositeSloList = () => {
         },
       },
     ],
-    [detailsById, expandedRows, percentFormat, toggleExpandRow]
+    [detailsById, expandedRows, historicalSummaryById, isHistoricalLoading, percentFormat, toggleExpandRow]
   );
 
   if (isLoading) {
@@ -259,7 +280,7 @@ export const CompositeSloList = () => {
       })}
     />
   );
-};
+}
 
 const getMemberColumns = (
   percentFormat: string
@@ -270,6 +291,7 @@ const getMemberColumns = (
       defaultMessage: 'Member SLO',
     }),
     truncateText: true,
+    width: '220px',
   },
   {
     field: 'instanceId',
@@ -314,13 +336,13 @@ const getMemberColumns = (
   },
 ];
 
-const MemberComponentsTable = ({
+function MemberComponentsTable({
   components,
   percentFormat,
 }: {
   components: CompositeSLOComponent[];
   percentFormat: string;
-}) => {
+}) {
   const columns = useMemo(() => getMemberColumns(percentFormat), [percentFormat]);
 
   return (
@@ -332,4 +354,4 @@ const MemberComponentsTable = ({
       compressed
     />
   );
-};
+}

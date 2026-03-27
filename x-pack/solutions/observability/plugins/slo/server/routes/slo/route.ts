@@ -34,6 +34,7 @@ import { inspectSLORoute } from './inspect_slo';
 import { getPurgeInstancesStatusRoute, purgeInstancesRoute } from './purge_instances';
 import { resetSLORoute } from './reset_slo';
 import { repairSLORoute } from './repair_slo';
+import { fetchCompositeHistoricalSummaryRoute } from './composite_slo/fetch_composite_historical_summary';
 import { updateCompositeSLORoute } from './composite_slo/update_composite_slo';
 import { updateSLORoute } from './update_slo';
 import { updateSloSettings } from './update_slo_settings';
@@ -89,5 +90,6 @@ export const getSloRouteRepository = ({
     ...(isCompositeSloEnabled ? findCompositeSLORoute : {}),
     ...(isCompositeSloEnabled ? updateCompositeSLORoute : {}),
     ...(isCompositeSloEnabled ? deleteCompositeSLORoute : {}),
+    ...(isCompositeSloEnabled ? fetchCompositeHistoricalSummaryRoute : {}),
   };
 };
