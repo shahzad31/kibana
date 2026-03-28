@@ -12,16 +12,25 @@ import { useKibana } from './use_kibana';
 import { sloKeys } from './query_key_factory';
 import { usePluginContext } from './use_plugin_context';
 
+export type CompositeSloSortBy = 'name' | 'createdAt' | 'updatedAt';
+export type CompositeSloSortDirection = 'asc' | 'desc';
+
 interface CompositeSLOListParams {
   page?: number;
   perPage?: number;
   search?: string;
+  tags?: string;
+  sortBy?: CompositeSloSortBy;
+  sortDirection?: CompositeSloSortDirection;
 }
 
 export function useFetchCompositeSloList({
   page = 1,
   perPage = 25,
   search,
+  tags,
+  sortBy = 'createdAt',
+  sortDirection = 'desc',
 }: CompositeSLOListParams = {}) {
   const {
     notifications: { toasts },
@@ -29,14 +38,17 @@ export function useFetchCompositeSloList({
   const { sloClient } = usePluginContext();
 
   const { isInitialLoading, isLoading, isError, isSuccess, isRefetching, data } = useQuery({
-    queryKey: sloKeys.compositeList({ page, perPage, search }),
+    queryKey: sloKeys.compositeList({ page, perPage, search, tags, sortBy, sortDirection }),
     queryFn: async ({ signal }) => {
       return await sloClient.fetch('GET /api/observability/slo_composites 2023-10-31', {
         params: {
           query: {
             ...(search && { search }),
+            ...(tags && { tags }),
             page: String(page),
             perPage: String(perPage),
+            sortBy,
+            sortDirection,
           },
         },
         signal,

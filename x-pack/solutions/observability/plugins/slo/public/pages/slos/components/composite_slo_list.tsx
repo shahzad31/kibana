@@ -9,23 +9,35 @@ import type { EuiBasicTableColumn } from '@elastic/eui';
 import {
   EuiBasicTable,
   EuiBadge,
+  EuiButtonEmpty,
   EuiButtonIcon,
   type CriteriaWithPagination,
+  EuiFieldSearch,
+  EuiFilterButton,
+  EuiFilterGroup,
   EuiFlexGroup,
   EuiFlexItem,
   EuiLoadingSpinner,
+  EuiPopover,
+  EuiSelectable,
   EuiSkeletonText,
+  EuiSpacer,
   EuiText,
 } from '@elastic/eui';
+import type { EuiSelectableOption } from '@elastic/eui/src/components/selectable/selectable_option';
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
 import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-schema';
-import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
 import { useFetchCompositeHistoricalSummary } from '../../../hooks/use_fetch_composite_historical_summary';
 import { useFetchCompositeSloDetails } from '../../../hooks/use_fetch_composite_slo_details';
-import { useFetchCompositeSloList } from '../../../hooks/use_fetch_composite_slo_list';
+import {
+  useFetchCompositeSloList,
+  type CompositeSloSortBy,
+  type CompositeSloSortDirection,
+} from '../../../hooks/use_fetch_composite_slo_list';
 import { useKibana } from '../../../hooks/use_kibana';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
 import { SloSparkline } from './slo_sparkline';
@@ -36,6 +48,12 @@ const SLODetailsFlyout = lazy(
 
 type CompositeSLOItem = FindCompositeSLOResponse['results'][number];
 
+const SORTABLE_FIELDS: Record<string, CompositeSloSortBy> = {
+  name: 'name',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+};
+
 export function CompositeSloList() {
   const { uiSettings } = useKibana().services;
   const percentFormat = uiSettings.get('format:percent:defaultPattern');
@@ -44,13 +62,78 @@ export function CompositeSloList() {
   const [perPage, setPerPage] = useState(25);
   const [expandedRows, setExpandedRows] = useState<Record<string, React.ReactNode>>({});
 
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortBy, setSortBy] = useState<CompositeSloSortBy>('createdAt');
+  const [sortDirection, setSortDirection] = useState<CompositeSloSortDirection>('desc');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearch(value);
+      setPage(0);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const handleTagSelection = useCallback(
+    (options: EuiSelectableOption[]) => {
+      const newTags = options.filter((opt) => opt.checked === 'on').map((opt) => opt.label);
+      setSelectedTags(newTags);
+      setPage(0);
+    },
+    []
+  );
+
+  const clearFilters = useCallback(() => {
+    setSearch('');
+    setDebouncedSearch('');
+    setSortBy('createdAt');
+    setSortDirection('desc');
+    setSelectedTags([]);
+    setPage(0);
+  }, []);
+
+  const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
+
   const { data, isLoading, isError } = useFetchCompositeSloList({
     page: page + 1,
     perPage,
+    search: debouncedSearch || undefined,
+    tags: tagsParam,
+    sortBy,
+    sortDirection,
   });
 
   const results = data?.results ?? [];
   const total = data?.total ?? 0;
+
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    results.forEach((item) => item.tags?.forEach((tag: string) => tagSet.add(tag)));
+    return Array.from(tagSet).sort();
+  }, [results]);
+
+  const tagOptions: EuiSelectableOption[] = useMemo(
+    () =>
+      availableTags.map((tag) => ({
+        label: tag,
+        checked: selectedTags.includes(tag) ? 'on' : undefined,
+      })),
+    [availableTags, selectedTags]
+  );
+
+  const hasActiveFilters = debouncedSearch !== '' || selectedTags.length > 0;
 
   const compositeIds = useMemo(() => results.map((item) => item.id), [results]);
   const { detailsById, isLoading: isDetailsLoading } = useFetchCompositeSloDetails(compositeIds);
@@ -136,6 +219,7 @@ export function CompositeSloList() {
           defaultMessage: 'Name',
         }),
         truncateText: true,
+        sortable: true,
       },
       {
         field: 'tags',
@@ -223,6 +307,24 @@ export function CompositeSloList() {
         },
       },
       {
+        field: 'createdAt',
+        name: i18n.translate('xpack.slo.compositeSloList.columns.createdAt', {
+          defaultMessage: 'Created',
+        }),
+        width: '140px',
+        sortable: true,
+        render: (date: string) => new Date(date).toLocaleDateString(),
+      },
+      {
+        field: 'updatedAt',
+        name: i18n.translate('xpack.slo.compositeSloList.columns.updatedAt', {
+          defaultMessage: 'Updated',
+        }),
+        width: '140px',
+        sortable: true,
+        render: (date: string) => new Date(date).toLocaleDateString(),
+      },
+      {
         field: 'timeWindow',
         name: i18n.translate('xpack.slo.compositeSloList.columns.timeWindow', {
           defaultMessage: 'Time window',
@@ -244,16 +346,6 @@ export function CompositeSloList() {
     ]
   );
 
-  if (isLoading) {
-    return (
-      <EuiFlexGroup justifyContent="center" alignItems="center" style={{ minHeight: 200 }}>
-        <EuiFlexItem grow={false}>
-          <EuiLoadingSpinner size="xl" />
-        </EuiFlexItem>
-      </EuiFlexGroup>
-    );
-  }
-
   if (isError) {
     return (
       <EuiText color="danger">
@@ -265,30 +357,126 @@ export function CompositeSloList() {
   }
 
   return (
-    <EuiBasicTable
-      data-test-subj="compositeSloList"
-      items={results}
-      columns={columns}
-      itemId="id"
-      itemIdToExpandedRowMap={expandedRows}
-      rowHeader="name"
-      loading={isDetailsLoading}
-      pagination={{
-        pageIndex: page,
-        pageSize: perPage,
-        totalItemCount: total,
-        pageSizeOptions: [10, 25, 50],
-      }}
-      onChange={({ page: pagination }: CriteriaWithPagination<CompositeSLOItem>) => {
-        if (pagination) {
-          setPage(pagination.index);
-          setPerPage(pagination.size);
-        }
-      }}
-      noItemsMessage={i18n.translate('xpack.slo.compositeSloList.noItems', {
-        defaultMessage: 'No composite SLOs found',
-      })}
-    />
+    <>
+      <EuiFlexGroup gutterSize="m" alignItems="center" responsive={false} wrap>
+        <EuiFlexItem grow>
+          <EuiFieldSearch
+            data-test-subj="compositeSloListSearch"
+            placeholder={i18n.translate('xpack.slo.compositeSloList.searchPlaceholder', {
+              defaultMessage: 'Search composite SLOs by name...',
+            })}
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            isClearable
+            fullWidth
+            isLoading={isLoading}
+          />
+        </EuiFlexItem>
+        <EuiFlexItem grow={false}>
+          <EuiFilterGroup>
+            <EuiPopover
+              button={
+                <EuiFilterButton
+                  data-test-subj="compositeSloListTagFilter"
+                  iconType="arrowDown"
+                  onClick={() => setIsTagPopoverOpen((prev) => !prev)}
+                  isSelected={isTagPopoverOpen}
+                  numFilters={availableTags.length}
+                  hasActiveFilters={selectedTags.length > 0}
+                  numActiveFilters={selectedTags.length}
+                >
+                  {i18n.translate('xpack.slo.compositeSloList.tagsFilter', {
+                    defaultMessage: 'Tags',
+                  })}
+                </EuiFilterButton>
+              }
+              isOpen={isTagPopoverOpen}
+              closePopover={() => setIsTagPopoverOpen(false)}
+              panelPaddingSize="none"
+            >
+              <EuiSelectable
+                options={tagOptions}
+                onChange={handleTagSelection}
+                searchable
+                searchProps={{
+                  placeholder: i18n.translate('xpack.slo.compositeSloList.tagsSearchPlaceholder', {
+                    defaultMessage: 'Search tags',
+                  }),
+                  compressed: true,
+                }}
+              >
+                {(list, tagSearch) => (
+                  <div css={{ width: 240 }}>
+                    {tagSearch}
+                    {list}
+                  </div>
+                )}
+              </EuiSelectable>
+            </EuiPopover>
+          </EuiFilterGroup>
+        </EuiFlexItem>
+        {hasActiveFilters && (
+          <EuiFlexItem grow={false}>
+            <EuiButtonEmpty
+              data-test-subj="compositeSloListClearFilters"
+              size="s"
+              iconType="cross"
+              onClick={clearFilters}
+            >
+              {i18n.translate('xpack.slo.compositeSloList.clearFilters', {
+                defaultMessage: 'Clear filters',
+              })}
+            </EuiButtonEmpty>
+          </EuiFlexItem>
+        )}
+      </EuiFlexGroup>
+      <EuiSpacer size="m" />
+      {isLoading ? (
+        <EuiFlexGroup justifyContent="center" alignItems="center" style={{ minHeight: 200 }}>
+          <EuiFlexItem grow={false}>
+            <EuiLoadingSpinner size="xl" />
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      ) : (
+        <EuiBasicTable
+          data-test-subj="compositeSloList"
+          items={results}
+          columns={columns}
+          itemId="id"
+          itemIdToExpandedRowMap={expandedRows}
+          rowHeader="name"
+          loading={isDetailsLoading}
+          sorting={{
+            sort: {
+              field: sortBy as keyof CompositeSLOItem,
+              direction: sortDirection,
+            },
+          }}
+          pagination={{
+            pageIndex: page,
+            pageSize: perPage,
+            totalItemCount: total,
+            pageSizeOptions: [10, 25, 50],
+          }}
+          onChange={({ page: pagination, sort }: CriteriaWithPagination<CompositeSLOItem>) => {
+            if (pagination) {
+              setPage(pagination.index);
+              setPerPage(pagination.size);
+            }
+            if (sort) {
+              const mappedField = SORTABLE_FIELDS[sort.field as string];
+              if (mappedField) {
+                setSortBy(mappedField);
+                setSortDirection(sort.direction);
+              }
+            }
+          }}
+          noItemsMessage={i18n.translate('xpack.slo.compositeSloList.noItems', {
+            defaultMessage: 'No composite SLOs found',
+          })}
+        />
+      )}
+    </>
   );
 }
 
