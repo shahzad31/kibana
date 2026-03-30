@@ -390,6 +390,8 @@ describe('GetCompositeSLO', () => {
       {
         slo: sloA,
         instanceId: 'my-instance',
+        timeWindowOverride: composite.timeWindow,
+        budgetingMethodOverride: composite.budgetingMethod,
       },
     ]);
     expect(result.components[0].instanceId).toBe('my-instance');
