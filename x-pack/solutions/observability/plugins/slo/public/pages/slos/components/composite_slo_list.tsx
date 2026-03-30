@@ -190,8 +190,7 @@ export function CompositeSloList() {
           const historicalData = historicalSummaryById.get(item.id);
           const details = detailsById.get(item.id);
           const isFailed =
-            details?.summary.status === 'VIOLATED' ||
-            details?.summary.status === 'DEGRADING';
+            details?.summary.status === 'VIOLATED' || details?.summary.status === 'DEGRADING';
           return (
             <SloSparkline
               chart="line"
@@ -231,7 +230,14 @@ export function CompositeSloList() {
         },
       },
     ],
-    [detailsById, expandedRows, historicalSummaryById, isHistoricalLoading, percentFormat, toggleExpandRow]
+    [
+      detailsById,
+      expandedRows,
+      historicalSummaryById,
+      isHistoricalLoading,
+      percentFormat,
+      toggleExpandRow,
+    ]
   );
 
   if (isLoading) {

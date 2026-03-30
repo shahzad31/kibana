@@ -28,5 +28,8 @@ type FetchCompositeHistoricalSummaryResponse = t.OutputOf<
   typeof fetchCompositeHistoricalSummaryResponseSchema
 >;
 
-export { fetchCompositeHistoricalSummaryParamsSchema, fetchCompositeHistoricalSummaryResponseSchema };
+export {
+  fetchCompositeHistoricalSummaryParamsSchema,
+  fetchCompositeHistoricalSummaryResponseSchema,
+};
 export type { FetchCompositeHistoricalSummaryParams, FetchCompositeHistoricalSummaryResponse };

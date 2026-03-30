@@ -60,8 +60,7 @@ export function SlosPage() {
   const history = useHistory();
   const location = useLocation();
   const isCompositeSloEnabled = experimentalFeatures?.compositeSlo?.enabled ?? false;
-  const selectedTabId: TabId =
-    location.pathname === SLOS_COMPOSITE_PATH ? 'compositeSlos' : 'slos';
+  const selectedTabId: TabId = location.pathname === SLOS_COMPOSITE_PATH ? 'compositeSlos' : 'slos';
 
   const {
     data: { total } = { total: 0 },

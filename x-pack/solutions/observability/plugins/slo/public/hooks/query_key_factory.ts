@@ -121,8 +121,7 @@ export const sloKeys = {
     [...sloKeys.compositeLists(), filters] as const,
   compositeDetails: () => [...sloKeys.all, 'compositeDetail'] as const,
   compositeDetail: (id: string) => [...sloKeys.compositeDetails(), id] as const,
-  compositeHistoricalSummaries: () =>
-    [...sloKeys.all, 'compositeHistoricalSummary'] as const,
+  compositeHistoricalSummaries: () => [...sloKeys.all, 'compositeHistoricalSummary'] as const,
   compositeHistoricalSummary: (ids: string[]) =>
     [...sloKeys.compositeHistoricalSummaries(), ids] as const,
 };
