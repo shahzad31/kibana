@@ -38,7 +38,11 @@ import { fetchCompositeHistoricalSummaryRoute } from './composite_slo/fetch_comp
 import { updateCompositeSLORoute } from './composite_slo/update_composite_slo';
 import { updateSLORoute } from './update_slo';
 import { updateSloSettings } from './update_slo_settings';
-import { getSLOTemplateRoute, findSLOTemplatesRoute } from './slo_templates';
+import {
+  getSLOTemplateRoute,
+  findSLOTemplatesRoute,
+  findSLOTemplateTagsRoute,
+} from './slo_templates';
 import { healthScanRoutes } from './health_scan';
 import { searchSloDefinitionsRoute } from './search_slo_definitions';
 
@@ -83,6 +87,7 @@ export const getSloRouteRepository = ({
     ...findSLOInstancesRoute,
     ...getSLOTemplateRoute,
     ...findSLOTemplatesRoute,
+    ...findSLOTemplateTagsRoute,
     ...healthScanRoutes,
     ...searchSloDefinitionsRoute,
     ...(isCompositeSloEnabled ? createCompositeSLORoute : {}),
