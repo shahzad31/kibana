@@ -140,6 +140,7 @@ export const sloKeys = {
   compositeHistoricalSummaries: () => [...sloKeys.all, 'compositeHistoricalSummary'] as const,
   compositeHistoricalSummary: (ids: string[]) =>
     [...sloKeys.compositeHistoricalSummaries(), ids] as const,
+  compositeSuggestions: () => [...sloKeys.all, 'compositeSuggestions'] as const,
 };
 
 export type SloKeys = typeof sloKeys;

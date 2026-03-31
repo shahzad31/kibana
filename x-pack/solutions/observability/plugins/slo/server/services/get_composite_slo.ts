@@ -6,11 +6,12 @@
  */
 
 import type {
+  BatchGetCompositeSLOResponse,
   CompositeSLOComponent,
   CompositeSLOSummary,
   GetCompositeSLOResponse,
 } from '@kbn/slo-schema';
-import { ALL_VALUE, getCompositeSLOResponseSchema } from '@kbn/slo-schema';
+import { ALL_VALUE, batchGetCompositeSLOResponseSchema, getCompositeSLOResponseSchema } from '@kbn/slo-schema';
 import { toHighPrecision } from '../utils/number';
 import type { CompositeSLODefinition } from '../domain/models';
 import { computeSummaryStatus, toErrorBudget } from '../domain/services';
@@ -39,7 +40,17 @@ export class GetCompositeSLO {
     private summaryClient: SummaryClient
   ) {}
 
+  public async executeBatch(ids: string[]): Promise<BatchGetCompositeSLOResponse> {
+    const results = await Promise.all(ids.map((id) => this.executeOne(id)));
+    return batchGetCompositeSLOResponseSchema.encode(results);
+  }
+
   public async execute(id: string): Promise<GetCompositeSLOResponse> {
+    const result = await this.executeOne(id);
+    return getCompositeSLOResponseSchema.encode(result);
+  }
+
+  private async executeOne(id: string) {
     const compositeSlo = await this.compositeSloRepository.findById(id);
     const memberSloIds = compositeSlo.members.map((m) => m.sloId);
     const memberDefinitions = await this.sloDefinitionRepository.findAllByIds(memberSloIds);
@@ -71,11 +82,11 @@ export class GetCompositeSLO {
       memberSummaries
     );
 
-    return getCompositeSLOResponseSchema.encode({
+    return {
       ...compositeSlo,
       summary: compositeSummary,
       components,
-    });
+    };
   }
 
   private computeWeightedAggregate(

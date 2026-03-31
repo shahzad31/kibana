@@ -11,6 +11,7 @@ import {
   EuiBadge,
   EuiButtonEmpty,
   EuiButtonIcon,
+  EuiConfirmModal,
   type CriteriaWithPagination,
   EuiFieldSearch,
   EuiFilterButton,
@@ -27,10 +28,12 @@ import {
 import type { EuiSelectableOption } from '@elastic/eui/src/components/selectable/selectable_option';
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
+import { paths } from '@kbn/slo-shared-plugin/common/locators/paths';
 import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-schema';
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
+import { useDeleteCompositeSlo } from '../../../hooks/use_delete_composite_slo';
 import { useFetchCompositeHistoricalSummary } from '../../../hooks/use_fetch_composite_historical_summary';
 import { useFetchCompositeSloDetails } from '../../../hooks/use_fetch_composite_slo_details';
 import {
@@ -38,7 +41,9 @@ import {
   type CompositeSloSortBy,
   type CompositeSloSortDirection,
 } from '../../../hooks/use_fetch_composite_slo_list';
+import { useFetchCompositeSloSuggestions } from '../../../hooks/use_fetch_composite_slo_suggestions';
 import { useKibana } from '../../../hooks/use_kibana';
+import { usePermissions } from '../../../hooks/use_permissions';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
 import { SloSparkline } from './slo_sparkline';
 
@@ -55,12 +60,20 @@ const SORTABLE_FIELDS: Record<string, CompositeSloSortBy> = {
 };
 
 export function CompositeSloList() {
-  const { uiSettings } = useKibana().services;
+  const {
+    uiSettings,
+    application: { navigateToUrl },
+    http: { basePath },
+  } = useKibana().services;
   const percentFormat = uiSettings.get('format:percent:defaultPattern');
+  const { data: permissions } = usePermissions();
+  const hasWritePermissions = permissions?.hasAllWriteRequested === true;
+  const { mutateAsync: deleteCompositeSlo } = useDeleteCompositeSlo();
 
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(25);
   const [expandedRows, setExpandedRows] = useState<Record<string, React.ReactNode>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<CompositeSLOItem | null>(null);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -118,11 +131,11 @@ export function CompositeSloList() {
   const results = data?.results ?? [];
   const total = data?.total ?? 0;
 
-  const availableTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    results.forEach((item) => item.tags?.forEach((tag: string) => tagSet.add(tag)));
-    return Array.from(tagSet).sort();
-  }, [results]);
+  const { suggestions } = useFetchCompositeSloSuggestions();
+  const availableTags = useMemo(
+    () => suggestions?.tags?.map((t) => t.label).sort() ?? [],
+    [suggestions]
+  );
 
   const tagOptions: EuiSelectableOption[] = useMemo(
     () =>
@@ -317,12 +330,54 @@ export function CompositeSloList() {
           return `${duration} (${timeWindow.type})`;
         },
       },
+      {
+        name: i18n.translate('xpack.slo.compositeSloList.columns.actions', {
+          defaultMessage: 'Actions',
+        }),
+        width: '80px',
+        actions: [
+          {
+            name: i18n.translate('xpack.slo.compositeSloList.actions.edit', {
+              defaultMessage: 'Edit',
+            }),
+            description: i18n.translate('xpack.slo.compositeSloList.actions.editDescription', {
+              defaultMessage: 'Edit this composite SLO',
+            }),
+            icon: 'pencil',
+            type: 'icon',
+            enabled: () => hasWritePermissions,
+            onClick: (item: CompositeSLOItem) => {
+              navigateToUrl(basePath.prepend(paths.sloCompositeEdit(item.id)));
+            },
+            'data-test-subj': 'compositeSloEditAction',
+          },
+          {
+            name: i18n.translate('xpack.slo.compositeSloList.actions.delete', {
+              defaultMessage: 'Delete',
+            }),
+            description: i18n.translate('xpack.slo.compositeSloList.actions.deleteDescription', {
+              defaultMessage: 'Delete this composite SLO',
+            }),
+            icon: 'trash',
+            type: 'icon',
+            color: 'danger',
+            enabled: () => hasWritePermissions,
+            onClick: (item: CompositeSLOItem) => {
+              setDeleteConfirm(item);
+            },
+            'data-test-subj': 'compositeSloDeleteAction',
+          },
+        ],
+      },
     ],
     [
+      basePath,
       detailsById,
       expandedRows,
+      hasWritePermissions,
       historicalSummaryById,
       isHistoricalLoading,
+      navigateToUrl,
       percentFormat,
       toggleExpandRow,
     ]
@@ -457,6 +512,32 @@ export function CompositeSloList() {
             defaultMessage: 'No composite SLOs found',
           })}
         />
+      )}
+      {deleteConfirm && (
+        <EuiConfirmModal
+          title={i18n.translate('xpack.slo.compositeSloList.deleteConfirmTitle', {
+            defaultMessage: 'Delete "{name}"?',
+            values: { name: deleteConfirm.name },
+          })}
+          onCancel={() => setDeleteConfirm(null)}
+          onConfirm={async () => {
+            await deleteCompositeSlo({ id: deleteConfirm.id, name: deleteConfirm.name });
+            setDeleteConfirm(null);
+          }}
+          cancelButtonText={i18n.translate('xpack.slo.compositeSloList.deleteConfirmCancel', {
+            defaultMessage: 'Cancel',
+          })}
+          confirmButtonText={i18n.translate('xpack.slo.compositeSloList.deleteConfirmButton', {
+            defaultMessage: 'Delete',
+          })}
+          buttonColor="danger"
+          data-test-subj="compositeSloDeleteConfirmModal"
+        >
+          {i18n.translate('xpack.slo.compositeSloList.deleteConfirmBody', {
+            defaultMessage:
+              'This will permanently delete this composite SLO. The member SLOs will not be affected.',
+          })}
+        </EuiConfirmModal>
       )}
     </>
   );

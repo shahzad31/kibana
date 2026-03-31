@@ -9,6 +9,8 @@ import type { ElasticsearchClient } from '@kbn/core/server';
 import type {
   FetchCompositeHistoricalSummaryParams,
   FetchCompositeHistoricalSummaryResponse,
+  FetchHistoricalSummaryParams,
+  FetchHistoricalSummaryResponse,
   HistoricalSummaryResponse,
 } from '@kbn/slo-schema';
 import { ALL_VALUE } from '@kbn/slo-schema';
@@ -21,12 +23,22 @@ import { HistoricalSummaryClient } from './historical_summary_client';
 
 const NO_DATA = -1;
 
+export interface HistoricalSummaryProvider {
+  fetch(params: FetchHistoricalSummaryParams): Promise<FetchHistoricalSummaryResponse>;
+}
+
 export class CompositeHistoricalSummaryClient {
+  private historicalSummaryProvider: HistoricalSummaryProvider;
+
   constructor(
-    private esClient: ElasticsearchClient,
+    esClient: ElasticsearchClient,
     private compositeSloRepository: CompositeSLORepository,
-    private sloDefinitionRepository: SLODefinitionRepository
-  ) {}
+    private sloDefinitionRepository: SLODefinitionRepository,
+    historicalSummaryProvider?: HistoricalSummaryProvider
+  ) {
+    this.historicalSummaryProvider =
+      historicalSummaryProvider ?? new HistoricalSummaryClient(esClient);
+  }
 
   async fetch(
     params: FetchCompositeHistoricalSummaryParams
@@ -41,13 +53,10 @@ export class CompositeHistoricalSummaryClient {
     const memberDefinitions = await this.sloDefinitionRepository.findAllByIds(allMemberSloIds);
     const memberDefMap = new Map(memberDefinitions.map((slo) => [slo.id, slo]));
 
-    const historicalClient = new HistoricalSummaryClient(this.esClient);
-
     const results: FetchCompositeHistoricalSummaryResponse = [];
 
     for (const composite of compositeDefinitions) {
       const memberHistoricalData = await this.fetchMemberHistoricalData(
-        historicalClient,
         composite,
         memberDefMap
       );
@@ -60,7 +69,6 @@ export class CompositeHistoricalSummaryClient {
   }
 
   private async fetchMemberHistoricalData(
-    historicalClient: HistoricalSummaryClient,
     composite: CompositeSLODefinition,
     memberDefMap: Map<string, SLODefinition>
   ) {
@@ -73,14 +81,14 @@ export class CompositeHistoricalSummaryClient {
         sloId: slo.id,
         instanceId: member.instanceId ?? ALL_VALUE,
         timeWindow: composite.timeWindow,
-        budgetingMethod: slo.budgetingMethod,
+        budgetingMethod: composite.budgetingMethod,
         groupBy: slo.groupBy,
         revision: slo.revision,
         objective: slo.objective,
       };
     });
 
-    const historicalData = await historicalClient.fetch({ list });
+    const historicalData = await this.historicalSummaryProvider.fetch({ list });
 
     return activeMembers.map((member, idx) => ({
       member,
