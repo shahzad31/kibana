@@ -307,32 +307,14 @@ export function CompositeSloList() {
         },
       },
       {
-        field: 'createdAt',
-        name: i18n.translate('xpack.slo.compositeSloList.columns.createdAt', {
-          defaultMessage: 'Created',
-        }),
-        width: '140px',
-        sortable: true,
-        render: (date: string) => new Date(date).toLocaleDateString(),
-      },
-      {
-        field: 'updatedAt',
-        name: i18n.translate('xpack.slo.compositeSloList.columns.updatedAt', {
-          defaultMessage: 'Updated',
-        }),
-        width: '140px',
-        sortable: true,
-        render: (date: string) => new Date(date).toLocaleDateString(),
-      },
-      {
         field: 'timeWindow',
         name: i18n.translate('xpack.slo.compositeSloList.columns.timeWindow', {
           defaultMessage: 'Time window',
         }),
         width: '120px',
         render: (timeWindow: Record<string, unknown>) => {
-          const duration = timeWindow.duration as Record<string, unknown>;
-          return `${duration.value}${duration.unit} (${timeWindow.type})`;
+          const duration = String(timeWindow.duration);
+          return `${duration} (${timeWindow.type})`;
         },
       },
     ],
