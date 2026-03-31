@@ -47,9 +47,7 @@ import { usePermissions } from '../../../hooks/use_permissions';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
 import { SloSparkline } from './slo_sparkline';
 
-const SLODetailsFlyout = lazy(
-  () => import('../../../pages/slo_details/shared_flyout/slo_details_flyout')
-);
+const SLODetailsFlyout = lazy(() => import('../../slo_details/shared_flyout/slo_details_flyout'));
 
 type CompositeSLOItem = FindCompositeSLOResponse['results'][number];
 
@@ -83,15 +81,12 @@ export function CompositeSloList() {
   const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearch(value);
-      setPage(0);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
-    },
-    []
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setPage(0);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -99,14 +94,11 @@ export function CompositeSloList() {
     };
   }, []);
 
-  const handleTagSelection = useCallback(
-    (options: EuiSelectableOption[]) => {
-      const newTags = options.filter((opt) => opt.checked === 'on').map((opt) => opt.label);
-      setSelectedTags(newTags);
-      setPage(0);
-    },
-    []
-  );
+  const handleTagSelection = useCallback((options: EuiSelectableOption[]) => {
+    const newTags = options.filter((opt) => opt.checked === 'on').map((opt) => opt.label);
+    setSelectedTags(newTags);
+    setPage(0);
+  }, []);
 
   const clearFilters = useCallback(() => {
     setSearch('');
