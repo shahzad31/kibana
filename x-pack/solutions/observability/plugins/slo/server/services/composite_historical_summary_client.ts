@@ -139,9 +139,7 @@ export class CompositeHistoricalSummaryClient {
 
       const sliValue = toHighPrecision(weightedSli / totalWeight);
       const consumedErrorBudget =
-        sliValue < 0 || initialErrorBudget <= 0
-          ? 0
-          : (1 - sliValue) / initialErrorBudget;
+        sliValue < 0 || initialErrorBudget <= 0 ? 0 : (1 - sliValue) / initialErrorBudget;
       const errorBudget = toErrorBudget(initialErrorBudget, consumedErrorBudget);
       const status = computeSummaryStatus(composite.objective, sliValue, errorBudget);
 
