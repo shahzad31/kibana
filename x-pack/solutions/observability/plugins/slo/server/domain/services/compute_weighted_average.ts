@@ -58,9 +58,7 @@ export function computeWeightedSli(
   return { sliValue, errorBudget, status };
 }
 
-export function computeNormalisedWeights(
-  dataPoints: WeightedDataPoint[]
-): number[] {
+export function computeNormalisedWeights(dataPoints: WeightedDataPoint[]): number[] {
   const totalWeight = dataPoints
     .filter(({ sliValue }) => sliValue !== NO_DATA)
     .reduce((sum, { weight }) => sum + weight, 0);

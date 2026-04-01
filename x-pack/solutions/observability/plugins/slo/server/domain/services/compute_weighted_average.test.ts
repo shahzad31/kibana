@@ -5,11 +5,7 @@
  * 2.0.
  */
 
-import {
-  computeWeightedSli,
-  computeNormalisedWeights,
-  NO_DATA,
-} from './compute_weighted_average';
+import { computeWeightedSli, computeNormalisedWeights, NO_DATA } from './compute_weighted_average';
 
 describe('computeWeightedSli', () => {
   it('computes weighted average from data points with equal weights', () => {
@@ -41,10 +37,7 @@ describe('computeWeightedSli', () => {
   });
 
   it('computes error budget from composite target', () => {
-    const result = computeWeightedSli(
-      [{ weight: 1, sliValue: 0.995 }],
-      { target: 0.99 }
-    );
+    const result = computeWeightedSli([{ weight: 1, sliValue: 0.995 }], { target: 0.99 });
 
     // initial = 0.01, consumed = (1 - 0.995) / 0.01 = 0.5, remaining = 0.5
     expect(result.errorBudget.initial).toBeCloseTo(0.01, 4);
@@ -87,10 +80,7 @@ describe('computeWeightedSli', () => {
   });
 
   it('returns VIOLATED when SLI is well below target', () => {
-    const result = computeWeightedSli(
-      [{ weight: 1, sliValue: 0.95 }],
-      { target: 0.999 }
-    );
+    const result = computeWeightedSli([{ weight: 1, sliValue: 0.95 }], { target: 0.999 });
 
     // consumed = (1 - 0.95) / 0.001 = 50, remaining = 1 - 50 = -49
     expect(result.status).toBe('VIOLATED');
@@ -98,10 +88,7 @@ describe('computeWeightedSli', () => {
   });
 
   it('handles target of 1.0 without division by zero', () => {
-    const result = computeWeightedSli(
-      [{ weight: 1, sliValue: 0.999 }],
-      { target: 1.0 }
-    );
+    const result = computeWeightedSli([{ weight: 1, sliValue: 0.999 }], { target: 1.0 });
 
     // initialErrorBudget = 0, so consumedErrorBudget is guarded to 0
     expect(result.sliValue).toBeCloseTo(0.999, 4);
@@ -110,10 +97,7 @@ describe('computeWeightedSli', () => {
   });
 
   it('handles negative SLI values by clamping consumed budget to 0', () => {
-    const result = computeWeightedSli(
-      [{ weight: 1, sliValue: -0.5 }],
-      { target: 0.99 }
-    );
+    const result = computeWeightedSli([{ weight: 1, sliValue: -0.5 }], { target: 0.99 });
 
     expect(result.errorBudget.consumed).toBe(0);
   });
@@ -150,9 +134,7 @@ describe('computeNormalisedWeights', () => {
   });
 
   it('handles single member', () => {
-    const weights = computeNormalisedWeights([
-      { weight: 42, sliValue: 0.999 },
-    ]);
+    const weights = computeNormalisedWeights([{ weight: 42, sliValue: 0.999 }]);
 
     expect(weights).toEqual([1]);
   });

@@ -52,10 +52,7 @@ export class CompositeHistoricalSummaryClient {
 
     const results = await Promise.all(
       compositeDefinitions.map(async (composite) => {
-        const memberHistoricalData = await this.fetchMemberHistoricalData(
-          composite,
-          memberDefMap
-        );
+        const memberHistoricalData = await this.fetchMemberHistoricalData(composite, memberDefMap);
         const data = this.computeWeightedHistorical(composite, memberHistoricalData);
         return { compositeId: composite.id, data };
       })
@@ -124,10 +121,7 @@ export class CompositeHistoricalSummaryClient {
         return { weight: member.weight, sliValue };
       });
 
-      const { sliValue, errorBudget, status } = computeWeightedSli(
-        dataPoints,
-        composite.objective
-      );
+      const { sliValue, errorBudget, status } = computeWeightedSli(dataPoints, composite.objective);
 
       return { date, sliValue, errorBudget, status };
     });
