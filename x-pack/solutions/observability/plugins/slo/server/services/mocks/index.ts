@@ -80,6 +80,7 @@ const createCompositeSLORepositoryMock = (): jest.Mocked<CompositeSLORepository>
     create: jest.fn(),
     update: jest.fn(),
     findById: jest.fn(),
+    findAllByIds: jest.fn(),
     deleteById: jest.fn(),
     search: jest.fn(),
   };

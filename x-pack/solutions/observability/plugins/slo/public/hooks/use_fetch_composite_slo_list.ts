@@ -24,6 +24,15 @@ interface CompositeSLOListParams {
   sortDirection?: CompositeSloSortDirection;
 }
 
+export interface UseFetchCompositeSloListResponse {
+  data: FindCompositeSLOResponse | undefined;
+  isInitialLoading: boolean;
+  isLoading: boolean;
+  isRefetching: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+}
+
 export function useFetchCompositeSloList({
   page = 1,
   perPage = 25,
@@ -31,7 +40,7 @@ export function useFetchCompositeSloList({
   tags,
   sortBy = 'createdAt',
   sortDirection = 'desc',
-}: CompositeSLOListParams = {}) {
+}: CompositeSLOListParams = {}): UseFetchCompositeSloListResponse {
   const {
     notifications: { toasts },
   } = useKibana().services;
@@ -71,7 +80,7 @@ export function useFetchCompositeSloList({
   });
 
   return {
-    data: data as FindCompositeSLOResponse | undefined,
+    data,
     isInitialLoading,
     isLoading,
     isRefetching,

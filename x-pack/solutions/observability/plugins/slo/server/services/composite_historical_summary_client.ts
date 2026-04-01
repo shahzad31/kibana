@@ -40,9 +40,7 @@ export class CompositeHistoricalSummaryClient {
   async fetch(
     params: FetchCompositeHistoricalSummaryParams
   ): Promise<FetchCompositeHistoricalSummaryResponse> {
-    const compositeDefinitions = await Promise.all(
-      params.list.map((id) => this.compositeSloRepository.findById(id))
-    );
+    const compositeDefinitions = await this.compositeSloRepository.findAllByIds(params.list);
 
     const allMemberSloIds = [
       ...new Set(compositeDefinitions.flatMap((comp) => comp.members.map((m) => m.sloId))),

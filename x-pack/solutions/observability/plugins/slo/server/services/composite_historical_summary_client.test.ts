@@ -63,7 +63,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.99 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -106,7 +106,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.99 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -143,7 +143,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       ],
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -184,7 +184,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.99 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -221,7 +221,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.99 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -247,7 +247,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       ],
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([]);
 
     const client = createClient();
@@ -269,7 +269,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       budgetingMethod: 'occurrences',
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
     mockHistoricalProvider.fetch.mockResolvedValue([
       {
@@ -313,9 +313,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.95 },
     });
 
-    mockCompositeRepo.findById
-      .mockResolvedValueOnce(compositeOne)
-      .mockResolvedValueOnce(compositeTwo);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([compositeOne, compositeTwo]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
     mockHistoricalProvider.fetch
@@ -362,7 +360,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.99 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA, sloB]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([
@@ -405,7 +403,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       members: [{ sloId: sloA.id, weight: 1 }],
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
     mockHistoricalProvider.fetch.mockResolvedValue([
       {
@@ -438,7 +436,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       objective: { target: 0.999 },
     });
 
-    mockCompositeRepo.findById.mockResolvedValue(composite);
+    mockCompositeRepo.findAllByIds.mockResolvedValue([composite]);
     mockSloRepo.findAllByIds.mockResolvedValue([sloA]);
 
     mockHistoricalProvider.fetch.mockResolvedValue([

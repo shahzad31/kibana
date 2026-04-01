@@ -9,18 +9,11 @@ import type { EuiBasicTableColumn } from '@elastic/eui';
 import {
   EuiBasicTable,
   EuiBadge,
-  EuiButtonEmpty,
   EuiButtonIcon,
-  EuiConfirmModal,
   type CriteriaWithPagination,
-  EuiFieldSearch,
-  EuiFilterButton,
-  EuiFilterGroup,
   EuiFlexGroup,
   EuiFlexItem,
   EuiLoadingSpinner,
-  EuiPopover,
-  EuiSelectable,
   EuiSkeletonText,
   EuiSpacer,
   EuiText,
@@ -29,8 +22,8 @@ import type { EuiSelectableOption } from '@elastic/eui/src/components/selectable
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
 import { paths } from '@kbn/slo-shared-plugin/common/locators/paths';
-import type { CompositeSLOMemberSummary, FindCompositeSLOResponse } from '@kbn/slo-schema';
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FindCompositeSLOResponse } from '@kbn/slo-schema';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
 import { useDeleteCompositeSlo } from '../../../hooks/use_delete_composite_slo';
@@ -45,9 +38,10 @@ import { useFetchCompositeSloSuggestions } from '../../../hooks/use_fetch_compos
 import { useKibana } from '../../../hooks/use_kibana';
 import { usePermissions } from '../../../hooks/use_permissions';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
+import { CompositeSloDeleteModal } from './composite_slo_delete_modal';
+import { CompositeSloMembersTable } from './composite_slo_members_table';
+import { CompositeSloToolbar } from './composite_slo_toolbar';
 import { SloSparkline } from './slo_sparkline';
-
-const SLODetailsFlyout = lazy(() => import('../../slo_details/shared_flyout/slo_details_flyout'));
 
 type CompositeSLOItem = FindCompositeSLOResponse['results'][number];
 
@@ -70,7 +64,7 @@ export function CompositeSloList() {
 
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(25);
-  const [expandedRows, setExpandedRows] = useState<Record<string, React.ReactNode>>({});
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<CompositeSLOItem | null>(null);
 
   const [search, setSearch] = useState('');
@@ -78,7 +72,6 @@ export function CompositeSloList() {
   const [sortBy, setSortBy] = useState<CompositeSloSortBy>('createdAt');
   const [sortDirection, setSortDirection] = useState<CompositeSloSortDirection>('desc');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleSearchChange = useCallback((value: string) => {
@@ -111,7 +104,7 @@ export function CompositeSloList() {
 
   const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
 
-  const { data, isLoading, isError } = useFetchCompositeSloList({
+  const { data, isInitialLoading, isLoading, isError } = useFetchCompositeSloList({
     page: page + 1,
     perPage,
     search: debouncedSearch || undefined,
@@ -129,49 +122,45 @@ export function CompositeSloList() {
     [suggestions]
   );
 
-  const tagOptions: EuiSelectableOption[] = useMemo(
-    () =>
-      availableTags.map((tag) => ({
-        label: tag,
-        checked: selectedTags.includes(tag) ? 'on' : undefined,
-      })),
-    [availableTags, selectedTags]
-  );
-
   const hasActiveFilters = debouncedSearch !== '' || selectedTags.length > 0;
 
-  const compositeIds = useMemo(() => results.map((item) => item.id), [results]);
+  const compositeIds = useMemo(() => results.map((item: CompositeSLOItem) => item.id), [results]);
   const { detailsById, isLoading: isDetailsLoading } = useFetchCompositeSloDetails(compositeIds);
   const { historicalSummaryById, isLoading: isHistoricalLoading } =
     useFetchCompositeHistoricalSummary(compositeIds);
 
-  const toggleExpandRow = useCallback(
-    (item: CompositeSLOItem) => {
-      setExpandedRows((prev) => {
-        const next = { ...prev };
-        if (next[item.id]) {
-          delete next[item.id];
-          return next;
-        }
+  const toggleExpandRow = useCallback((item: CompositeSLOItem) => {
+    setExpandedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.add(item.id);
+      }
+      return next;
+    });
+  }, []);
 
-        const details = detailsById.get(item.id);
-        if (!details || !details.members?.length) {
-          next[item.id] = (
-            <EuiText size="s" color="subdued" style={{ padding: 16 }}>
-              {i18n.translate('xpack.slo.compositeSloList.noMembers', {
-                defaultMessage: 'No member SLI data available',
-              })}
-            </EuiText>
-          );
-          return next;
-        }
-
-        next[item.id] = <MembersTable members={details.members} percentFormat={percentFormat} />;
-        return next;
-      });
-    },
-    [detailsById, percentFormat]
-  );
+  const expandedRows = useMemo(() => {
+    const map: Record<string, React.ReactNode> = {};
+    for (const id of expandedRowIds) {
+      const details = detailsById.get(id);
+      if (!details || !details.members?.length) {
+        map[id] = (
+          <EuiText size="s" color="subdued" style={{ padding: 16 }}>
+            {i18n.translate('xpack.slo.compositeSloList.noMembers', {
+              defaultMessage: 'No member SLI data available',
+            })}
+          </EuiText>
+        );
+      } else {
+        map[id] = (
+          <CompositeSloMembersTable members={details.members} percentFormat={percentFormat} />
+        );
+      }
+    }
+    return map;
+  }, [expandedRowIds, detailsById, percentFormat]);
 
   const columns: Array<EuiBasicTableColumn<CompositeSLOItem>> = useMemo(
     () => [
@@ -179,7 +168,7 @@ export function CompositeSloList() {
         width: '40px',
         isExpander: true,
         render: (item: CompositeSLOItem) => {
-          const isExpanded = !!expandedRows[item.id];
+          const isExpanded = expandedRowIds.has(item.id);
           return (
             <EuiButtonIcon
               data-test-subj={`compositeSloExpandRow-${item.id}`}
@@ -363,7 +352,7 @@ export function CompositeSloList() {
     [
       basePath,
       detailsById,
-      expandedRows,
+      expandedRowIds,
       hasWritePermissions,
       historicalSummaryById,
       isHistoricalLoading,
@@ -385,80 +374,18 @@ export function CompositeSloList() {
 
   return (
     <>
-      <EuiFlexGroup gutterSize="m" alignItems="center" responsive={false} wrap>
-        <EuiFlexItem grow>
-          <EuiFieldSearch
-            data-test-subj="compositeSloListSearch"
-            placeholder={i18n.translate('xpack.slo.compositeSloList.searchPlaceholder', {
-              defaultMessage: 'Search composite SLOs by name...',
-            })}
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            isClearable
-            fullWidth
-            isLoading={isLoading}
-          />
-        </EuiFlexItem>
-        <EuiFlexItem grow={false}>
-          <EuiFilterGroup>
-            <EuiPopover
-              button={
-                <EuiFilterButton
-                  data-test-subj="compositeSloListTagFilter"
-                  iconType="arrowDown"
-                  onClick={() => setIsTagPopoverOpen((prev) => !prev)}
-                  isSelected={isTagPopoverOpen}
-                  numFilters={availableTags.length}
-                  hasActiveFilters={selectedTags.length > 0}
-                  numActiveFilters={selectedTags.length}
-                >
-                  {i18n.translate('xpack.slo.compositeSloList.tagsFilter', {
-                    defaultMessage: 'Tags',
-                  })}
-                </EuiFilterButton>
-              }
-              isOpen={isTagPopoverOpen}
-              closePopover={() => setIsTagPopoverOpen(false)}
-              panelPaddingSize="none"
-            >
-              <EuiSelectable
-                options={tagOptions}
-                onChange={handleTagSelection}
-                searchable
-                searchProps={{
-                  placeholder: i18n.translate('xpack.slo.compositeSloList.tagsSearchPlaceholder', {
-                    defaultMessage: 'Search tags',
-                  }),
-                  compressed: true,
-                }}
-              >
-                {(list, tagSearch) => (
-                  <div css={{ width: 240 }}>
-                    {tagSearch}
-                    {list}
-                  </div>
-                )}
-              </EuiSelectable>
-            </EuiPopover>
-          </EuiFilterGroup>
-        </EuiFlexItem>
-        {hasActiveFilters && (
-          <EuiFlexItem grow={false}>
-            <EuiButtonEmpty
-              data-test-subj="compositeSloListClearFilters"
-              size="s"
-              iconType="cross"
-              onClick={clearFilters}
-            >
-              {i18n.translate('xpack.slo.compositeSloList.clearFilters', {
-                defaultMessage: 'Clear filters',
-              })}
-            </EuiButtonEmpty>
-          </EuiFlexItem>
-        )}
-      </EuiFlexGroup>
+      <CompositeSloToolbar
+        search={search}
+        isLoading={isLoading}
+        selectedTags={selectedTags}
+        availableTags={availableTags}
+        hasActiveFilters={hasActiveFilters}
+        onSearchChange={handleSearchChange}
+        onTagSelectionChange={handleTagSelection}
+        onClearFilters={clearFilters}
+      />
       <EuiSpacer size="m" />
-      {isLoading ? (
+      {isInitialLoading ? (
         <EuiFlexGroup justifyContent="center" alignItems="center" style={{ minHeight: 200 }}>
           <EuiFlexItem grow={false}>
             <EuiLoadingSpinner size="xl" />
@@ -504,124 +431,15 @@ export function CompositeSloList() {
         />
       )}
       {deleteConfirm && (
-        <EuiConfirmModal
-          title={i18n.translate('xpack.slo.compositeSloList.deleteConfirmTitle', {
-            defaultMessage: 'Delete "{name}"?',
-            values: { name: deleteConfirm.name },
-          })}
+        <CompositeSloDeleteModal
+          name={deleteConfirm.name}
           onCancel={() => setDeleteConfirm(null)}
           onConfirm={async () => {
             await deleteCompositeSlo({ id: deleteConfirm.id, name: deleteConfirm.name });
             setDeleteConfirm(null);
           }}
-          cancelButtonText={i18n.translate('xpack.slo.compositeSloList.deleteConfirmCancel', {
-            defaultMessage: 'Cancel',
-          })}
-          confirmButtonText={i18n.translate('xpack.slo.compositeSloList.deleteConfirmButton', {
-            defaultMessage: 'Delete',
-          })}
-          buttonColor="danger"
-          data-test-subj="compositeSloDeleteConfirmModal"
-        >
-          {i18n.translate('xpack.slo.compositeSloList.deleteConfirmBody', {
-            defaultMessage:
-              'This will permanently delete this composite SLO. The member SLOs will not be affected.',
-          })}
-        </EuiConfirmModal>
+        />
       )}
     </>
-  );
-}
-
-const getMemberColumns = (
-  percentFormat: string
-): Array<EuiBasicTableColumn<CompositeSLOMemberSummary>> => [
-  {
-    field: 'name',
-    name: i18n.translate('xpack.slo.compositeSloList.members.name', {
-      defaultMessage: 'Member SLO',
-    }),
-    truncateText: true,
-    width: '220px',
-  },
-  {
-    field: 'instanceId',
-    name: i18n.translate('xpack.slo.compositeSloList.members.instanceId', {
-      defaultMessage: 'Instance',
-    }),
-    width: '220px',
-    render: (instanceId?: string) => instanceId ?? NOT_AVAILABLE_LABEL,
-  },
-  {
-    field: 'weight',
-    name: i18n.translate('xpack.slo.compositeSloList.members.weight', {
-      defaultMessage: 'Weight',
-    }),
-    width: '80px',
-  },
-  {
-    field: 'normalisedWeight',
-    name: i18n.translate('xpack.slo.compositeSloList.members.normalisedWeight', {
-      defaultMessage: 'Normalised weight',
-    }),
-    width: '140px',
-    render: (value: number) =>
-      value === -1 ? NOT_AVAILABLE_LABEL : numeral(value).format(percentFormat),
-  },
-  {
-    field: 'sliValue',
-    name: i18n.translate('xpack.slo.compositeSloList.members.sliValue', {
-      defaultMessage: 'SLI value',
-    }),
-    width: '100px',
-    render: (value: number) =>
-      value === -1 ? NOT_AVAILABLE_LABEL : numeral(value).format(percentFormat),
-  },
-  {
-    field: 'contribution',
-    name: i18n.translate('xpack.slo.compositeSloList.members.contribution', {
-      defaultMessage: 'Contribution',
-    }),
-    width: '110px',
-    render: (value: number) => numeral(value).format(percentFormat),
-  },
-];
-
-function MembersTable({
-  members,
-  percentFormat,
-}: {
-  members: CompositeSLOMemberSummary[];
-  percentFormat: string;
-}) {
-  const columns = useMemo(() => getMemberColumns(percentFormat), [percentFormat]);
-  const [selectedMember, setSelectedMember] = useState<CompositeSLOMemberSummary | null>(null);
-
-  return (
-    <div css={{ padding: '16px' }}>
-      <EuiBasicTable
-        tableCaption={i18n.translate('xpack.slo.compositeSloList.members.tableCaption', {
-          defaultMessage: 'Member SLOs',
-        })}
-        data-test-subj="compositeSloMembersTable"
-        items={members}
-        columns={columns}
-        itemId="id"
-        compressed
-        rowProps={(item: CompositeSLOMemberSummary) => ({
-          onClick: () => setSelectedMember(item),
-          style: { cursor: 'pointer' },
-        })}
-      />
-      {selectedMember && (
-        <Suspense fallback={<EuiLoadingSpinner size="m" />}>
-          <SLODetailsFlyout
-            sloId={selectedMember.id}
-            sloInstanceId={selectedMember.instanceId}
-            onClose={() => setSelectedMember(null)}
-          />
-        </Suspense>
-      )}
-    </div>
   );
 }
