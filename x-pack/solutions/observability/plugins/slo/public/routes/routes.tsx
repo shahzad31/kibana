@@ -47,13 +47,6 @@ export const getRoutes = (
       params: {},
       exact: true,
     },
-    [SLOS_COMPOSITE_PATH]: {
-      handler: () => {
-        return <SlosPage />;
-      },
-      params: {},
-      exact: true,
-    },
     [SLOS_WELCOME_PATH]: {
       handler: () => {
         return <SlosWelcomePage />;
@@ -97,6 +90,13 @@ export const getRoutes = (
       exact: true,
     },
     ...(isCompositeSloEnabled && {
+      [SLOS_COMPOSITE_PATH]: {
+        handler: () => {
+          return <SlosPage />;
+        },
+        params: {},
+        exact: true,
+      },
       [SLO_COMPOSITE_CREATE_PATH]: {
         handler: () => {
           return <CompositeSloEditPage />;
