@@ -97,6 +97,26 @@ const resolveParams = ({
   };
 };
 
+function buildMemberAggs({
+  slo,
+  shouldIncludeInstanceIdFilter,
+}: Pick<ResolvedParams, 'slo' | 'shouldIncludeInstanceIdFilter'>) {
+  return {
+    ...(shouldIncludeInstanceIdFilter && {
+      last_doc: {
+        top_hits: {
+          sort: [{ '@timestamp': { order: 'desc' as const } }],
+          _source: {
+            includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
+          },
+          size: 1,
+        },
+      },
+    }),
+    ...buildAggs(slo),
+  };
+}
+
 const buildSearchBody = ({
   slo,
   instanceId,
@@ -126,20 +146,7 @@ const buildSearchBody = ({
         ],
       },
     },
-    aggs: {
-      ...(shouldIncludeInstanceIdFilter && {
-        last_doc: {
-          top_hits: {
-            sort: [{ '@timestamp': { order: 'desc' as const } }],
-            _source: {
-              includes: ['slo.groupings', 'monitor', 'observer', 'config_id'],
-            },
-            size: 1,
-          },
-        },
-      }),
-      ...buildAggs(slo),
-    },
+    aggs: buildMemberAggs({ slo, shouldIncludeInstanceIdFilter }),
   };
 };
 
@@ -213,12 +220,18 @@ export class DefaultSummaryClient implements SummaryClient {
 
     const resolvedList = paramsList.map(resolveParams);
 
-    const summarySearches = resolvedList.flatMap((resolved) => [
-      { index: resolved.index },
-      buildSearchBody(resolved),
-    ]);
+    const canUseNamedFilters =
+      resolvedList.length > 1 &&
+      resolvedList.every(
+        (r) =>
+          r.index === resolvedList[0].index &&
+          r.dateRange.from.getTime() === resolvedList[0].dateRange.from.getTime() &&
+          r.dateRange.to.getTime() === resolvedList[0].dateRange.to.getTime()
+      );
 
-    const summaryResult = await this.esClient.msearch({ searches: summarySearches });
+    const summaryAggregations = canUseNamedFilters
+      ? await this.computeSummariesWithNamedFilters(resolvedList)
+      : await this.computeSummariesWithMsearch(resolvedList);
 
     const burnRateBatchParams = resolvedList.map(({ slo, instanceId, remoteName }) => ({
       slo,
@@ -230,18 +243,92 @@ export class DefaultSummaryClient implements SummaryClient {
     const allBurnRates = await this.burnRatesClient.calculateBatch(burnRateBatchParams);
 
     return resolvedList.map(({ slo, dateRange, budgetingMethodOverride }, i) => {
-      const response = summaryResult.responses[i];
-      if ('error' in response) {
+      const aggs = summaryAggregations[i];
+      if (!aggs) {
         return buildNoDataResult(slo);
       }
+      return toSummaryResult(slo, dateRange, aggs, allBurnRates[i], budgetingMethodOverride);
+    });
+  }
 
-      return toSummaryResult(
-        slo,
-        dateRange,
-        response.aggregations as SummaryAggregations | undefined,
-        allBurnRates[i],
-        budgetingMethodOverride
-      );
+  private async computeSummariesWithMsearch(
+    resolvedList: ResolvedParams[]
+  ): Promise<Array<SummaryAggregations | undefined>> {
+    const summarySearches = resolvedList.flatMap((resolved) => [
+      { index: resolved.index },
+      buildSearchBody(resolved),
+    ]);
+
+    const summaryResult = await this.esClient.msearch({ searches: summarySearches });
+
+    return resolvedList.map((_, i) => {
+      const response = summaryResult.responses[i];
+      if ('error' in response) {
+        return undefined;
+      }
+      return response.aggregations as SummaryAggregations | undefined;
+    });
+  }
+
+  private async computeSummariesWithNamedFilters(
+    resolvedList: ResolvedParams[]
+  ): Promise<Array<SummaryAggregations | undefined>> {
+    const { index, dateRange } = resolvedList[0];
+    const uniqueSloIds = [...new Set(resolvedList.map((r) => r.slo.id))];
+
+    // Each member gets its own named filter aggregation keyed by index,
+    // containing the per-member filter (slo.id, revision, instanceId) and
+    // the appropriate metric sub-aggregations.
+    const memberAggs: Record<string, any> = {};
+    for (let i = 0; i < resolvedList.length; i++) {
+      const resolved = resolvedList[i];
+      const filterClauses = [
+        { term: { 'slo.id': resolved.slo.id } },
+        { term: { 'slo.revision': resolved.slo.revision } },
+        ...(resolved.shouldIncludeInstanceIdFilter
+          ? [{ term: { 'slo.instanceId': resolved.instanceId } }]
+          : []),
+      ];
+
+      memberAggs[`member_${i}`] = {
+        filter: { bool: { filter: filterClauses } },
+        aggs: buildMemberAggs(resolved),
+      };
+    }
+
+    const result = await this.esClient.search({
+      index,
+      size: 0,
+      query: {
+        bool: {
+          filter: [
+            { terms: { 'slo.id': uniqueSloIds } },
+            {
+              range: {
+                '@timestamp': {
+                  gte: dateRange.from.toISOString(),
+                  lte: dateRange.to.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      aggs: memberAggs,
+    });
+
+    const aggregations = result.aggregations as Record<string, any> | undefined;
+
+    return resolvedList.map((_, i) => {
+      const bucket = aggregations?.[`member_${i}`];
+      if (!bucket) {
+        return undefined;
+      }
+      return {
+        good: bucket.good,
+        total: bucket.total,
+        ...(bucket.last_doc ? { last_doc: bucket.last_doc } : {}),
+      } as SummaryAggregations;
     });
   }
 }
