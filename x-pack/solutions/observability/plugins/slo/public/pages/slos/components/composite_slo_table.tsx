@@ -34,7 +34,6 @@ import type {
 import { useKibana } from '../../../hooks/use_kibana';
 import { usePermissions } from '../../../hooks/use_permissions';
 import { formatHistoricalData } from '../../../utils/slo/chart_data_formatter';
-import { CompositeSloDeleteModal } from './composite_slo_delete_modal';
 import { CompositeSloMembersTable } from './composite_slo_members_table';
 import { SloSparkline } from './slo_sparkline';
 
