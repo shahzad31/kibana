@@ -6,8 +6,8 @@
  */
 import * as t from 'io-ts';
 import {
-  compositeSloComponentSchema,
-  compositeSloDefinitionSchema,
+  compositeSloBaseDefinitionSchema,
+  compositeSloMemberSummarySchema,
   compositeSloSummarySchema,
 } from '../../../schema/composite_slo';
 import { sloIdSchema } from '../../../schema/slo';
@@ -19,10 +19,10 @@ const getCompositeSLOParamsSchema = t.type({
 });
 
 const getCompositeSLOResponseSchema = t.intersection([
-  compositeSloDefinitionSchema,
+  compositeSloBaseDefinitionSchema,
   t.type({
     summary: compositeSloSummarySchema,
-    components: t.array(compositeSloComponentSchema),
+    members: t.array(compositeSloMemberSummarySchema),
   }),
 ]);
 

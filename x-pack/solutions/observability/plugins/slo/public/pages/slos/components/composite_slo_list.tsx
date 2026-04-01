@@ -29,7 +29,7 @@ import type { EuiSelectableOption } from '@elastic/eui/src/components/selectable
 import numeral from '@elastic/numeral';
 import { i18n } from '@kbn/i18n';
 import { paths } from '@kbn/slo-shared-plugin/common/locators/paths';
-import type { CompositeSLOComponent, FindCompositeSLOResponse } from '@kbn/slo-schema';
+import type { CompositeSLOMemberSummary, FindCompositeSLOResponse } from '@kbn/slo-schema';
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NOT_AVAILABLE_LABEL } from '../../../../common/i18n';
 import { displayStatus } from '../../../components/slo/slo_badges/slo_status_badge';
@@ -155,10 +155,10 @@ export function CompositeSloList() {
         }
 
         const details = detailsById.get(item.id);
-        if (!details || !details.components?.length) {
+        if (!details || !details.members?.length) {
           next[item.id] = (
             <EuiText size="s" color="subdued" style={{ padding: 16 }}>
-              {i18n.translate('xpack.slo.compositeSloList.noComponents', {
+              {i18n.translate('xpack.slo.compositeSloList.noMembers', {
                 defaultMessage: 'No member SLI data available',
               })}
             </EuiText>
@@ -167,7 +167,7 @@ export function CompositeSloList() {
         }
 
         next[item.id] = (
-          <MemberComponentsTable components={details.components} percentFormat={percentFormat} />
+          <MembersTable members={details.members} percentFormat={percentFormat} />
         );
         return next;
       });
@@ -537,7 +537,7 @@ export function CompositeSloList() {
 
 const getMemberColumns = (
   percentFormat: string
-): Array<EuiBasicTableColumn<CompositeSLOComponent>> => [
+): Array<EuiBasicTableColumn<CompositeSLOMemberSummary>> => [
   {
     field: 'name',
     name: i18n.translate('xpack.slo.compositeSloList.members.name', {
@@ -589,15 +589,15 @@ const getMemberColumns = (
   },
 ];
 
-function MemberComponentsTable({
-  components,
+function MembersTable({
+  members,
   percentFormat,
 }: {
-  components: CompositeSLOComponent[];
+  members: CompositeSLOMemberSummary[];
   percentFormat: string;
 }) {
   const columns = useMemo(() => getMemberColumns(percentFormat), [percentFormat]);
-  const [selectedMember, setSelectedMember] = useState<CompositeSLOComponent | null>(null);
+  const [selectedMember, setSelectedMember] = useState<CompositeSLOMemberSummary | null>(null);
 
   return (
     <div css={{ padding: '16px' }}>
@@ -606,11 +606,11 @@ function MemberComponentsTable({
           defaultMessage: 'Member SLOs',
         })}
         data-test-subj="compositeSloMembersTable"
-        items={components}
+        items={members}
         columns={columns}
         itemId="id"
         compressed
-        rowProps={(item: CompositeSLOComponent) => ({
+        rowProps={(item: CompositeSLOMemberSummary) => ({
           onClick: () => setSelectedMember(item),
           style: { cursor: 'pointer' },
         })}

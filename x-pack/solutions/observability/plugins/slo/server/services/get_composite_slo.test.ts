@@ -132,14 +132,14 @@ describe('GetCompositeSLO', () => {
     // composite 1d burn rate = (1 - 0.9993) / 0.01 = 0.07
     expect(result.summary.oneDayBurnRate).toBeCloseTo(0.07, 3);
 
-    expect(result.components).toHaveLength(2);
-    expect(result.components[0]).toMatchObject({
+    expect(result.members).toHaveLength(2);
+    expect(result.members[0]).toMatchObject({
       id: sloA.id,
       name: 'Service A',
       weight: 6,
       normalisedWeight: 0.6,
     });
-    expect(result.components[1]).toMatchObject({
+    expect(result.members[1]).toMatchObject({
       id: sloB.id,
       name: 'Service B',
       weight: 4,
@@ -276,13 +276,13 @@ describe('GetCompositeSLO', () => {
 
     // sloB has no data (-1), so only sloA participates with normalisedWeight = 1.0
     expect(result.summary.sliValue).toBeCloseTo(0.995, 4);
-    expect(result.components[0].normalisedWeight).toBe(1);
-    expect(result.components[1].normalisedWeight).toBe(0);
-    expect(result.components[1].sliValue).toBe(-1);
-    expect(result.components[1].contribution).toBe(0);
+    expect(result.members[0].normalisedWeight).toBe(1);
+    expect(result.members[1].normalisedWeight).toBe(0);
+    expect(result.members[1].sliValue).toBe(-1);
+    expect(result.members[1].contribution).toBe(0);
   });
 
-  it('returns NO_DATA status when all components lack data', async () => {
+  it('returns NO_DATA status when all members lack data', async () => {
     const sloA = createSLO({
       id: 'slo-a-xxxxxxxx',
       name: 'No Data A',
@@ -357,9 +357,9 @@ describe('GetCompositeSLO', () => {
 
     // Only sloA participates
     expect(result.summary.sliValue).toBeCloseTo(0.995, 4);
-    expect(result.components).toHaveLength(1);
-    expect(result.components[0].id).toBe(sloA.id);
-    expect(result.components[0].normalisedWeight).toBe(1);
+    expect(result.members).toHaveLength(1);
+    expect(result.members[0].id).toBe(sloA.id);
+    expect(result.members[0].normalisedWeight).toBe(1);
   });
 
   it('passes instanceId to summary client when member specifies it', async () => {
@@ -394,7 +394,7 @@ describe('GetCompositeSLO', () => {
         budgetingMethodOverride: composite.budgetingMethod,
       },
     ]);
-    expect(result.components[0].instanceId).toBe('my-instance');
+    expect(result.members[0].instanceId).toBe('my-instance');
   });
 
   it('returns VIOLATED status when composite SLI is below target and error budget exhausted', async () => {

@@ -7,7 +7,7 @@
 
 import type {
   BatchGetCompositeSLOResponse,
-  CompositeSLOComponent,
+  CompositeSLOMemberSummary,
   CompositeSLOSummary,
   GetCompositeSLOResponse,
 } from '@kbn/slo-schema';
@@ -77,7 +77,7 @@ export class GetCompositeSLO {
       burnRateWindows: summaryResults[i].burnRateWindows,
     }));
 
-    const { compositeSummary, components } = this.computeWeightedAggregate(
+    const { compositeSummary, members } = this.computeWeightedAggregate(
       compositeSlo,
       memberSummaries
     );
@@ -85,20 +85,20 @@ export class GetCompositeSLO {
     return {
       ...compositeSlo,
       summary: compositeSummary,
-      components,
+      members,
     };
   }
 
   private computeWeightedAggregate(
     compositeSlo: CompositeSLODefinition,
     memberSummaries: MemberSummaryData[]
-  ): { compositeSummary: CompositeSLOSummary; components: CompositeSLOComponent[] } {
+  ): { compositeSummary: CompositeSLOSummary; members: CompositeSLOMemberSummary[] } {
     const activeMembers = memberSummaries.filter((ms) => ms.summary.sliValue !== NO_DATA);
 
     if (activeMembers.length === 0) {
       return {
         compositeSummary: this.buildNoDataSummary(),
-        components: memberSummaries.map((ms) => this.buildComponent(ms, 0)),
+        members: memberSummaries.map((ms) => this.buildMemberSummary(ms, 0)),
       };
     }
 
@@ -109,7 +109,7 @@ export class GetCompositeSLO {
     let compositeOneHourSli = 0;
     let compositeOneDaySli = 0;
 
-    const components: CompositeSLOComponent[] = memberSummaries.map((ms) => {
+    const members: CompositeSLOMemberSummary[] = memberSummaries.map((ms) => {
       const isActive = ms.summary.sliValue !== NO_DATA;
       const normalisedWeight = isActive ? toHighPrecision(ms.member.weight / totalWeight) : 0;
 
@@ -120,7 +120,7 @@ export class GetCompositeSLO {
         compositeOneDaySli += normalisedWeight * getWindowSli(ms.burnRateWindows, '1d');
       }
 
-      return this.buildComponent(ms, normalisedWeight);
+      return this.buildMemberSummary(ms, normalisedWeight);
     });
 
     compositeSliValue = toHighPrecision(compositeSliValue);
@@ -143,18 +143,18 @@ export class GetCompositeSLO {
         oneHourBurnRate: deriveBurnRate(compositeOneHourSli, compositeErrorBudget),
         oneDayBurnRate: deriveBurnRate(compositeOneDaySli, compositeErrorBudget),
       },
-      components,
+      members,
     };
   }
 
-  private buildComponent(
+  private buildMemberSummary(
     ms: {
       member: { sloId: string; weight: number; instanceId?: string };
       sloName: string;
       summary: { sliValue: number };
     },
     normalisedWeight: number
-  ): CompositeSLOComponent {
+  ): CompositeSLOMemberSummary {
     const sliValue = ms.summary.sliValue;
     const contribution = sliValue === NO_DATA ? 0 : toHighPrecision(normalisedWeight * sliValue);
 
