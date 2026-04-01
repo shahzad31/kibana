@@ -156,13 +156,15 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       sortOrder: sortDirection,
     });
 
+    const results = response.saved_objects
+      .map((so) => this.toCompositeSLO(so.attributes))
+      .filter(this.isCompositeSLO);
+
     return {
-      total: response.total,
+      total: response.total - (response.saved_objects.length - results.length),
       perPage: response.per_page,
       page: response.page,
-      results: response.saved_objects
-        .map((so) => this.toCompositeSLO(so.attributes))
-        .filter(this.isCompositeSLO),
+      results,
     };
   }
 

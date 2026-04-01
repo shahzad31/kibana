@@ -229,10 +229,6 @@ export class DefaultSummaryClient implements SummaryClient {
           r.dateRange.to.getTime() === resolvedList[0].dateRange.to.getTime()
       );
 
-    const summaryAggregations = canUseNamedFilters
-      ? await this.computeSummariesWithNamedFilters(resolvedList)
-      : await this.computeSummariesWithMsearch(resolvedList);
-
     const burnRateBatchParams = resolvedList.map(({ slo, instanceId, remoteName }) => ({
       slo,
       instanceId: instanceId ?? ALL_VALUE,
@@ -240,7 +236,12 @@ export class DefaultSummaryClient implements SummaryClient {
       remoteName,
     }));
 
-    const allBurnRates = await this.burnRatesClient.calculateBatch(burnRateBatchParams);
+    const [summaryAggregations, allBurnRates] = await Promise.all([
+      canUseNamedFilters
+        ? this.computeSummariesWithNamedFilters(resolvedList)
+        : this.computeSummariesWithMsearch(resolvedList),
+      this.burnRatesClient.calculateBatch(burnRateBatchParams),
+    ]);
 
     return resolvedList.map(({ slo, dateRange, budgetingMethodOverride }, i) => {
       const aggs = summaryAggregations[i];

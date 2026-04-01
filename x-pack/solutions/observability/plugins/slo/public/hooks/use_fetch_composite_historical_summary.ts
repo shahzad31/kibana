@@ -17,7 +17,7 @@ import { usePluginContext } from './use_plugin_context';
 export function useFetchCompositeHistoricalSummary(compositeIds: string[]) {
   const { sloClient } = usePluginContext();
 
-  const { isLoading, isError, data } = useQuery({
+  const { isInitialLoading: isLoading, isError, data } = useQuery({
     queryKey: sloKeys.compositeHistoricalSummary(compositeIds),
     queryFn: async ({ signal }) => {
       return await sloClient.fetch(

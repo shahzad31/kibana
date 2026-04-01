@@ -15,7 +15,7 @@ export function useFetchCompositeSloDetails(ids: string[]) {
   const { sloClient } = usePluginContext();
   const sortedIds = useMemo(() => [...ids].sort(), [ids]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isInitialLoading: isLoading } = useQuery({
     queryKey: [...sloKeys.compositeDetails(), sortedIds],
     queryFn: async ({ signal }) => {
       if (sortedIds.length === 0) return [];
