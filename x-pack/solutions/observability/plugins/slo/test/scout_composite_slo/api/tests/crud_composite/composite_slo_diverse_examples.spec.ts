@@ -27,6 +27,10 @@ apiTest.describe(
       await apiServices.compositeSlo.deleteAll();
     });
 
+    apiTest.afterEach(async ({ apiServices }) => {
+      await apiServices.compositeSlo.deleteAll();
+    });
+
     apiTest.afterAll(async ({ apiServices }) => {
       await apiServices.compositeSlo.deleteAll();
     });
@@ -74,9 +78,7 @@ apiTest.describe(
             expect(body.name).toBe('Platform Availability');
             expect(body.objective).toStrictEqual({ target: 0.999 });
             const tw = body.timeWindow as Record<string, unknown>;
-            const dur = tw.duration as Record<string, unknown>;
-            expect(dur.value).toBe(30);
-            expect(dur.unit).toBe('d');
+            expect(tw.duration).toBe('30d');
             expect(body.tags).toStrictEqual(['platform', 'availability', 'critical']);
             expect(body.summary).toBeDefined();
           }
@@ -170,9 +172,7 @@ apiTest.describe(
             expect(body.name).toBe('Microservices Mesh Health');
             expect(body.objective).toStrictEqual({ target: 0.98 });
             const tw = body.timeWindow as Record<string, unknown>;
-            const dur = tw.duration as Record<string, unknown>;
-            expect(dur.value).toBe(30);
-            expect(dur.unit).toBe('d');
+            expect(tw.duration).toBe('30d');
             expect(body.summary).toBeDefined();
           }
         );
@@ -226,9 +226,7 @@ apiTest.describe(
             expect(body.name).toBe('Core Infrastructure');
             expect(body.objective).toStrictEqual({ target: 0.9999 });
             const tw = body.timeWindow as Record<string, unknown>;
-            const dur = tw.duration as Record<string, unknown>;
-            expect(dur.value).toBe(90);
-            expect(dur.unit).toBe('d');
+            expect(tw.duration).toBe('90d');
             expect(body.tags).toStrictEqual(['infrastructure', 'core', 'sre']);
             expect(body.summary).toBeDefined();
           }
@@ -317,9 +315,9 @@ apiTest.describe(
             name: 'Dev Environment Health',
             description: 'Lower SLO target for development environment services',
             members: [
-              { sloId: 'dev-api', weight: 1 },
-              { sloId: 'dev-database', weight: 1 },
-              { sloId: 'dev-cache', weight: 1 },
+              { sloId: 'dev-api-svc', weight: 1 },
+              { sloId: 'dev-database-svc', weight: 1 },
+              { sloId: 'dev-cache-svc', weight: 1 },
             ],
             objective: { target: 0.9 },
             timeWindow: { duration: '7d', type: 'rolling' as const },
@@ -362,31 +360,31 @@ apiTest.describe(
       'Maximum Members (25): large composite representing a full service catalog',
       async ({ apiClient }) => {
         const serviceNames = [
-          'auth',
+          'auth-service',
           'user-profile',
-          'billing',
-          'payment',
-          'order',
-          'inventory',
-          'shipping',
+          'billing-svc',
+          'payment-svc',
+          'order-service',
+          'inventory-svc',
+          'shipping-svc',
           'notification',
-          'search',
+          'search-service',
           'recommendation',
-          'analytics',
-          'reporting',
-          'logging',
-          'monitoring',
-          'config',
-          'gateway',
-          'cdn',
-          'media',
-          'chat',
-          'support',
-          'scheduler',
-          'worker',
-          'cache',
-          'queue',
-          'storage',
+          'analytics-svc',
+          'reporting-svc',
+          'logging-service',
+          'monitoring-svc',
+          'config-service',
+          'gateway-service',
+          'cdn-service',
+          'media-service',
+          'chat-service',
+          'support-svc',
+          'scheduler-svc',
+          'worker-service',
+          'cache-service',
+          'queue-service',
+          'storage-svc',
         ];
 
         await createAndVerify(

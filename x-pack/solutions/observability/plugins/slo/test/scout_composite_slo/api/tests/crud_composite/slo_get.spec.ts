@@ -209,8 +209,7 @@ apiTest.describe(
       expect(body.version).toBe(1);
 
       const tw = body.timeWindow as Record<string, unknown>;
-      expect((tw.duration as Record<string, unknown>).value).toBe(7);
-        expect((tw.duration as Record<string, unknown>).unit).toBe('d');
+      expect(tw.duration).toBe('7d');
       expect(tw.type).toBe('rolling');
     });
 
