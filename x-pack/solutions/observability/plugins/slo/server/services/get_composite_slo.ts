@@ -199,7 +199,7 @@ function getWindowSli(windows: BurnRateWindow[], name: string): number {
 }
 
 function deriveBurnRate(compositeSli: number, compositeErrorBudget: number): number {
-  if (compositeSli >= 1 || compositeErrorBudget <= 0) {
+  if (compositeSli === NO_DATA || compositeSli >= 1 || compositeErrorBudget <= 0) {
     return 0;
   }
   return toHighPrecision((1 - compositeSli) / compositeErrorBudget);

@@ -83,7 +83,7 @@ const resolveParams = ({
 }: Params): ResolvedParams => {
   const dateRange = toDateRange(timeWindowOverride ?? slo.timeWindow);
   const isDefinedWithGroupBy = ![slo.groupBy].flat().includes(ALL_VALUE);
-  const hasInstanceId = instanceId !== ALL_VALUE;
+  const hasInstanceId = instanceId != null && instanceId !== ALL_VALUE;
   const shouldIncludeInstanceIdFilter = isDefinedWithGroupBy && hasInstanceId;
 
   return {
@@ -397,8 +397,8 @@ function computeSliValue(
   const total = bucket?.total?.value ?? 0;
   const budgetingMethod = budgetingMethodOverride ?? slo.budgetingMethod;
 
-  if (timeslicesBudgetingMethodSchema.is(budgetingMethod)) {
-    const totalSlices = getSlicesFromDateRange(dateRange, slo.objective.timesliceWindow!);
+  if (timeslicesBudgetingMethodSchema.is(budgetingMethod) && slo.objective.timesliceWindow) {
+    const totalSlices = getSlicesFromDateRange(dateRange, slo.objective.timesliceWindow);
 
     return computeSLI(good, total, totalSlices);
   }
