@@ -30,6 +30,10 @@ apiTest.describe(
       await apiServices.compositeSlo.deleteAll();
     });
 
+    apiTest.afterEach(async ({ apiServices }) => {
+      await apiServices.compositeSlo.deleteAll();
+    });
+
     apiTest.afterAll(async ({ apiServices }) => {
       await apiServices.compositeSlo.deleteAll();
     });
@@ -162,11 +166,11 @@ apiTest.describe(
             ...DEFAULT_COMPOSITE_SLO,
             name: 'Five Members',
             members: [
-              { sloId: 'five-a', weight: 1 },
-              { sloId: 'five-b', weight: 2 },
-              { sloId: 'five-c', weight: 3 },
-              { sloId: 'five-d', weight: 4 },
-              { sloId: 'five-e', weight: 5 },
+              { sloId: 'five-member-a', weight: 1 },
+              { sloId: 'five-member-b', weight: 2 },
+              { sloId: 'five-member-c', weight: 3 },
+              { sloId: 'five-member-d', weight: 4 },
+              { sloId: 'five-member-e', weight: 5 },
             ],
             objective: { target: 0.99 },
           },
@@ -383,8 +387,7 @@ apiTest.describe(
         expect(body.version).toBe(1);
 
         const tw = body.timeWindow as Record<string, unknown>;
-        expect((tw.duration as Record<string, unknown>).value).toBe(30);
-        expect((tw.duration as Record<string, unknown>).unit).toBe('d');
+        expect(tw.duration).toBe('30d');
         expect(tw.type).toBe('rolling');
 
         expect(body.summary).toBeDefined();
