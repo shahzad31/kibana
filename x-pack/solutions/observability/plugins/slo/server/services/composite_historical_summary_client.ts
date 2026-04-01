@@ -14,14 +14,11 @@ import type {
   HistoricalSummaryResponse,
 } from '@kbn/slo-schema';
 import { ALL_VALUE } from '@kbn/slo-schema';
-import { toHighPrecision } from '../utils/number';
-import { computeSummaryStatus, toErrorBudget } from '../domain/services';
+import { computeWeightedSli, NO_DATA } from '../domain/services';
 import type { CompositeSLODefinition, SLODefinition } from '../domain/models';
 import type { CompositeSLORepository } from './composite_slo_repository';
 import type { SLODefinitionRepository } from './slo_definition_repository';
 import { HistoricalSummaryClient } from './historical_summary_client';
-
-const NO_DATA = -1;
 
 export interface HistoricalSummaryProvider {
   fetch(params: FetchHistoricalSummaryParams): Promise<FetchHistoricalSummaryResponse>;
@@ -118,38 +115,20 @@ export class CompositeHistoricalSummaryClient {
       return { member, byDate };
     });
 
-    const { target } = composite.objective;
-    const initialErrorBudget = 1 - target;
-
     return sortedDates.map((date) => {
-      let totalWeight = 0;
-      let weightedSli = 0;
-      let hasData = false;
-
-      for (const { member, byDate } of memberDataByDate) {
+      const dataPoints = memberDataByDate.map(({ member, byDate }) => {
         const point = byDate.get(date);
-        if (!point || point.status === 'NO_DATA' || point.sliValue === NO_DATA) {
-          continue;
-        }
-        hasData = true;
-        totalWeight += member.weight;
-        weightedSli += member.weight * point.sliValue;
-      }
+        const sliValue =
+          !point || point.status === 'NO_DATA' || point.sliValue === NO_DATA
+            ? NO_DATA
+            : point.sliValue;
+        return { weight: member.weight, sliValue };
+      });
 
-      if (!hasData || totalWeight === 0) {
-        return {
-          date,
-          sliValue: NO_DATA,
-          errorBudget: toErrorBudget(0, 0),
-          status: 'NO_DATA' as const,
-        };
-      }
-
-      const sliValue = toHighPrecision(weightedSli / totalWeight);
-      const consumedErrorBudget =
-        sliValue < 0 || initialErrorBudget <= 0 ? 0 : (1 - sliValue) / initialErrorBudget;
-      const errorBudget = toErrorBudget(initialErrorBudget, consumedErrorBudget);
-      const status = computeSummaryStatus(composite.objective, sliValue, errorBudget);
+      const { sliValue, errorBudget, status } = computeWeightedSli(
+        dataPoints,
+        composite.objective
+      );
 
       return { date, sliValue, errorBudget, status };
     });

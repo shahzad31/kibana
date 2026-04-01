@@ -14,12 +14,15 @@ import type {
 import { ALL_VALUE, batchGetCompositeSLOResponseSchema, getCompositeSLOResponseSchema } from '@kbn/slo-schema';
 import { toHighPrecision } from '../utils/number';
 import type { CompositeSLODefinition } from '../domain/models';
-import { computeSummaryStatus, toErrorBudget } from '../domain/services';
+import {
+  computeWeightedSli,
+  computeNormalisedWeights,
+  NO_DATA,
+  toErrorBudget,
+} from '../domain/services';
 import type { CompositeSLORepository } from './composite_slo_repository';
 import type { SLODefinitionRepository } from './slo_definition_repository';
 import type { BurnRateWindow, SummaryClient } from './summary_client';
-
-const NO_DATA = -1;
 
 interface MemberSummaryData {
   member: { sloId: string; weight: number; instanceId?: string };
@@ -93,55 +96,61 @@ export class GetCompositeSLO {
     compositeSlo: CompositeSLODefinition,
     memberSummaries: MemberSummaryData[]
   ): { compositeSummary: CompositeSLOSummary; members: CompositeSLOMemberSummary[] } {
-    const activeMembers = memberSummaries.filter((ms) => ms.summary.sliValue !== NO_DATA);
+    const sliDataPoints = memberSummaries.map((ms) => ({
+      weight: ms.member.weight,
+      sliValue: ms.summary.sliValue,
+    }));
 
-    if (activeMembers.length === 0) {
+    const { sliValue, errorBudget, status } = computeWeightedSli(
+      sliDataPoints,
+      compositeSlo.objective
+    );
+
+    if (status === 'NO_DATA') {
       return {
         compositeSummary: this.buildNoDataSummary(),
         members: memberSummaries.map((ms) => this.buildMemberSummary(ms, 0)),
       };
     }
 
-    const totalWeight = activeMembers.reduce((sum, ms) => sum + ms.member.weight, 0);
+    const normalisedWeights = computeNormalisedWeights(sliDataPoints);
 
-    let compositeSliValue = 0;
-    let compositeFiveMinSli = 0;
-    let compositeOneHourSli = 0;
-    let compositeOneDaySli = 0;
+    const fiveMinResult = computeWeightedSli(
+      memberSummaries.map((ms) => ({
+        weight: ms.member.weight,
+        sliValue: getWindowSli(ms.burnRateWindows, '5m'),
+      })),
+      compositeSlo.objective
+    );
+    const oneHourResult = computeWeightedSli(
+      memberSummaries.map((ms) => ({
+        weight: ms.member.weight,
+        sliValue: getWindowSli(ms.burnRateWindows, '1h'),
+      })),
+      compositeSlo.objective
+    );
+    const oneDayResult = computeWeightedSli(
+      memberSummaries.map((ms) => ({
+        weight: ms.member.weight,
+        sliValue: getWindowSli(ms.burnRateWindows, '1d'),
+      })),
+      compositeSlo.objective
+    );
 
-    const members: CompositeSLOMemberSummary[] = memberSummaries.map((ms) => {
-      const isActive = ms.summary.sliValue !== NO_DATA;
-      const normalisedWeight = isActive ? toHighPrecision(ms.member.weight / totalWeight) : 0;
+    const compositeErrorBudget = 1 - compositeSlo.objective.target;
 
-      if (isActive) {
-        compositeSliValue += normalisedWeight * ms.summary.sliValue;
-        compositeFiveMinSli += normalisedWeight * getWindowSli(ms.burnRateWindows, '5m');
-        compositeOneHourSli += normalisedWeight * getWindowSli(ms.burnRateWindows, '1h');
-        compositeOneDaySli += normalisedWeight * getWindowSli(ms.burnRateWindows, '1d');
-      }
-
-      return this.buildMemberSummary(ms, normalisedWeight);
-    });
-
-    compositeSliValue = toHighPrecision(compositeSliValue);
-    compositeFiveMinSli = toHighPrecision(compositeFiveMinSli);
-    compositeOneHourSli = toHighPrecision(compositeOneHourSli);
-    compositeOneDaySli = toHighPrecision(compositeOneDaySli);
-
-    const { target } = compositeSlo.objective;
-    const compositeErrorBudget = 1 - target;
-    const consumedErrorBudget =
-      compositeSliValue < 0 ? 0 : (1 - compositeSliValue) / compositeErrorBudget;
-    const errorBudget = toErrorBudget(compositeErrorBudget, consumedErrorBudget);
+    const members = memberSummaries.map((ms, i) =>
+      this.buildMemberSummary(ms, normalisedWeights[i])
+    );
 
     return {
       compositeSummary: {
-        sliValue: compositeSliValue,
+        sliValue,
         errorBudget,
-        status: computeSummaryStatus(compositeSlo.objective, compositeSliValue, errorBudget),
-        fiveMinuteBurnRate: deriveBurnRate(compositeFiveMinSli, compositeErrorBudget),
-        oneHourBurnRate: deriveBurnRate(compositeOneHourSli, compositeErrorBudget),
-        oneDayBurnRate: deriveBurnRate(compositeOneDaySli, compositeErrorBudget),
+        status,
+        fiveMinuteBurnRate: deriveBurnRate(fiveMinResult.sliValue, compositeErrorBudget),
+        oneHourBurnRate: deriveBurnRate(oneHourResult.sliValue, compositeErrorBudget),
+        oneDayBurnRate: deriveBurnRate(oneDayResult.sliValue, compositeErrorBudget),
       },
       members,
     };
