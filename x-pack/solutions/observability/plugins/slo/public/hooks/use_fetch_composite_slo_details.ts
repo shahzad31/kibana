@@ -19,13 +19,10 @@ export function useFetchCompositeSloDetails(ids: string[]) {
     queryKey: [...sloKeys.compositeDetails(), sortedIds],
     queryFn: async ({ signal }) => {
       if (sortedIds.length === 0) return [];
-      return await sloClient.fetch(
-        'POST /internal/observability/slo_composites/_batch_get',
-        {
-          params: { body: { ids: sortedIds } },
-          signal,
-        }
-      );
+      return await sloClient.fetch('POST /internal/observability/slo_composites/_batch_get', {
+        params: { body: { ids: sortedIds } },
+        signal,
+      });
     },
     enabled: sortedIds.length > 0,
     refetchOnWindowFocus: false,

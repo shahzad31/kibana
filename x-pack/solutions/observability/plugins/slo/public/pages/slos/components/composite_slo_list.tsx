@@ -166,9 +166,7 @@ export function CompositeSloList() {
           return next;
         }
 
-        next[item.id] = (
-          <MembersTable members={details.members} percentFormat={percentFormat} />
-        );
+        next[item.id] = <MembersTable members={details.members} percentFormat={percentFormat} />;
         return next;
       });
     },

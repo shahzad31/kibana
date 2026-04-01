@@ -11,7 +11,11 @@ import type {
   CompositeSLOSummary,
   GetCompositeSLOResponse,
 } from '@kbn/slo-schema';
-import { ALL_VALUE, batchGetCompositeSLOResponseSchema, getCompositeSLOResponseSchema } from '@kbn/slo-schema';
+import {
+  ALL_VALUE,
+  batchGetCompositeSLOResponseSchema,
+  getCompositeSLOResponseSchema,
+} from '@kbn/slo-schema';
 import { toHighPrecision } from '../utils/number';
 import type { CompositeSLODefinition } from '../domain/models';
 import {
