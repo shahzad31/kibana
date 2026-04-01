@@ -15,11 +15,7 @@ import { createCompositeSLORepositoryMock, createSLORepositoryMock } from './moc
 import type { CompositeSLORepository } from './composite_slo_repository';
 import type { SLODefinitionRepository } from './slo_definition_repository';
 
-const buildHistoricalPoint = (
-  date: string,
-  sliValue: number,
-  status: string = 'HEALTHY'
-) => ({
+const buildHistoricalPoint = (date: string, sliValue: number, status: string = 'HEALTHY') => ({
   date,
   sliValue,
   status,
@@ -74,18 +70,12 @@ describe('CompositeHistoricalSummaryClient', () => {
       {
         sloId: sloA.id,
         instanceId: '*',
-        data: [
-          buildHistoricalPoint('2024-01-01', 0.99),
-          buildHistoricalPoint('2024-01-02', 0.98),
-        ],
+        data: [buildHistoricalPoint('2024-01-01', 0.99), buildHistoricalPoint('2024-01-02', 0.98)],
       },
       {
         sloId: sloB.id,
         instanceId: '*',
-        data: [
-          buildHistoricalPoint('2024-01-01', 0.995),
-          buildHistoricalPoint('2024-01-02', 0.99),
-        ],
+        data: [buildHistoricalPoint('2024-01-01', 0.995), buildHistoricalPoint('2024-01-02', 0.99)],
       },
     ] as FetchHistoricalSummaryResponse);
 

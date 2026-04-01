@@ -56,10 +56,7 @@ export class CompositeHistoricalSummaryClient {
     const results: FetchCompositeHistoricalSummaryResponse = [];
 
     for (const composite of compositeDefinitions) {
-      const memberHistoricalData = await this.fetchMemberHistoricalData(
-        composite,
-        memberDefMap
-      );
+      const memberHistoricalData = await this.fetchMemberHistoricalData(composite, memberDefMap);
 
       const compositeHistorical = this.computeWeightedHistorical(composite, memberHistoricalData);
       results.push({ compositeId: composite.id, data: compositeHistorical });
