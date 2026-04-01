@@ -50,17 +50,16 @@ export class CompositeHistoricalSummaryClient {
     const memberDefinitions = await this.sloDefinitionRepository.findAllByIds(allMemberSloIds);
     const memberDefMap = new Map(memberDefinitions.map((slo) => [slo.id, slo]));
 
-    const results: FetchCompositeHistoricalSummaryResponse = [];
-
-    for (const composite of compositeDefinitions) {
-      const memberHistoricalData = await this.fetchMemberHistoricalData(
-        composite,
-        memberDefMap
-      );
-
-      const compositeHistorical = this.computeWeightedHistorical(composite, memberHistoricalData);
-      results.push({ compositeId: composite.id, data: compositeHistorical });
-    }
+    const results = await Promise.all(
+      compositeDefinitions.map(async (composite) => {
+        const memberHistoricalData = await this.fetchMemberHistoricalData(
+          composite,
+          memberDefMap
+        );
+        const data = this.computeWeightedHistorical(composite, memberHistoricalData);
+        return { compositeId: composite.id, data };
+      })
+    );
 
     return results;
   }
