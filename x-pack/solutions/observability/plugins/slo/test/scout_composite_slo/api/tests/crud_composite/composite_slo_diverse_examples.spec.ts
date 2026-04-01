@@ -74,7 +74,9 @@ apiTest.describe(
             expect(body.name).toBe('Platform Availability');
             expect(body.objective).toStrictEqual({ target: 0.999 });
             const tw = body.timeWindow as Record<string, unknown>;
-            expect(tw.duration).toBe('30d');
+            const dur = tw.duration as Record<string, unknown>;
+            expect(dur.value).toBe(30);
+            expect(dur.unit).toBe('d');
             expect(body.tags).toStrictEqual(['platform', 'availability', 'critical']);
             expect(body.summary).toBeDefined();
           }
@@ -168,7 +170,9 @@ apiTest.describe(
             expect(body.name).toBe('Microservices Mesh Health');
             expect(body.objective).toStrictEqual({ target: 0.98 });
             const tw = body.timeWindow as Record<string, unknown>;
-            expect(tw.duration).toBe('30d');
+            const dur = tw.duration as Record<string, unknown>;
+            expect(dur.value).toBe(30);
+            expect(dur.unit).toBe('d');
             expect(body.summary).toBeDefined();
           }
         );
@@ -222,7 +226,9 @@ apiTest.describe(
             expect(body.name).toBe('Core Infrastructure');
             expect(body.objective).toStrictEqual({ target: 0.9999 });
             const tw = body.timeWindow as Record<string, unknown>;
-            expect(tw.duration).toBe('90d');
+            const dur = tw.duration as Record<string, unknown>;
+            expect(dur.value).toBe(90);
+            expect(dur.unit).toBe('d');
             expect(body.tags).toStrictEqual(['infrastructure', 'core', 'sre']);
             expect(body.summary).toBeDefined();
           }

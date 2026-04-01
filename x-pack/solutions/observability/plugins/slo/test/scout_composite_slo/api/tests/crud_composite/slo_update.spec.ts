@@ -157,7 +157,9 @@ apiTest.describe(
       expect(updateRes).toHaveStatusCode(200);
 
       const tw = (updateRes.body as Record<string, unknown>).timeWindow as Record<string, unknown>;
-      expect(tw.duration).toBe('30d');
+      const duration = tw.duration as Record<string, unknown>;
+      expect(duration.value).toBe(30);
+      expect(duration.unit).toBe('d');
       expect(tw.type).toBe('rolling');
     });
 
@@ -198,7 +200,9 @@ apiTest.describe(
       expect(body.enabled).toBe(false);
       expect(body.members as unknown[]).toHaveLength(4);
       const tw = body.timeWindow as Record<string, unknown>;
-      expect(tw.duration).toBe('30d');
+      const dur = tw.duration as Record<string, unknown>;
+      expect(dur.value).toBe(30);
+      expect(dur.unit).toBe('d');
     });
 
     apiTest('updates updatedAt timestamp after modification', async ({ apiClient }) => {

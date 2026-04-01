@@ -234,7 +234,9 @@ apiTest.describe(
       expect(response).toHaveStatusCode(200);
 
       const tw = (response.body as Record<string, unknown>).timeWindow as Record<string, unknown>;
-      expect(tw.duration).toBe('30d');
+      const duration = tw.duration as Record<string, unknown>;
+      expect(duration.value).toBe(30);
+      expect(duration.unit).toBe('d');
       expect(tw.type).toBe('rolling');
     });
 
@@ -250,7 +252,9 @@ apiTest.describe(
       expect(response).toHaveStatusCode(200);
 
       const tw = (response.body as Record<string, unknown>).timeWindow as Record<string, unknown>;
-      expect(tw.duration).toBe('90d');
+      const duration = tw.duration as Record<string, unknown>;
+      expect(duration.value).toBe(90);
+      expect(duration.unit).toBe('d');
       expect(tw.type).toBe('rolling');
     });
 

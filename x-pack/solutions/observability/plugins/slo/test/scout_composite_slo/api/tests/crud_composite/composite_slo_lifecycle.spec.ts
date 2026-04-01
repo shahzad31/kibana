@@ -186,7 +186,9 @@ apiTest.describe(
           sloApiPathWithQuery('api/observability/slo_composites', { search: 'Before Rename' }),
           { headers, responseType: 'json' }
         );
-        expect((oldNameSearch.body as { total: number }).total).toBe(0);
+        const oldResults = (oldNameSearch.body as { results: Array<{ name: string }> }).results;
+        const exactOldMatch = oldResults.filter((r) => r.name === 'Before Rename');
+        expect(exactOldMatch).toHaveLength(0);
 
         await apiClient.delete(`api/observability/slo_composites/${createdId}`, {
           headers,

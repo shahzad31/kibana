@@ -8,7 +8,7 @@
 import { EuiButton, EuiContextMenuItem, EuiContextMenuPanel, EuiPopover } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { paths } from '@kbn/slo-shared-plugin/common/locators/paths';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useKibana } from '../../../../hooks/use_kibana';
 import { usePermissions } from '../../../../hooks/use_permissions';
 import { usePluginContext } from '../../../../hooks/use_plugin_context';
@@ -28,20 +28,20 @@ export function CreateSloBtn() {
   const isDisabled = !permissions?.hasAllWriteRequested;
   const isCompositeSloEnabled = experimentalFeatures?.compositeSlo?.enabled === true;
 
-  const handleClickCreateSlo = () => {
+  const handleClickCreateSlo = useCallback(() => {
     setIsPopoverOpen(false);
     navigateToUrl(basePath.prepend(paths.sloCreate));
-  };
+  }, [basePath, navigateToUrl]);
 
   const handleClickCreateFromTemplate = () => {
     setIsPopoverOpen(false);
     setIsFlyoutOpen(true);
   };
 
-  const handleClickCreateCompositeSlo = () => {
+  const handleClickCreateCompositeSlo = useCallback(() => {
     setIsPopoverOpen(false);
     navigateToUrl(basePath.prepend(paths.sloCompositeCreate));
-  };
+  }, [basePath, navigateToUrl]);
 
   const menuItems = useMemo(() => {
     const items = [
@@ -81,7 +81,7 @@ export function CreateSloBtn() {
     }
 
     return items;
-  }, [isCompositeSloEnabled]);
+  }, [handleClickCreateCompositeSlo, handleClickCreateSlo, isCompositeSloEnabled]);
 
   return (
     <>

@@ -80,12 +80,12 @@ apiTest.describe(
         const body = getRes.body as Record<string, unknown>;
         const summary = body.summary as Record<string, unknown>;
         expect(summary).toBeDefined();
-        expect(summary).toContain('sliValue');
-        expect(summary).toContain('errorBudget');
-        expect(summary).toContain('status');
-        expect(summary).toContain('fiveMinuteBurnRate');
-        expect(summary).toContain('oneHourBurnRate');
-        expect(summary).toContain('oneDayBurnRate');
+        expect(summary.sliValue).toBeDefined();
+        expect(summary.errorBudget).toBeDefined();
+        expect(summary.status).toBeDefined();
+        expect(summary.fiveMinuteBurnRate).toBeDefined();
+        expect(summary.oneHourBurnRate).toBeDefined();
+        expect(summary.oneDayBurnRate).toBeDefined();
         expect(typeof summary.sliValue).toBe('number');
         expect(typeof summary.fiveMinuteBurnRate).toBe('number');
         expect(typeof summary.oneHourBurnRate).toBe('number');
@@ -143,10 +143,10 @@ apiTest.describe(
         const summary = (getRes.body as Record<string, unknown>).summary as Record<string, unknown>;
         const errorBudget = summary.errorBudget as Record<string, unknown>;
         expect(errorBudget).toBeDefined();
-        expect(errorBudget).toContain('initial');
-        expect(errorBudget).toContain('consumed');
-        expect(errorBudget).toContain('remaining');
-        expect(errorBudget).toContain('isEstimated');
+        expect(errorBudget.initial).toBeDefined();
+        expect(errorBudget.consumed).toBeDefined();
+        expect(errorBudget.remaining).toBeDefined();
+        expect(errorBudget.isEstimated).toBeDefined();
       }
     );
 
@@ -209,7 +209,8 @@ apiTest.describe(
       expect(body.version).toBe(1);
 
       const tw = body.timeWindow as Record<string, unknown>;
-      expect(tw.duration).toBe('7d');
+      expect((tw.duration as Record<string, unknown>).value).toBe(7);
+        expect((tw.duration as Record<string, unknown>).unit).toBe('d');
       expect(tw.type).toBe('rolling');
     });
 

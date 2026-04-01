@@ -338,21 +338,21 @@ apiTest.describe(
         expect(results).toHaveLength(1);
 
         const result = results[0];
-        expect(result).toContain('id');
-        expect(result).toContain('name');
-        expect(result).toContain('description');
-        expect(result).toContain('compositeMethod');
-        expect(result).toContain('timeWindow');
-        expect(result).toContain('budgetingMethod');
-        expect(result).toContain('objective');
-        expect(result).toContain('members');
-        expect(result).toContain('tags');
-        expect(result).toContain('enabled');
-        expect(result).toContain('createdAt');
-        expect(result).toContain('updatedAt');
-        expect(result).toContain('createdBy');
-        expect(result).toContain('updatedBy');
-        expect(result).toContain('version');
+        expect(result.id).toBeDefined();
+        expect(result.name).toBeDefined();
+        expect(result.description).toBeDefined();
+        expect(result.compositeMethod).toBeDefined();
+        expect(result.timeWindow).toBeDefined();
+        expect(result.budgetingMethod).toBeDefined();
+        expect(result.objective).toBeDefined();
+        expect(result.members).toBeDefined();
+        expect(result.tags).toBeDefined();
+        expect(result.enabled).toBeDefined();
+        expect(result.createdAt).toBeDefined();
+        expect(result.updatedAt).toBeDefined();
+        expect(result.createdBy).toBeDefined();
+        expect(result.updatedBy).toBeDefined();
+        expect(result.version).toBeDefined();
       }
     );
 
