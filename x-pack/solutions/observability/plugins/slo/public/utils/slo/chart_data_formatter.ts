@@ -29,8 +29,10 @@ export function formatHistoricalData(
     return [];
   }
 
-  return historicalSummary.map((data) => ({
-    key: new Date(data.date).getTime(),
-    value: data.status === 'NO_DATA' ? undefined : getDataValue(data),
-  }));
+  return historicalSummary
+    .filter((data) => data.status !== 'NO_DATA')
+    .map((data) => ({
+      key: new Date(data.date).getTime(),
+      value: getDataValue(data),
+    }));
 }
