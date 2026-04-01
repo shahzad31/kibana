@@ -104,7 +104,9 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       type: SO_SLO_COMPOSITE_TYPE,
       page: 1,
       perPage: ids.length,
-      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${ids.map((id) => escapeKuery(id)).join(' or ')})`,
+      filter: `${SO_SLO_COMPOSITE_TYPE}.attributes.id:(${ids
+        .map((id) => escapeKuery(id))
+        .join(' or ')})`,
     });
 
     return response.saved_objects
