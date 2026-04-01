@@ -243,7 +243,7 @@ export function CompositeSloList() {
         }),
         width: '100px',
         render: (objective: CompositeSLOItem['objective']) =>
-          numeral(objective.target).format('0.00%'),
+          numeral(objective.target).format('0[.][000]%'),
       },
       {
         field: 'summary.sliValue',
