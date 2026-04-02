@@ -5,13 +5,7 @@
  * 2.0.
  */
 
-import {
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiLoadingSpinner,
-  EuiSpacer,
-  EuiText,
-} from '@elastic/eui';
+import { EuiFlexGroup, EuiFlexItem, EuiLoadingSpinner, EuiSpacer, EuiText } from '@elastic/eui';
 import type { EuiSelectableOption } from '@elastic/eui/src/components/selectable/selectable_option';
 import type { FindCompositeSLOResponse } from '@kbn/slo-schema';
 import { i18n } from '@kbn/i18n';
@@ -95,7 +89,10 @@ export function CompositeSloList() {
 
   const hasActiveFilters = debouncedSearch !== '' || selectedTags.length > 0;
 
-  const compositeIds = useMemo(() => results.map((item: CompositeSLOItem) => item.id), [results]);
+  const compositeIds = useMemo(
+    () => data?.results?.map((item: CompositeSLOItem) => item.id) ?? [],
+    [data?.results]
+  );
   const { detailsById, isLoading: isDetailsLoading } = useFetchCompositeSloDetails(compositeIds);
   const { historicalSummaryById, isLoading: isHistoricalLoading } =
     useFetchCompositeHistoricalSummary(compositeIds);
