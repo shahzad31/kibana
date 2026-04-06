@@ -90,7 +90,7 @@ export function WideChart({ chart, data, id, isLoading, state, onBrushed, slo }:
         }}
         baseTheme={baseTheme}
         showLegend={false}
-        noResults={
+noResults={
           <EuiIcon
             type="visualizeApp"
             size="l"
