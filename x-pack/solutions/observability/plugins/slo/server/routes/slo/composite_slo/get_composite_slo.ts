@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import { getCompositeSLOParamsSchema, getCompositeSLOResponseSchema } from '@kbn/slo-schema';
+import { getCompositeSLOParamsSchema } from '@kbn/slo-schema';
 import { DefaultCompositeSLORepository } from '../../../services/composite_slo_repository';
 import { createSloServerRoute } from '../../create_slo_server_route';
 import { assertPlatinumLicense } from '../utils/assert_platinum_license';
@@ -25,7 +25,6 @@ export const getCompositeSLORoute = createSloServerRoute({
     const { soClient } = await getScopedClients({ request, logger });
     const repository = new DefaultCompositeSLORepository(soClient, logger);
 
-    const compositeSlo = await repository.findById(params.path.id);
-    return getCompositeSLOResponseSchema.encode(compositeSlo);
+    return await repository.findById(params.path.id);
   },
 });
