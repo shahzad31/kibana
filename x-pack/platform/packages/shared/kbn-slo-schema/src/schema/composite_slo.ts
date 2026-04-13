@@ -35,11 +35,24 @@ const compositeSloMemberSchema = z.object({
 
 const compositeMethodSchema = z.literal('weightedAverage');
 
-const compositeSloDefinitionSchema = z.object({
+const compositeErrorBudgetSchema = z.object({
+  initial: z.number(),
+  consumed: z.number(),
+  remaining: z.number(),
+  isEstimated: z.boolean(),
+});
+
+const compositeStatusSchema = z.union([
+  z.literal('NO_DATA'),
+  z.literal('HEALTHY'),
+  z.literal('DEGRADING'),
+  z.literal('VIOLATED'),
+]);
+
+const compositeSloBaseDefinitionSchema = z.object({
   id: compositeSloIdSchema,
   name: z.string(),
   description: z.string(),
-  members: z.array(compositeSloMemberSchema),
   compositeMethod: compositeMethodSchema,
   timeWindow: compositeRollingTimeWindowSchema,
   budgetingMethod: compositeOccurrencesBudgetingMethodSchema,
@@ -53,12 +66,37 @@ const compositeSloDefinitionSchema = z.object({
   version: z.number(),
 });
 
+const compositeSloDefinitionSchema = compositeSloBaseDefinitionSchema.extend({
+  members: z.array(compositeSloMemberSchema),
+});
+
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
+
+const compositeSloMemberSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  weight: z.number(),
+  normalisedWeight: z.number(),
+  sliValue: z.number(),
+  contribution: z.number(),
+  instanceId: z.string().optional(),
+});
+
+const compositeSloSummarySchema = z.object({
+  sliValue: z.number(),
+  errorBudget: compositeErrorBudgetSchema,
+  status: compositeStatusSchema,
+  fiveMinuteBurnRate: z.number(),
+  oneHourBurnRate: z.number(),
+  oneDayBurnRate: z.number(),
+});
 
 type CompositeSLOMember = z.infer<typeof compositeSloMemberSchema>;
 type CompositeMethod = z.infer<typeof compositeMethodSchema>;
+type CompositeSLOMemberSummary = z.infer<typeof compositeSloMemberSummarySchema>;
+type CompositeSLOSummary = z.infer<typeof compositeSloSummarySchema>;
 
-export type { CompositeSLOMember, CompositeMethod };
+export type { CompositeSLOMember, CompositeMethod, CompositeSLOMemberSummary, CompositeSLOSummary };
 
 export {
   compositeSloIdSchema,
@@ -68,6 +106,11 @@ export {
   compositeRollingTimeWindowSchema,
   compositeSloMemberSchema,
   compositeMethodSchema,
+  compositeErrorBudgetSchema,
+  compositeStatusSchema,
+  compositeSloBaseDefinitionSchema,
   compositeSloDefinitionSchema,
   storedCompositeSloDefinitionSchema,
+  compositeSloMemberSummarySchema,
+  compositeSloSummarySchema,
 };
