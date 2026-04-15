@@ -258,7 +258,7 @@ describe('CompositeHistoricalSummaryClient', () => {
     expect(mockHistoricalProvider.fetch).not.toHaveBeenCalled();
   });
 
-  it('passes composite budgetingMethod to the historical summary provider', async () => {
+  it('passes member budgetingMethod to the historical summary provider', async () => {
     const sloA = createSLO({
       id: 'slo-a',
       budgetingMethod: 'timeslices',
@@ -287,7 +287,7 @@ describe('CompositeHistoricalSummaryClient', () => {
       list: [
         expect.objectContaining({
           sloId: sloA.id,
-          budgetingMethod: 'occurrences',
+          budgetingMethod: 'timeslices',
         }),
       ],
     });

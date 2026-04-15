@@ -395,7 +395,6 @@ describe('GetCompositeSLO', () => {
           duration: new Duration(30, DurationUnit.Day),
           type: 'rolling',
         },
-        budgetingMethodOverride: composite.budgetingMethod,
       },
     ]);
     expect(result.members[0].instanceId).toBe('my-instance');

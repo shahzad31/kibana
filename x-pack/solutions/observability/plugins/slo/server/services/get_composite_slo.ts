@@ -68,8 +68,7 @@ export class GetCompositeSLO {
     const summaryParams = activeMembers.map((member) => ({
       slo: memberDefinitionMap.get(member.sloId)!,
       instanceId: member.instanceId ?? ALL_VALUE,
-      timeWindowOverride,
-      budgetingMethodOverride: compositeSlo.budgetingMethod,
+      timeWindowOverride: compositeSlo.timeWindow,
     }));
 
     const summaryResults = await this.summaryClient.computeSummaries(summaryParams);

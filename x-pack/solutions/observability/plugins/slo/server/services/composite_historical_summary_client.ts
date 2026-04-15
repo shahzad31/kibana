@@ -74,8 +74,8 @@ export class CompositeHistoricalSummaryClient {
       return {
         sloId: slo.id,
         instanceId: member.instanceId ?? ALL_VALUE,
-        timeWindow,
-        budgetingMethod: composite.budgetingMethod,
+        timeWindow: composite.timeWindow,
+        budgetingMethod: slo.budgetingMethod,
         groupBy: slo.groupBy,
         revision: slo.revision,
         objective: slo.objective,
