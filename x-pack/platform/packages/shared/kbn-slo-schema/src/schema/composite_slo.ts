@@ -67,7 +67,7 @@ const compositeSloBaseDefinitionSchema = z.object({
 });
 
 const compositeSloDefinitionSchema = compositeSloBaseDefinitionSchema.extend({
-  members: z.array(compositeSloMemberSchema),
+  members: z.array(compositeSloMemberSchema).min(1).max(25),
 });
 
 const storedCompositeSloDefinitionSchema = compositeSloDefinitionSchema;
