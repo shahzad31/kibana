@@ -65,12 +65,12 @@ export class GetCompositeSLO {
       memberDefinitionMap.has(member.sloId)
     );
 
-    const timeWindowOverride = toRichTimeWindow(compositeSlo.timeWindow);
+    const richTimeWindow = toRichTimeWindow(compositeSlo.timeWindow);
 
     const summaryParams = activeMembers.map((member) => ({
       slo: memberDefinitionMap.get(member.sloId)!,
       instanceId: member.instanceId ?? ALL_VALUE,
-      timeWindowOverride: compositeSlo.timeWindow,
+      timeWindowOverride: richTimeWindow,
     }));
 
     const summaryResults = await this.summaryClient.computeSummaries(summaryParams);

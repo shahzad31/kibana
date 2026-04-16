@@ -67,14 +67,14 @@ export class CompositeHistoricalSummaryClient {
     const activeMembers = composite.members.filter((m) => memberDefMap.has(m.sloId));
     if (activeMembers.length === 0) return [];
 
-    const timeWindow = toRichTimeWindow(composite.timeWindow);
+    const richTimeWindow = toRichTimeWindow(composite.timeWindow);
 
     const list = activeMembers.map((member) => {
       const slo = memberDefMap.get(member.sloId)!;
       return {
         sloId: slo.id,
         instanceId: member.instanceId ?? ALL_VALUE,
-        timeWindow: composite.timeWindow,
+        timeWindow: richTimeWindow,
         budgetingMethod: slo.budgetingMethod,
         groupBy: slo.groupBy,
         revision: slo.revision,
