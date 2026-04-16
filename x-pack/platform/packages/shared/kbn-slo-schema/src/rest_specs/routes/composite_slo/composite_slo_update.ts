@@ -36,8 +36,7 @@ const updateCompositeSLOParamsSchema = z.object({
 const updateCompositeSLOResponseSchema = compositeSloDefinitionSchema;
 
 type UpdateCompositeSLOInput = z.input<typeof updateCompositeSLOParamsSchema.shape.body>;
-type UpdateCompositeSLOParams = z.infer<typeof updateCompositeSLOParamsSchema.shape.body>;
 type UpdateCompositeSLOResponse = z.infer<typeof updateCompositeSLOResponseSchema>;
 
 export { updateCompositeSLOParamsSchema, updateCompositeSLOResponseSchema };
-export type { UpdateCompositeSLOInput, UpdateCompositeSLOParams, UpdateCompositeSLOResponse };
+export type { UpdateCompositeSLOInput, UpdateCompositeSLOResponse };
