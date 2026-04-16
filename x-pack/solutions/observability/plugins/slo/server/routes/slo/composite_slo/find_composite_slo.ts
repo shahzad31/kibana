@@ -79,7 +79,7 @@ export const findCompositeSLORoute = createSloServerRoute({
     const page = query.page ? Number(query.page) : 1;
     const perPage = query.perPage ? Number(query.perPage) : 25;
     const tags = query.tags ? query.tags.split(',').map((tag) => tag.trim()) : [];
-    const statusFilter = query.status ? query.status.split(',').map((s) => s.trim()) : [];
+    const statusFilter = query.status ?? [];
 
     if (statusFilter.length > 0) {
       const burnRatesClient = new DefaultBurnRatesClient(scopedClusterClient.asCurrentUser);

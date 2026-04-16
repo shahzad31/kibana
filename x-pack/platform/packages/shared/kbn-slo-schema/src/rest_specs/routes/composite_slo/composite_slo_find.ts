@@ -5,7 +5,10 @@
  * 2.0.
  */
 import { z } from '@kbn/zod';
-import { compositeSloDefinitionSchema } from '../../../schema/composite_slo';
+import {
+  compositeSloDefinitionSchema,
+  compositeStatusSchema,
+} from '../../../schema/composite_slo';
 
 const compositeSortDirectionSchema = z.union([z.literal('asc'), z.literal('desc')]);
 const compositeSortBySchema = z.union([
@@ -14,6 +17,11 @@ const compositeSortBySchema = z.union([
   z.literal('updatedAt'),
 ]);
 
+const compositeStatusFilterSchema = z
+  .string()
+  .transform((raw) => raw.split(',').map((s) => s.trim()))
+  .pipe(z.array(compositeStatusSchema).min(1));
+
 const findCompositeSLOQuerySchema = z.object({
   search: z.string().optional(),
   page: z.string().optional(),
@@ -21,7 +29,7 @@ const findCompositeSLOQuerySchema = z.object({
   sortBy: compositeSortBySchema.optional(),
   sortDirection: compositeSortDirectionSchema.optional(),
   tags: z.string().optional(),
-  status: z.string().optional(),
+  status: compositeStatusFilterSchema.optional(),
 });
 
 const findCompositeSLOParamsSchema = z.object({
