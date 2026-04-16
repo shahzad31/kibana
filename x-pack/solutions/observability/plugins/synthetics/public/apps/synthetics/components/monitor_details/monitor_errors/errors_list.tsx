@@ -241,9 +241,7 @@ export const ErrorsList = ({
       return {
         'data-test-subj': `row-${state.id}`,
         onClick: (evt: MouseEvent) => {
-          history.push(
-            `/monitor/${itemConfigId}/errors/${state.id}?locationId=${locationId}`
-          );
+          history.push(`/monitor/${itemConfigId}/errors/${state.id}?locationId=${locationId}`);
         },
       };
     }
