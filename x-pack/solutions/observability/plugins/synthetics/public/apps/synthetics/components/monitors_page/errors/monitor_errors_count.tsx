@@ -24,8 +24,6 @@ export const MonitorErrorsCount = ({ from, to, monitorIds }: MonitorErrorsCountP
   } = useKibana<ClientPluginsStart>().services;
   const { euiTheme } = useEuiTheme();
 
-  const isAmsterdam = euiTheme.flags.hasVisColorAdjustment;
-
   const time = useMemo(() => ({ from, to }), [from, to]);
 
   if (!monitorIds.length) {
@@ -46,7 +44,7 @@ export const MonitorErrorsCount = ({ from, to, monitorIds }: MonitorErrorsCountP
           selectedMetricField: 'monitor_errors',
           name: ERRORS_LABEL,
           filters: [],
-          color: isAmsterdam ? euiTheme.colors.vis.euiColorVis1 : euiTheme.colors.vis.euiColorVis6,
+          color: euiTheme.colors.vis.euiColorVis6,
         },
       ]}
     />

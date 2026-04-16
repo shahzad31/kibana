@@ -5,26 +5,51 @@
  * 2.0.
  */
 import { useTimeZone } from '@kbn/observability-shared-plugin/public';
-import { useParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import type { Ping, PingState } from '../../../../../../common/runtime_types';
 import {
   EXCLUDE_RUN_ONCE_FILTER,
   SUMMARY_FILTER,
+  getQueryFilters,
 } from '../../../../../../common/constants/client_defaults';
 import { SYNTHETICS_INDEX_PATTERN } from '../../../../../../common/constants';
 import { useSyntheticsRefreshContext } from '../../../contexts';
 import { useGetUrlParams } from '../../../hooks';
 import { useReduxEsSearch } from '../../../hooks/use_redux_es_search';
 
+function buildTermsFilter(field: string, values?: string | string[]) {
+  if (!values || (Array.isArray(values) && values.length === 0)) return [];
+  const arr = Array.isArray(values) ? values : [values];
+  return [{ terms: { [field]: arr } }];
+}
+
 export function useAllMonitorErrors() {
   const { lastRefresh } = useSyntheticsRefreshContext();
 
-  const { monitorId } = useParams<{ monitorId: string }>();
-
-  const { dateRangeStart, dateRangeEnd } = useGetUrlParams();
+  const { dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects } =
+    useGetUrlParams();
 
   const timeZone = useTimeZone();
+
+  const filters = [
+    SUMMARY_FILTER,
+    EXCLUDE_RUN_ONCE_FILTER,
+    {
+      range: {
+        '@timestamp': {
+          gte: dateRangeStart,
+          lte: dateRangeEnd,
+          time_zone: timeZone,
+        },
+      },
+    },
+    ...buildTermsFilter('monitor.type', monitorTypes),
+    ...buildTermsFilter('observer.geo.name', locations),
+    ...buildTermsFilter('tags', tags),
+    ...buildTermsFilter('monitor.project.id', projects),
+  ];
+
+  const must = query ? [getQueryFilters(query)] : [];
 
   const { data, loading } = useReduxEsSearch(
     {
@@ -32,19 +57,8 @@ export function useAllMonitorErrors() {
       size: 0,
       query: {
         bool: {
-          filter: [
-            SUMMARY_FILTER,
-            EXCLUDE_RUN_ONCE_FILTER,
-            {
-              range: {
-                '@timestamp': {
-                  gte: dateRangeStart,
-                  lte: dateRangeEnd,
-                  time_zone: timeZone,
-                },
-              },
-            },
-          ],
+          filter: filters,
+          must,
         },
       },
       sort: [{ 'state.started_at': 'desc' }],
@@ -65,25 +79,23 @@ export function useAllMonitorErrors() {
           },
         },
         latest: {
-          top_metrics: {
+          top_hits: {
             size: 1,
-            metrics: { field: 'monitor.status' },
+            _source: ['monitor.status'],
             sort: [{ '@timestamp': 'desc' }],
           },
         },
       },
     },
-    [lastRefresh, monitorId, dateRangeStart, dateRangeEnd],
+    [lastRefresh, dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects],
     {
-      name: `getMonitorErrors/${dateRangeStart}/${dateRangeEnd}`,
+      name: `getAllMonitorErrors/${dateRangeStart}/${dateRangeEnd}`,
       isRequestReady: true,
     }
   );
 
   return useMemo(() => {
     const defaultValues = { upStates: [], errorStates: [] };
-    // re-bucket states into error/up
-    // including the `up` states is useful for determining error duration
     const { errorStates, upStates } =
       data?.aggregations?.states.buckets.reduce<{
         upStates: PingState[];
@@ -98,7 +110,7 @@ export function useAllMonitorErrors() {
         return prev;
       }, defaultValues) ?? defaultValues;
 
-    const hits = data?.aggregations?.latest?.top_metrics?.[0]?.metrics?.['monitor.status'];
+    const hits = data?.aggregations?.latest?.hits?.hits ?? [];
 
     const hasActiveError: boolean =
       hits.length === 1 &&

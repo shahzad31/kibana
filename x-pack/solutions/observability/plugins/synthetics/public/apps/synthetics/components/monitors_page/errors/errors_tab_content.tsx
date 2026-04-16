@@ -10,7 +10,6 @@ import { EuiFlexGroup, EuiFlexItem, EuiSpacer } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { MonitorErrorsCount } from './monitor_errors_count';
 import { ErrorsList } from '../../monitor_details/monitor_errors/errors_list';
-import { FailedTestsByStep } from './failed_tests_by_step';
 import type { PingState } from '../../../../../../common/runtime_types';
 import { PanelWithTitle } from '../../common/components/panel_with_title';
 import { FailedTestsCount } from './failed_tests_count';
@@ -52,19 +51,14 @@ export const ErrorsTabContent = ({
         </EuiFlexItem>
       </EuiFlexGroup>
       <EuiSpacer size="m" />
-      <EuiFlexGroup gutterSize="m" wrap={true}>
-        <EuiFlexItem grow={2} css={{ minWidth: 260 }}>
-          <PanelWithTitle title={ERRORS_LABEL}>
-            <ErrorsList
-              errorStates={errorStates}
-              upStates={upStates}
-              loading={loading}
-              showMonitorName={true}
-            />
-          </PanelWithTitle>
-        </EuiFlexItem>
-        <FailedTestsByStep time={time} />
-      </EuiFlexGroup>
+      <PanelWithTitle title={ERRORS_LABEL}>
+        <ErrorsList
+          errorStates={errorStates}
+          upStates={upStates}
+          loading={loading}
+          showMonitorName={true}
+        />
+      </PanelWithTitle>
     </>
   );
 };

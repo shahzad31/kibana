@@ -34,7 +34,7 @@ function isErrorActive(lastError: PingState, currentError: PingState, latestPing
   return (
     latestPing?.monitor.status === 'down' &&
     lastError['@timestamp'] === currentError['@timestamp'] &&
-    typeof currentError['@timestamp'] !== undefined
+    currentError['@timestamp'] !== undefined
   );
 }
 
@@ -60,13 +60,15 @@ export const ErrorsList = ({
 
   const { basePath } = useSyntheticsSettingsContext();
 
+  const isGlobalView = !configId && showMonitorName;
+
   const checkGroups = useMemo(() => {
     return errorStates.map((error) => error.monitor.check_group!);
   }, [errorStates]);
 
   const { failedSteps } = useErrorFailedStep(checkGroups);
 
-  const isBrowserType = errorStates[0]?.monitor.type === 'browser';
+  const hasBrowserErrors = errorStates.some((e) => e.monitor.type === 'browser');
 
   const history = useHistory();
 
@@ -123,7 +125,7 @@ export const ErrorsList = ({
       ? [
           {
             field: 'monitor.name',
-            name: 'Monitor name',
+            name: MONITOR_NAME_LABEL,
             render: (monName: string, error: PingState) => {
               return (
                 <EuiLink
@@ -137,7 +139,7 @@ export const ErrorsList = ({
           },
         ]
       : []),
-    ...(isBrowserType
+    ...(hasBrowserErrors
       ? [
           {
             field: 'monitor.check_group',
@@ -152,7 +154,12 @@ export const ErrorsList = ({
               }
               return failedStep.synthetics?.step?.name;
             },
-            render: (value: string) => {
+            render: (value: string, item: PingState) => {
+              if (item.monitor.type !== 'browser') {
+                return (
+                  <>{i18n.translate('xpack.synthetics.columns.Label', { defaultMessage: '--' })}</>
+                );
+              }
               const failedStep = failedSteps.find((step) => step.monitor.check_group === value);
               if (!failedStep) {
                 return (
@@ -202,16 +209,40 @@ export const ErrorsList = ({
         );
       },
     },
+    {
+      field: '@timestamp',
+      name: RESOLVED_AT_LABEL,
+      sortable: (a: PingState) => {
+        const resolvedState = getNextUpStateForResolvedError(a, upStates);
+        return resolvedState ? moment(resolvedState.state.started_at).valueOf() : 0;
+      },
+      render: (_value: string, item: PingState) => {
+        if (isErrorActive(lastErrorTestRun, item, latestPing)) {
+          return (
+            <EuiBadge color="danger" css={{ maxWidth: 'max-content' }}>
+              {ACTIVE_LABEL}
+            </EuiBadge>
+          );
+        }
+        const resolvedState = getNextUpStateForResolvedError(item, upStates);
+        if (resolvedState) {
+          return <EuiText size="s">{formatter(resolvedState.state.started_at)}</EuiText>;
+        }
+        return <EuiText size="s">{'--'}</EuiText>;
+      },
+    },
   ];
 
-  const getRowProps = (item: Ping) => {
+  const getRowProps = (item: PingState) => {
     const { state } = item;
     if (state?.id) {
+      const itemConfigId = item.config_id ?? configId;
+      const locationId = isGlobalView ? item.observer?.name : selectedLocation?.id;
       return {
         'data-test-subj': `row-${state.id}`,
         onClick: (evt: MouseEvent) => {
           history.push(
-            `/monitor/${configId}/errors/${state.id}?locationId=${selectedLocation?.id}`
+            `/monitor/${itemConfigId}/errors/${state.id}?locationId=${locationId}`
           );
         },
       };
@@ -277,4 +308,12 @@ const TIMESTAMP_LABEL = i18n.translate('xpack.synthetics.timestamp.label', {
 
 const ACTIVE_LABEL = i18n.translate('xpack.synthetics.active.label', {
   defaultMessage: 'Active',
+});
+
+const RESOLVED_AT_LABEL = i18n.translate('xpack.synthetics.resolvedAt.label', {
+  defaultMessage: 'Resolved at',
+});
+
+const MONITOR_NAME_LABEL = i18n.translate('xpack.synthetics.monitorName.label', {
+  defaultMessage: 'Monitor name',
 });
