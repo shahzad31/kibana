@@ -79,6 +79,7 @@ const compositeSloMemberSummarySchema = z.object({
   normalisedWeight: z.number(),
   sliValue: z.number(),
   contribution: z.number(),
+  status: compositeStatusSchema,
   instanceId: z.string().optional(),
 });
 

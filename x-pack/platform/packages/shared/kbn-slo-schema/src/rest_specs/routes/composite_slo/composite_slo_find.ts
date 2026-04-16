@@ -21,6 +21,7 @@ const findCompositeSLOQuerySchema = z.object({
   sortBy: compositeSortBySchema.optional(),
   sortDirection: compositeSortDirectionSchema.optional(),
   tags: z.string().optional(),
+  status: z.string().optional(),
 });
 
 const findCompositeSLOParamsSchema = z.object({
