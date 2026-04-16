@@ -11,7 +11,7 @@ import { i18n } from '@kbn/i18n';
 import moment from 'moment';
 import { EuiFlexGroup, EuiFlexItem, EuiHealth, EuiText } from '@elastic/eui';
 import { useUrlParams } from '../../../hooks';
-import { ClientPluginsStart } from '../../../../../plugin';
+import type { ClientPluginsStart } from '../../../../../plugin';
 
 export const MonitorFailedTests = ({
   time,
