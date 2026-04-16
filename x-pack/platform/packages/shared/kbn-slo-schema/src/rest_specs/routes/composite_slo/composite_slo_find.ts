@@ -5,10 +5,7 @@
  * 2.0.
  */
 import { z } from '@kbn/zod';
-import {
-  compositeSloDefinitionSchema,
-  compositeStatusSchema,
-} from '../../../schema/composite_slo';
+import { compositeSloDefinitionSchema, compositeStatusSchema } from '../../../schema/composite_slo';
 
 const compositeSortDirectionSchema = z.union([z.literal('asc'), z.literal('desc')]);
 const compositeSortBySchema = z.union([
