@@ -16,7 +16,7 @@ const compositeSloIdSchema = z
     'Invalid slo id, must be between 8 and 48 characters and contain only letters, numbers, hyphens, and underscores'
   );
 
-const compositeTagsSchema = z.array(z.string());
+const compositeTagsSchema = z.array(z.string()).max(30);
 
 const compositeTargetSchema = z.object({ target: z.number() });
 

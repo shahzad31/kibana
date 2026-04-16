@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import { findCompositeSLOParamsSchema, findCompositeSLOResponseSchema } from '@kbn/slo-schema';
+import { findCompositeSLOParamsSchema } from '@kbn/slo-schema';
 import {
   type CompositeSLORepository,
   DefaultBurnRatesClient,
@@ -93,7 +93,7 @@ export const findCompositeSLORoute = createSloServerRoute({
         summaryClient
       );
 
-      const result = await findWithComputedStatusFilter({
+      return await findWithComputedStatusFilter({
         compositeSloRepository,
         getCompositeSLO,
         statusFilter,
@@ -104,7 +104,6 @@ export const findCompositeSLORoute = createSloServerRoute({
         page,
         perPage,
       });
-      return findCompositeSLOResponseSchema.parse(result);
     }
 
     const result = await compositeSloRepository.search({

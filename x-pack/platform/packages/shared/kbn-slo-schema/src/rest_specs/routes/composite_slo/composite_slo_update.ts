@@ -23,7 +23,7 @@ const updateCompositeSLOParamsSchema = z.object({
   body: z.object({
     name: z.string().optional(),
     description: z.string().optional(),
-    members: z.array(compositeSloMemberSchema).optional(),
+    members: z.array(compositeSloMemberSchema).min(2).max(25).optional(),
     compositeMethod: compositeMethodSchema.optional(),
     timeWindow: compositeRollingTimeWindowSchema.optional(),
     budgetingMethod: compositeOccurrencesBudgetingMethodSchema.optional(),

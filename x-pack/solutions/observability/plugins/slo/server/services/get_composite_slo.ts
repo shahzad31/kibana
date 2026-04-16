@@ -15,7 +15,7 @@ import type {
 import { ALL_VALUE } from '@kbn/slo-schema';
 import { toHighPrecision } from '../utils/number';
 import type { CompositeSLODefinition } from '../domain/models';
-import { Duration, toDurationUnit } from '../domain/models';
+import { toRichRollingTimeWindow } from '../domain/models';
 import {
   computeWeightedSli,
   computeNormalisedWeights,
@@ -65,7 +65,7 @@ export class GetCompositeSLO {
       memberDefinitionMap.has(member.sloId)
     );
 
-    const richTimeWindow = toRichTimeWindow(compositeSlo.timeWindow);
+    const richTimeWindow = toRichRollingTimeWindow(compositeSlo.timeWindow);
 
     const summaryParams = activeMembers.map((member) => ({
       slo: memberDefinitionMap.get(member.sloId)!,
@@ -208,11 +208,4 @@ function deriveBurnRate(compositeSli: number, compositeErrorBudget: number): num
     return 0;
   }
   return toHighPrecision((1 - compositeSli) / compositeErrorBudget);
-}
-
-function toRichTimeWindow(tw: { duration: string; type: 'rolling' }) {
-  const durationStr = tw.duration;
-  const value = parseInt(durationStr.slice(0, -1), 10);
-  const unit = toDurationUnit(durationStr.slice(-1));
-  return { duration: new Duration(value, unit), type: 'rolling' as const };
 }

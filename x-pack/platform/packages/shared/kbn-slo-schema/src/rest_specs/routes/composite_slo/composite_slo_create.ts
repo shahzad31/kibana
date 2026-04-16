@@ -19,7 +19,7 @@ import {
 const createCompositeSLOBodySchema = z.object({
   name: z.string(),
   description: z.string(),
-  members: z.array(compositeSloMemberSchema),
+  members: z.array(compositeSloMemberSchema).min(2).max(25),
   compositeMethod: compositeMethodSchema,
   timeWindow: compositeRollingTimeWindowSchema,
   budgetingMethod: compositeOccurrencesBudgetingMethodSchema,

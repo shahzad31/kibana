@@ -14,7 +14,7 @@ import {
 
 const batchGetCompositeSLOParamsSchema = z.object({
   body: z.object({
-    ids: z.array(compositeSloIdSchema),
+    ids: z.array(compositeSloIdSchema).min(1).max(100),
   }),
 });
 

@@ -16,7 +16,7 @@ import type {
 import { ALL_VALUE } from '@kbn/slo-schema';
 import { computeWeightedSli, NO_DATA } from '../domain/services';
 import type { CompositeSLODefinition, SLODefinition } from '../domain/models';
-import { Duration, toDurationUnit } from '../domain/models';
+import { toRichRollingTimeWindow } from '../domain/models';
 import type { CompositeSLORepository } from './composite_slo_repository';
 import type { SLODefinitionRepository } from './slo_definition_repository';
 import { HistoricalSummaryClient } from './historical_summary_client';
@@ -67,7 +67,7 @@ export class CompositeHistoricalSummaryClient {
     const activeMembers = composite.members.filter((m) => memberDefMap.has(m.sloId));
     if (activeMembers.length === 0) return [];
 
-    const richTimeWindow = toRichTimeWindow(composite.timeWindow);
+    const richTimeWindow = toRichRollingTimeWindow(composite.timeWindow);
 
     const list = activeMembers.map((member) => {
       const slo = memberDefMap.get(member.sloId)!;
@@ -127,11 +127,4 @@ export class CompositeHistoricalSummaryClient {
       return { date, sliValue, errorBudget, status };
     });
   }
-}
-
-function toRichTimeWindow(tw: { duration: string; type: 'rolling' }) {
-  const durationStr = tw.duration;
-  const value = parseInt(durationStr.slice(0, -1), 10);
-  const unit = toDurationUnit(durationStr.slice(-1));
-  return { duration: new Duration(value, unit), type: 'rolling' as const };
 }

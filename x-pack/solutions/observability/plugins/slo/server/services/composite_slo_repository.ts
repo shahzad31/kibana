@@ -9,7 +9,10 @@ import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-ser
 import type { Logger } from '@kbn/core/server';
 import { escapeKuery } from '@kbn/es-query';
 import type { Paginated, Pagination } from '@kbn/slo-schema';
-import { compositeSloDefinitionSchema } from '@kbn/slo-schema';
+import {
+  compositeSloDefinitionSchema,
+  storedCompositeSloDefinitionSchema,
+} from '@kbn/slo-schema';
 import type { CompositeSLODefinition, StoredCompositeSLODefinition } from '../domain/models';
 import { SLOIdConflict, SLONotFound } from '../errors';
 import { SO_SLO_COMPOSITE_TYPE } from '../saved_objects';
@@ -45,7 +48,8 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
       throw new SLOIdConflict(`Composite SLO [${compositeSlo.id}] already exists`);
     }
 
-    await this.soClient.create<StoredCompositeSLODefinition>(SO_SLO_COMPOSITE_TYPE, compositeSlo);
+    const toStore = storedCompositeSloDefinitionSchema.parse(compositeSlo);
+    await this.soClient.create<StoredCompositeSLODefinition>(SO_SLO_COMPOSITE_TYPE, toStore);
 
     return compositeSlo;
   }
@@ -62,7 +66,8 @@ export class DefaultCompositeSLORepository implements CompositeSLORepository {
     }
 
     const existingSavedObjectId = findResponse.saved_objects[0].id;
-    await this.soClient.create<StoredCompositeSLODefinition>(SO_SLO_COMPOSITE_TYPE, compositeSlo, {
+    const toStore = storedCompositeSloDefinitionSchema.parse(compositeSlo);
+    await this.soClient.create<StoredCompositeSLODefinition>(SO_SLO_COMPOSITE_TYPE, toStore, {
       id: existingSavedObjectId,
       overwrite: true,
     });
