@@ -76,6 +76,8 @@ echo "--- Build Elasticsearch"
   :distribution:archives:linux-aarch64-tar:assemble \
   :distribution:archives:linux-tar:assemble \
   :distribution:archives:windows-zip:assemble \
+  -x :distribution:tools:server-launcher:nativeImageLinuxX64 \
+  -x :distribution:tools:server-launcher:nativeImageLinuxAarch64 \
   --parallel
 
 echo "--- Create distribution archives"
@@ -89,11 +91,9 @@ docker images "docker.elastic.co/elasticsearch/elasticsearch" --format "{{.Tag}}
 docker images "docker.elastic.co/elasticsearch/elasticsearch" --format "{{.Tag}}" | xargs -n1 bash -c 'docker save docker.elastic.co/elasticsearch/elasticsearch:${0} | gzip > ../es-build/elasticsearch-${0}-docker-image.tar.gz'
 
 echo "--- Create kibana-ci docker cloud image archives"
-# Ignore build failures.  This docker image downloads metricbeat and filebeat.
-# When we bump versions, these dependencies may not exist yet, but we don't want to
-# block the rest of the snapshot promotion process
-set +e
-./gradlew :distribution:docker:cloud-ess-docker-export:assemble && {
+./gradlew :distribution:docker:cloud-ess-docker-export:assemble \
+  -x :distribution:tools:server-launcher:nativeImageLinuxX64 \
+  -x :distribution:tools:server-launcher:nativeImageLinuxAarch64 && {
   ES_CLOUD_ID=$(docker images "docker.elastic.co/elasticsearch/elasticsearch-cloud-ess" --format "{{.ID}}")
   ES_CLOUD_VERSION=$(docker images "docker.elastic.co/elasticsearch/elasticsearch-cloud-ess" --format "{{.Tag}}")
   KIBANA_ES_CLOUD_VERSION="$ES_CLOUD_VERSION-$ELASTICSEARCH_GIT_COMMIT"
@@ -106,7 +106,6 @@ set +e
   export ELASTICSEARCH_CLOUD_IMAGE="$KIBANA_ES_CLOUD_IMAGE"
   export ELASTICSEARCH_CLOUD_IMAGE_CHECKSUM="$(docker images "$KIBANA_ES_CLOUD_IMAGE" --format "{{.Digest}}")"
 }
-set -e
 
 echo "--- Create checksums for snapshot files"
 cd "$destination"

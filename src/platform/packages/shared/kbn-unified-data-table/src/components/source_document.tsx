@@ -10,6 +10,7 @@
 import React, { Fragment } from 'react';
 import { css } from '@emotion/react';
 import type {
+  DataTableColumnsMeta,
   DataTableRecord,
   EsHitRecord,
   FormattedHit,
@@ -17,7 +18,8 @@ import type {
 } from '@kbn/discover-utils/src/types';
 import type { DataView } from '@kbn/data-views-plugin/common';
 import type { FieldFormatsStart } from '@kbn/field-formats-plugin/public';
-import { formatHit } from '@kbn/discover-utils';
+import { formatFieldValue, formatHit } from '@kbn/discover-utils';
+import { getDataViewFieldOrCreateFromColumnMeta } from '@kbn/data-view-utils';
 import {
   EuiDescriptionList,
   EuiDescriptionListDescription,
@@ -43,6 +45,7 @@ export function SourceDocument({
   dataTestSubj = 'discoverCellDescriptionList',
   className,
   isCompressed = true,
+  columnsMeta,
 }: {
   useTopLevelObjectColumns: boolean;
   row: DataTableRecord;
@@ -55,14 +58,19 @@ export function SourceDocument({
   dataTestSubj?: string;
   className?: string;
   isCompressed?: boolean;
+  columnsMeta: DataTableColumnsMeta | undefined;
 }) {
   const styles = useMemoCss(componentStyles);
   const pairs: FormattedHit = useTopLevelObjectColumns
-    ? getTopLevelObjectPairs(row.raw, columnId, dataView, shouldShowFieldHandler).slice(
-        0,
-        maxEntries
-      )
-    : formatHit(row, dataView, shouldShowFieldHandler, maxEntries, fieldFormats);
+    ? getTopLevelObjectPairs(
+        row.raw,
+        columnId,
+        dataView,
+        shouldShowFieldHandler,
+        fieldFormats,
+        columnsMeta
+      ).slice(0, maxEntries)
+    : formatHit(row, dataView, shouldShowFieldHandler, maxEntries, fieldFormats, columnsMeta);
 
   return (
     <EuiDescriptionList
@@ -100,7 +108,9 @@ function getTopLevelObjectPairs(
   row: EsHitRecord,
   columnId: string,
   dataView: DataView,
-  shouldShowFieldHandler: ShouldShowFieldInTableHandler
+  shouldShowFieldHandler: ShouldShowFieldInTableHandler,
+  fieldFormats: FieldFormatsStart,
+  columnsMeta: DataTableColumnsMeta | undefined
 ) {
   const innerColumns = getInnerColumns(row.fields as Record<string, unknown[]>, columnId);
   // Put the most important fields first
@@ -108,20 +118,16 @@ function getTopLevelObjectPairs(
   const highlightPairs: FormattedHit = [];
   const sourcePairs: FormattedHit = [];
   Object.entries(innerColumns).forEach(([key, values]) => {
-    const subField = dataView.getFieldByName(key);
+    const subField = getDataViewFieldOrCreateFromColumnMeta({
+      dataView,
+      fieldName: key,
+      columnMeta: columnsMeta?.[key],
+    });
     const displayKey = dataView.fields.getByName
       ? dataView.fields.getByName(key)?.displayName
       : undefined;
-    const formatter = subField
-      ? dataView.getFormatterForField(subField)
-      : { convert: (v: unknown, ...rest: unknown[]) => String(v) };
     const formatted = values
-      .map((val: unknown) =>
-        formatter.convert(val, 'html', {
-          field: subField,
-          hit: row,
-        })
-      )
+      .map((value: unknown) => formatFieldValue(value, row, fieldFormats, dataView, subField))
       .join(', ');
     const pairs = highlights[key] ? highlightPairs : sourcePairs;
     if (displayKey) {
@@ -152,15 +158,16 @@ const componentStyles = {
 
       // Following guidelines for CSS-in-JS - styles for high granularity components should be assigned to a parent and targeting classes of repeating children
       '.unifiedDataTable__descriptionListTitle': {
-        marginInline: '0 0',
+        marginInline: `0 ${euiTheme.size.s}`,
         paddingInline: 0,
         background: 'transparent',
         fontWeight: euiTheme.font.weight.bold,
         lineHeight: 'inherit', // Required for EuiDataGrid lineCount to work correctly
+        display: 'inline-block',
       },
 
       '.unifiedDataTable__descriptionListDescription': {
-        marginInline: `${euiTheme.size.s} ${euiTheme.size.s}`,
+        marginInline: `0 ${euiTheme.size.s}`,
         paddingInline: 0,
         wordBreak: 'break-all',
         whiteSpace: 'normal',

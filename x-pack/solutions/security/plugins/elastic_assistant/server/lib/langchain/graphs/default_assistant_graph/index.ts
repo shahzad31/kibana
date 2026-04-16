@@ -37,6 +37,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
   alertsIndexPattern,
   assistantTools = [],
   connectorId,
+  threadId,
   contentReferencesStore,
   conversationId,
   core,
@@ -75,49 +76,51 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
    * creating a new instance, we prevent other uses of llm from binding and changing
    * the state unintentionally. For this reason, only call createLlmInstance at runtime
    */
-  const createLlmInstance = async () =>
-    !inferenceChatModelDisabled
-      ? inference.getChatModel({
-          request,
-          connectorId,
-          chatModelOptions: {
-            model: request.body.model,
-            signal: abortSignal,
-            temperature: getDefaultArguments(llmType).temperature,
-            // prevents the agent from retrying on failure
-            // failure could be due to bad connector, we should deliver that result to the client asap
-            maxRetries: 0,
-            metadata: {
-              connectorTelemetry: {
-                pluginId: 'security_ai_assistant',
-              },
-            },
-            // TODO add timeout to inference once resolved https://github.com/elastic/kibana/issues/221318
-            // timeout,
-          },
-        })
-      : new llmClass({
-          actionsClient,
-          connectorId,
-          llmType,
-          logger,
-          // possible client model override,
-          // let this be undefined otherwise so the connector handles the model
+  const createLlmInstance = async () => {
+    if (!inferenceChatModelDisabled) {
+      return inference.getChatModel({
+        request,
+        connectorId,
+        chatModelOptions: {
           model: request.body.model,
-          // ensure this is defined because we default to it in the language_models
-          // This is where the LangSmith logs (Metadata > Invocation Params) are set
-          temperature: getDefaultArguments(llmType).temperature,
           signal: abortSignal,
-          streaming: isStream,
+          temperature: getDefaultArguments(llmType).temperature,
           // prevents the agent from retrying on failure
           // failure could be due to bad connector, we should deliver that result to the client asap
           maxRetries: 0,
-          convertSystemMessageToHumanContent: false,
-          timeout,
           telemetryMetadata: {
             pluginId: 'security_ai_assistant',
           },
-        });
+          // TODO add timeout to inference once resolved https://github.com/elastic/kibana/issues/221318
+          // timeout,
+        },
+      });
+    }
+    const connector = await actionsClient.get({ id: connectorId });
+    const defaultModel = connector?.config?.defaultModel;
+    return new llmClass({
+      actionsClient,
+      connectorId,
+      llmType,
+      logger,
+      // possible client model override,
+      // let this be undefined otherwise so the connector handles the model
+      model: request.body.model ?? defaultModel,
+      // ensure this is defined because we default to it in the language_models
+      // This is where the LangSmith logs (Metadata > Invocation Params) are set
+      temperature: getDefaultArguments(llmType).temperature,
+      signal: abortSignal,
+      streaming: isStream,
+      // prevents the agent from retrying on failure
+      // failure could be due to bad connector, we should deliver that result to the client asap
+      maxRetries: 0,
+      convertSystemMessageToHumanContent: false,
+      timeout,
+      telemetryMetadata: {
+        pluginId: 'security_ai_assistant',
+      },
+    });
+  };
 
   const anonymizationFieldsRes =
     await dataClients?.anonymizationFieldsDataClient?.findDocuments<EsAnonymizationFieldsSchema>({
@@ -163,7 +166,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
         let description: string | undefined;
         try {
           description = await getPrompt({
-            actionsClient,
+            getInferenceConnectorById: (id) => inference.getConnectorById(id, request),
             connectorId,
             localPrompts: localToolPrompts,
             model: getModelOrOss(llmType, isOssModel, request.body.model),
@@ -211,7 +214,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
   }
 
   const defaultSystemPrompt = await localGetPrompt({
-    actionsClient,
+    getInferenceConnectorById: (id) => inference.getConnectorById(id, request),
     connectorId,
     model: getModelOrOss(llmType, isOssModel, request.body.model),
     promptId: promptDictionary.systemPrompt,
@@ -228,12 +231,13 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
     // we need to pass it like this or streaming does not work for bedrock
     createLlmInstance,
     logger,
-    actionsClient,
+    getInferenceConnectorById: (id) => inference.getConnectorById(id, request),
     savedObjectsClient,
     tools,
     // some chat models (bedrock) require a signal to be passed on agent invoke rather than the signal passed to the chat model
     ...(llmType === 'bedrock' ? { signal: abortSignal } : {}),
     contentReferencesStore,
+    checkpointSaver: await assistantContext.getCheckpointSaver(),
   });
 
   const conversationMessages = await getConversationWithNewMessage({
@@ -255,7 +259,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
       screenContextTimezone: screenContext?.timeZone,
       uiSettingsDateFormatTimezone,
     }),
-    actionsClient,
+    getInferenceConnectorById: (id) => inference.getConnectorById(id, request),
     savedObjectsClient,
     connectorId,
     llmType,
@@ -265,6 +269,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
     responseLanguage,
     conversationId,
     connectorId,
+    threadId,
     llmType,
     isStream,
     isOssModel,
@@ -276,7 +281,7 @@ export const callAssistantGraph: AgentExecutor<true | false> = async ({
   void (async () => {
     const model = await createLlmInstance();
     await generateChatTitle({
-      actionsClient,
+      getInferenceConnectorById: (id) => inference.getConnectorById(id, request),
       contentReferencesStore,
       conversationsDataClient: dataClients?.conversationsDataClient,
       logger,

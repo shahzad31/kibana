@@ -13,7 +13,6 @@ import {
   coreWorkerFixtures,
   esArchiverFixture,
   scoutSpaceParallelFixture,
-  synthtraceFixture,
 } from '../../fixtures/scope/worker';
 import type {
   ApiServicesFixture,
@@ -25,6 +24,7 @@ import type {
   ScoutTestConfig,
 } from '../../fixtures/scope/worker';
 import {
+  pageContextFixture,
   scoutPageParallelFixture,
   browserAuthFixture,
   pageObjectsParallelFixture,
@@ -38,6 +38,7 @@ export const scoutParallelFixtures = mergeTests(
   scoutSpaceParallelFixture,
   apiServicesFixture,
   // test scope fixtures
+  pageContextFixture,
   browserAuthFixture,
   scoutPageParallelFixture,
   pageObjectsParallelFixture,
@@ -60,9 +61,8 @@ export interface ScoutParallelWorkerFixtures {
   apiServices: ApiServicesFixture;
 }
 
-export const globalSetup = mergeTests(
+export const globalSetupFixtures = mergeTests(
   coreWorkerFixtures,
   esArchiverFixture,
-  synthtraceFixture,
   apiServicesFixture
 );

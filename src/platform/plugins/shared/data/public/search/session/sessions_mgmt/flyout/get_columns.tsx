@@ -9,7 +9,6 @@
 
 import type { SearchSessionsMgmtTable } from '../components/table';
 import { columns } from '../components/table';
-import { ACTION } from '../types';
 
 type GetColumnsFn = React.ComponentProps<typeof SearchSessionsMgmtTable>['getColumns'];
 
@@ -20,17 +19,19 @@ export const getColumns: GetColumnsFn = ({
   api,
   timezone,
   onActionComplete,
+  onBackgroundSearchOpened,
 }) => [
   columns.nameColumn({
     core,
     kibanaVersion,
     searchUsageCollector,
+    onBackgroundSearchOpened,
   }),
   columns.statusColumn(timezone),
   columns.actionsColumn({
     core,
     api,
     onActionComplete,
-    allowedActions: [ACTION.EXTEND, ACTION.RENAME, ACTION.DELETE],
+    isWithinFlyout: true,
   }),
 ];

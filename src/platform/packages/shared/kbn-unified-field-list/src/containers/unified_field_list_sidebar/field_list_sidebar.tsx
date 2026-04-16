@@ -29,7 +29,7 @@ import { FieldList } from '../../components/field_list';
 import { FieldListFilters } from '../../components/field_list_filters';
 import { FieldListGrouped, type FieldListGroupedProps } from '../../components/field_list_grouped';
 import { FieldsGroupNames } from '../../types';
-import type { ButtonAddFieldVariant } from '../../types';
+import type { ButtonAddFieldVariant, AdditionalFieldGroups } from '../../types';
 import type { GroupedFieldsParams } from '../../hooks/use_grouped_fields';
 import { useGroupedFields } from '../../hooks/use_grouped_fields';
 import { UnifiedFieldListItem, type UnifiedFieldListItemProps } from '../unified_field_list_item';
@@ -52,6 +52,7 @@ export type UnifiedFieldListSidebarCustomizableProps = Pick<
   | 'onAddFieldToWorkspace'
   | 'onRemoveFieldFromWorkspace'
   | 'additionalFilters'
+  | 'streamNames'
 > & {
   /**
    * All fields: fields from data view and unmapped fields or columns from text-based search
@@ -77,6 +78,10 @@ export type UnifiedFieldListSidebarCustomizableProps = Pick<
    * Custom logic for determining which field is selected
    */
   onSelectedFieldFilter?: GroupedFieldsParams<DataViewField>['onSelectedFieldFilter'];
+  /**
+   * Prop to pass additional field groups to the field list
+   */
+  additionalFieldGroups?: AdditionalFieldGroups;
 };
 
 interface UnifiedFieldListSidebarInternalProps {
@@ -166,6 +171,8 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
   onDeleteField,
   onToggleSidebar,
   additionalFilters,
+  additionalFieldGroups,
+  streamNames,
 }) => {
   const styles = useMemoCss(componentStyles);
 
@@ -231,6 +238,7 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
         stateService.creationOptions.onSupportedFieldFilter ?? onSupportedFieldFilter,
       onOverrideFieldGroupDetails: stateService.creationOptions.onOverrideFieldGroupDetails,
       getNewFieldsBySpec,
+      additionalFieldGroups,
     });
 
   useEffect(() => {
@@ -281,6 +289,7 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
           stateService={stateService}
           trackUiMetric={trackUiMetric}
           workspaceSelectedFieldNames={workspaceSelectedFieldNames}
+          streamNames={streamNames}
         />
       </li>
     ),
@@ -302,6 +311,7 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
       workspaceSelectedFieldNames,
       selectedFieldsState.selectedFieldsMap,
       additionalFilters,
+      streamNames,
     ]
   );
 
@@ -337,12 +347,15 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
       />
     ) : null;
 
-  if (isSidebarCollapsed && sidebarToggleButton) {
-    return (
-      <EuiHideFor sizes={['xs', 's']}>
-        <div {...pageSidebarProps}>{sidebarToggleButton}</div>
-      </EuiHideFor>
-    );
+  if (isSidebarCollapsed) {
+    if (sidebarToggleButton) {
+      return (
+        <EuiHideFor sizes={['xs', 's']}>
+          <div {...pageSidebarProps}>{sidebarToggleButton}</div>
+        </EuiHideFor>
+      );
+    }
+    return null;
   }
 
   const hasButtonAddFieldToolbarStyle = buttonAddFieldVariant === 'toolbar';

@@ -11,50 +11,46 @@ import type { PlaywrightTestConfig } from '@playwright/test';
 import { defineConfig } from '@playwright/test';
 import type { AvailableConnectorWithId } from '@kbn/gen-ai-functional-testing';
 import { getAvailableConnectors } from '@kbn/gen-ai-functional-testing';
-import { ToolingLog, LOG_LEVEL_FLAGS, DEFAULT_LOG_LEVEL } from '@kbn/tooling-log';
 
 export interface EvaluationTestOptions extends ScoutTestOptions {
   connector: AvailableConnectorWithId;
   evaluationConnector: AvailableConnectorWithId;
+  repetitions: number;
+  timeout?: number;
 }
 
-function getLogLevel() {
-  const env = process.env.LOG_LEVEL;
-  const found = LOG_LEVEL_FLAGS.find(({ name }) => name === env);
-
-  if (found) {
-    return found.name === 'quiet' ? 'error' : found.name;
-  }
-  return DEFAULT_LOG_LEVEL;
-}
 /**
  * Exports a Playwright configuration specifically for offline evals
  */
 export function createPlaywrightEvalsConfig({
   testDir,
+  repetitions,
+  timeout,
+  runGlobalSetup,
 }: {
   testDir: string;
+  repetitions?: number;
+  timeout?: number;
+  runGlobalSetup?: boolean;
 }): PlaywrightTestConfig<{}, EvaluationTestOptions> {
-  const log = new ToolingLog({
-    level: getLogLevel(),
-    writeTo: process.stdout,
+  const { reporter, use, outputDir, projects, ...config } = createPlaywrightConfig({
+    testDir,
+    runGlobalSetup,
   });
-
-  const { reporter, use, outputDir, projects, ...config } = createPlaywrightConfig({ testDir });
 
   // gets the connectors from either the env variable or kibana.yml/kibana.dev.yml
   const connectors = getAvailableConnectors();
 
-  let evaluationConnectorId = process.env.EVALUATION_CONNECTOR_ID
+  const evaluationConnectorId = process.env.EVALUATION_CONNECTOR_ID
     ? String(process.env.EVALUATION_CONNECTOR_ID)
     : undefined;
 
   if (!evaluationConnectorId) {
-    evaluationConnectorId = connectors[0].id;
-    log.warning(
-      `process.env.EVALUATION_CONNECTOR_ID not set, defaulting to ${evaluationConnectorId}. Please set this for consistent results.`
+    throw new Error(
+      `process.env.EVALUATION_CONNECTOR_ID is required. Pick one from ${connectors
+        .map((connector) => connector.id)
+        .join(', ')}`
     );
-    process.env.EVALUATION_CONNECTOR_ID = evaluationConnectorId;
   }
 
   const evaluationConnector = connectors.find(
@@ -69,6 +65,12 @@ export function createPlaywrightEvalsConfig({
     );
   }
 
+  // Priority of determining repetition number: env variable, config parameter, default
+  const experimentRepetitions =
+    parseInt(process.env.EVALUATION_REPETITIONS || '', 10) || repetitions || 1;
+
+  const setupProjects = projects?.filter((project) => project.name === 'setup-local') ?? [];
+
   // get just the 'local' project (for now)
   const nextProjects = connectors.flatMap((connector) => {
     return (
@@ -82,6 +84,7 @@ export function createPlaywrightEvalsConfig({
               ...project.use,
               connector,
               evaluationConnector,
+              repetitions: experimentRepetitions,
             },
           };
         }) ?? []
@@ -99,8 +102,9 @@ export function createPlaywrightEvalsConfig({
     use: {
       serversConfigDir: (use as ScoutTestOptions).serversConfigDir,
     },
-    projects: nextProjects,
+    projects: [...setupProjects, ...nextProjects],
     globalSetup: require.resolve('./setup.js'),
-    timeout: 5 * 60_000,
+    globalTeardown: require.resolve('./teardown.js'),
+    timeout: timeout ?? 5 * 60_000,
   });
 }

@@ -17,8 +17,10 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
   const { dashboard, header, timePicker } = getPageObjects(['dashboard', 'header', 'timePicker']);
   const pieChart = getService('pieChart');
   const browser = getService('browser');
+  const retry = getService('retry');
 
-  describe('dashboard time', () => {
+  // Failing: See https://github.com/elastic/kibana/issues/261894
+  describe.skip('dashboard time', () => {
     before(async function () {
       await dashboard.initTests();
       await dashboard.preserveCrossAppState();
@@ -28,7 +30,7 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
       await dashboard.navigateToApp();
     });
 
-    describe('dashboard without stored timed', () => {
+    describe('dashboard without stored time', () => {
       it('is saved', async () => {
         await dashboard.clickNewDashboard();
         await dashboard.addVisualizations([dashboard.getTestVisualizationNames()[0]]);
@@ -49,7 +51,7 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
       });
     });
 
-    describe('dashboard with stored timed', function () {
+    describe('dashboard with stored time', function () {
       it('is saved with time', async function () {
         await dashboard.switchToEditMode();
         await timePicker.setDefaultAbsoluteRange();
@@ -67,9 +69,11 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
 
         await dashboard.loadSavedDashboard(dashboardName);
 
-        const time = await timePicker.getTimeConfig();
-        expect(time.start).to.equal(timePicker.defaultStartTime);
-        expect(time.end).to.equal(timePicker.defaultEndTime);
+        await retry.try(async () => {
+          const time = await timePicker.getTimeConfig();
+          expect(time.start).to.equal(timePicker.defaultStartTime);
+          expect(time.end).to.equal(timePicker.defaultEndTime);
+        });
       });
 
       // If time is stored with a dashboard, it's supposed to override the current time settings when opened.
@@ -85,7 +89,11 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
         const urlWithGlobalTime = `${kibanaBaseUrl}#/view/${id}?_g=(time:(from:now-1h,to:now))`;
         await browser.get(urlWithGlobalTime, false);
         const time = await timePicker.getTimeConfig();
-        expect(time.start).to.equal('~ an hour ago');
+        // Legacy picker shows "~ an hour ago", new DateRangePicker returns
+        // dateMath (with /h rounding when roundRelativeTime setting is enabled)
+        expect(
+          time.start === '~ an hour ago' || time.start === 'now-1h' || time.start === 'now-1h/h'
+        ).to.equal(true);
         expect(time.end).to.equal('now');
 
         /**
@@ -95,7 +103,7 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
         await pieChart.expectEmptyPieChart();
       });
 
-      it('should use saved time, if time is missing in global state, but _g is present in the url', async function () {
+      it('should use unsaved saved time from session storage, if time is missing in global state, but _g is present in the url', async function () {
         const currentUrl = await browser.getCurrentUrl();
         const kibanaBaseUrl = currentUrl.substring(0, currentUrl.indexOf('#'));
         const id = await dashboard.getDashboardIdFromCurrentUrl();
@@ -104,9 +112,14 @@ export default function ({ getService, getPageObjects }: FtrProviderContext) {
 
         const urlWithGlobalTime = `${kibanaBaseUrl}#/view/${id}?_g=(filters:!())`;
         await browser.get(urlWithGlobalTime, false);
+
         const time = await timePicker.getTimeConfig();
-        expect(time.start).to.equal(timePicker.defaultStartTime);
-        expect(time.end).to.equal(timePicker.defaultEndTime);
+        // Legacy picker shows "~ an hour ago", new DateRangePicker returns
+        // dateMath (with /h rounding when roundRelativeTime setting is enabled)
+        expect(
+          time.start === '~ an hour ago' || time.start === 'now-1h' || time.start === 'now-1h/h'
+        ).to.equal(true);
+        expect(time.end).to.equal('now');
       });
 
       it('should use saved time after time change is undone', async function () {

@@ -22,10 +22,7 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
     before(async () => {
       await log.debug('Navigating to the index templates tab');
       await security.testUser.setRoles(['index_management_user']);
-      await pageObjects.common.navigateToApp('indexManagement');
-      // Navigate to the templates tab
-      await pageObjects.indexManagement.changeTabs('templatesTab');
-      await pageObjects.header.waitUntilLoadingHasFinished();
+      await pageObjects.indexManagement.navigateToIndexManagementTab('templates');
     });
 
     afterEach(async () => {
@@ -85,7 +82,10 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
       });
     });
 
-    describe('index template modification', () => {
+    describe('index template modification', function () {
+      // FIPS mode sets defaultRoles to superuser which causes a trial-licensed UI element to
+      // intercept the templateDetailsLink click in the beforeEach hook
+      this.tags('skipFIPS');
       beforeEach(async () => {
         await es.indices.putIndexTemplate({
           name: INDEX_TEMPLATE_NAME,
@@ -112,9 +112,7 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
           // Close Flyout to return to templates tab
           await testSubjects.click('closeDetailsButton');
         } else {
-          // Comeback to templates tab
-          await pageObjects.common.navigateToApp('indexManagement');
-          await pageObjects.indexManagement.changeTabs('templatesTab');
+          await pageObjects.indexManagement.navigateToIndexManagementTab('templates');
         }
       });
 
@@ -145,8 +143,7 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
         // Navigate to Mappings
         await testSubjects.click('formWizardStep-3');
         await pageObjects.header.waitUntilLoadingHasFinished();
-        const mappingTabs = await testSubjects.findAll('formTab');
-        await mappingTabs[3].click();
+        await testSubjects.click('advancedOptionsTab');
 
         // Modify timestamp format
         await testSubjects.click('comboBoxClearButton');
@@ -164,10 +161,8 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
         await pageObjects.indexManagement.clickNextButton();
         await pageObjects.header.waitUntilLoadingHasFinished();
 
-        const flyoutTabs = await testSubjects.findAll('tab');
-
         // Verify Index Settings
-        await flyoutTabs[1].click();
+        await testSubjects.click('settingsTabBtn');
         await pageObjects.header.waitUntilLoadingHasFinished();
         expect(await testSubjects.exists('settingsTabContent')).to.be(true);
         const settingsTabContent = await testSubjects.getVisibleText('settingsTabContent');
@@ -176,6 +171,9 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
             mode: 'logsdb',
             mapping: {
               ignore_above: '20',
+              source: {
+                mode: 'synthetic',
+              },
               total_fields: {
                 ignore_dynamic_beyond_limit: 'true',
               },
@@ -185,15 +183,12 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
         });
 
         // Verify Mappings
-        await flyoutTabs[2].click();
+        await testSubjects.click('mappingsTabBtn');
         await pageObjects.header.waitUntilLoadingHasFinished();
         expect(await testSubjects.exists('mappingsTabContent')).to.be(true);
         const mappingsTabContent = await testSubjects.getVisibleText('mappingsTabContent');
         expect(JSON.parse(mappingsTabContent)).to.eql({
           dynamic_date_formats: ['basic_date'],
-          _source: {
-            mode: 'synthetic',
-          },
           subobjects: false,
         });
       });
@@ -202,8 +197,7 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
           // Navigate to Mappings
           await testSubjects.click('formWizardStep-3');
           await pageObjects.header.waitUntilLoadingHasFinished();
-          const mappingTabs = await testSubjects.findAll('formTab');
-          await mappingTabs[3].click();
+          await (await testSubjects.find('advancedOptionsTab')).click();
 
           // Modify source
           await testSubjects.click('sourceValueField');
@@ -243,11 +237,7 @@ export default ({ getPageObjects, getService }: FtrProviderContext) => {
             },
           },
         });
-
-        // Navigate to the index management
-        await pageObjects.common.navigateToApp('indexManagement');
-        // Navigate to the templates tab
-        await pageObjects.indexManagement.changeTabs('templatesTab');
+        await pageObjects.indexManagement.navigateToIndexManagementTab('templates');
       });
 
       after(async () => {

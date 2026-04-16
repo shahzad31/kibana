@@ -56,6 +56,7 @@ const ConversationSettingsManagementComponent: React.FC<Props> = ({
   const {
     actionTypeRegistry,
     assistantAvailability: { isAssistantEnabled },
+    currentUser,
     http,
     nameSpace,
     toasts,
@@ -117,6 +118,8 @@ const ConversationSettingsManagementComponent: React.FC<Props> = ({
         { sortField: sorting.sort.field === 'Title' ? 'title' : snakeCase(sorting.sort.field) }
       : {}),
     ...(sorting?.sort?.direction ? { sortOrder: sorting.sort.direction } : {}),
+    fields: ['id', 'title', 'apiConfig', 'updatedAt', 'createdBy', 'users'],
+    isConversationOwner: true,
   });
 
   const refetchAll = useCallback(() => {
@@ -248,7 +251,7 @@ const ConversationSettingsManagementComponent: React.FC<Props> = ({
     onCancelClick();
   }, [closeConfirmModal, handleUnselectAll, onCancelClick]);
 
-  const { getConversationsList, getColumns } = useConversationsTable();
+  const { getConversationsList, getColumns } = useConversationsTable(currentUser);
 
   const conversationOptions = getConversationsList({
     allSystemPrompts,
@@ -346,6 +349,7 @@ const ConversationSettingsManagementComponent: React.FC<Props> = ({
           isDeleteAll={isDeleteAll}
         />
         <EuiBasicTable
+          tableCaption={i18n.CONVERSATIONS_LIST_TITLE}
           items={conversationOptions}
           columns={columns}
           pagination={pagination}
@@ -370,6 +374,7 @@ const ConversationSettingsManagementComponent: React.FC<Props> = ({
               allSystemPrompts={allSystemPrompts}
               conversationSettings={conversations}
               conversationsSettingsBulkActions={conversationsSettingsBulkActions}
+              currentUser={currentUser}
               http={http}
               isDisabled={isDisabled}
               selectedConversation={selectedConversation}

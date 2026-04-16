@@ -10,9 +10,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { ContentReferencesStore, DocumentEntry } from '@kbn/elastic-assistant-common';
 import { enrichDocument } from '@kbn/elastic-assistant-common';
 import type { Logger } from '@kbn/logging';
-import type { PublicMethodsOf } from '@kbn/utility-types';
 import type { SavedObjectsClientContract } from '@kbn/core/server';
-import type { ActionsClient } from '@kbn/actions-plugin/server';
+import type { InferenceConnector } from '@kbn/inference-common';
 import type { ChatPromptValueInterface } from '@langchain/core/prompt_values';
 import { enrichConversation } from '../../utils/enrich_graph_input_messages';
 import type { AIAssistantKnowledgeBaseDataClient } from '../../../../ai_assistant_data_clients/knowledge_base';
@@ -21,6 +20,7 @@ import { INCLUDE_CITATIONS } from '../../../prompt/prompts';
 interface ChatPromptTemplateInputValues {
   systemPrompt: string;
   messages: BaseMessage[];
+  knowledgeHistory: string;
 }
 
 interface Inputs {
@@ -31,7 +31,7 @@ interface Inputs {
   conversationMessages: BaseMessage[];
   logger: Logger;
   formattedTime: string;
-  actionsClient: PublicMethodsOf<ActionsClient>;
+  getInferenceConnectorById: (id: string) => Promise<InferenceConnector>;
   savedObjectsClient: SavedObjectsClientContract;
   connectorId: string;
   llmType: string | undefined;
@@ -40,7 +40,7 @@ interface Inputs {
 export const DEFAULT_ASSISTANT_GRAPH_PROMPT_TEMPLATE = ChatPromptTemplate.fromMessages<{
   systemPrompt: string;
   messages: BaseMessage[];
-}>([['system', '{systemPrompt}'], new MessagesPlaceholder('messages')]);
+}>([['system', '{systemPrompt}\n\n{knowledgeHistory}'], new MessagesPlaceholder('messages')]);
 
 const KNOWLEDGE_HISTORY_PREFIX = 'Knowledge History:';
 const NO_KNOWLEDGE_HISTORY = '[No existing knowledge history]';
@@ -75,11 +75,10 @@ export const chatPromptFactory = async (
   const systemPrompt = await systemPromptTemplate.format({
     citations_prompt: inputs.contentReferencesStore.options?.disabled ? '' : INCLUDE_CITATIONS,
     formattedTime: inputs.formattedTime ?? '',
-    knowledgeHistory: formattedKnowledgeHistory,
   });
 
   const enrichedMessages = await enrichConversation({
-    actionsClient: inputs.actionsClient,
+    getInferenceConnectorById: inputs.getInferenceConnectorById,
     savedObjectsClient: inputs.savedObjectsClient,
     connectorId: inputs.connectorId,
     llmType: inputs.llmType,
@@ -89,6 +88,7 @@ export const chatPromptFactory = async (
   const chatPrompt = await chatPromptTemplate.invoke({
     systemPrompt,
     messages: enrichedMessages,
+    knowledgeHistory: formattedKnowledgeHistory,
   });
 
   return chatPrompt;

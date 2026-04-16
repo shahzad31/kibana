@@ -51,6 +51,8 @@ export type Refetch = () => void;
 export interface InspectQuery {
   dsl: string[];
   response: string[];
+  /** Optional index pattern(s) for the Statistics tab when the request body does not include an index field (e.g. entity store API). */
+  indexPattern?: string[];
 }
 
 export interface GlobalGenericQuery {
@@ -102,8 +104,7 @@ export interface UrlInputsModelInputs {
 export interface UrlInputsModel {
   global: UrlInputsModelInputs;
   timeline: UrlInputsModelInputs;
-  // serverless only
-  valueReport?: UrlInputsModelInputs;
+  valueReport: UrlInputsModelInputs;
   // TODO: remove ? when isSocTrendsEnabled feature flag is removed
   socTrends?: UrlInputsModelInputs;
 }

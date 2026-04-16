@@ -24,6 +24,10 @@ import { mockEncryptedSO } from '../utils/mocks';
 import type { SyntheticsServerSetup } from '../../types';
 import { MonitorConfigRepository } from '../../services/monitor_config_repository';
 
+jest.mock('@kbn/fleet-plugin/server/services/package_policy', () => ({
+  getPackagePolicySavedObjectType: jest.fn().mockResolvedValue('fleet-package-policies'),
+}));
+
 const testMonitors = [
   {
     type: 'browser',
@@ -118,6 +122,7 @@ describe('ProjectMonitorFormatter', () => {
     coreStart: {
       savedObjects: savedObjectsServiceMock.createStartContract(),
     },
+    fleet: { runWithCache: async (cb: any) => await cb() },
   } as unknown as SyntheticsServerSetup;
 
   const syntheticsService = new SyntheticsService(serverMock);
@@ -253,7 +258,7 @@ describe('ProjectMonitorFormatter', () => {
       updatedMonitors: [],
       failedMonitors: [
         {
-          details: "Cannot read properties of undefined (reading 'packagePolicyService')",
+          details: "Cannot read properties of undefined (reading 'buildPackagePolicyFromPackage')",
           payload: payloadData,
           reason: 'Failed to create 2 monitors',
         },
@@ -284,7 +289,7 @@ describe('ProjectMonitorFormatter', () => {
       updatedMonitors: [],
       failedMonitors: [
         {
-          details: "Cannot read properties of undefined (reading 'packagePolicyService')",
+          details: "Cannot read properties of undefined (reading 'buildPackagePolicyFromPackage')",
           payload: payloadData,
           reason: 'Failed to create 2 monitors',
         },
@@ -315,7 +320,7 @@ describe('ProjectMonitorFormatter', () => {
       updatedMonitors: [],
       failedMonitors: [
         {
-          details: "Cannot read properties of undefined (reading 'packagePolicyService')",
+          details: "Cannot read properties of undefined (reading 'buildPackagePolicyFromPackage')",
           reason: 'Failed to create 2 monitors',
           payload: payloadData,
         },

@@ -20,11 +20,224 @@ import type {
   IndicesStats,
 } from '../indices.metadata.types';
 import type { NodeIngestPipelinesStats } from '../ingest_pipelines_stats.types';
-import { SiemMigrationsEventTypes } from './types';
 import type {
   HealthDiagnosticQueryResult,
   HealthDiagnosticQueryStats,
 } from '../diagnostic/health_diagnostic_service.types';
+
+import { SIEM_MIGRATIONS_EVENTS } from './events/siem_migrations';
+import type {
+  RuleBulkUpgradeTelemetry,
+  RuleUpgradeTelemetry,
+} from '../../detection_engine/prebuilt_rules/api/perform_rule_upgrade/update_rule_telemetry';
+import { TRIAL_COMPANION_EVENTS } from '../../trial_companion/telemetry/trial_companion_ebt_events';
+
+// Telemetry event that is sent for each rule that is upgraded during a prebuilt rule upgrade
+export const DETECTION_RULE_UPGRADE_EVENT: EventTypeOpts<RuleUpgradeTelemetry> = {
+  eventType: 'detection_rule_upgrade',
+  schema: {
+    ruleId: { type: 'keyword', _meta: { description: 'Rule ID' } },
+    ruleName: { type: 'keyword', _meta: { description: 'Rule name' } },
+    hasBaseVersion: {
+      type: 'boolean',
+      _meta: { description: 'True if base version exists for this rule' },
+    },
+    finalResult: {
+      type: 'keyword',
+      _meta: { description: 'Overall outcome: SUCCESS | SKIP | ERROR' },
+    },
+    updatedFieldsSummary: {
+      properties: {
+        count: { type: 'long', _meta: { description: 'Number of updated fields' } },
+        nonSolvableConflictsCount: {
+          type: 'long',
+          _meta: { description: 'Number of non-solvable conflicts' },
+        },
+        solvableConflictsCount: {
+          type: 'long',
+          _meta: { description: 'Number of solvable conflicts' },
+        },
+        noConflictsCount: {
+          type: 'long',
+          _meta: { description: 'Number of fields without conflicts' },
+        },
+      },
+    },
+    updatedFieldsTotal: {
+      type: 'array',
+      items: {
+        type: 'keyword',
+        _meta: {
+          description: 'Rule field name',
+        },
+      },
+      _meta: { description: 'Fields that were updated' },
+    },
+    updatedFieldsWithNonSolvableConflicts: {
+      type: 'array',
+      items: {
+        type: 'keyword',
+        _meta: {
+          description: 'Rule field name',
+        },
+      },
+      _meta: { description: 'Fields with non-solvable conflicts' },
+    },
+    updatedFieldsWithSolvableConflicts: {
+      type: 'array',
+      items: {
+        type: 'keyword',
+        _meta: {
+          description: 'Rule field name',
+        },
+      },
+      _meta: { description: 'Fields with solvable conflicts' },
+    },
+    updatedFieldsWithNoConflicts: {
+      type: 'array',
+      items: {
+        type: 'keyword',
+        _meta: {
+          description: 'Rule field name',
+        },
+      },
+      _meta: { description: 'Fields updated without conflicts' },
+    },
+  },
+};
+
+// Telemetry event that is sent for each bulk upgrade rules request
+export const DETECTION_RULE_BULK_UPGRADE_EVENT: EventTypeOpts<RuleBulkUpgradeTelemetry> = {
+  eventType: 'detection_rule_bulk_upgrade',
+  schema: {
+    successfulUpdates: {
+      properties: {
+        totalNumberOfRules: {
+          type: 'long',
+          _meta: { description: 'Number of successfully updated rules in bulk update request' },
+        },
+        numOfCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description: 'Number of successfully updated customized rules in bulk update request',
+          },
+        },
+        numOfNonCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of successfully updated non-customized rules in bulk update request',
+          },
+        },
+        numOfNonSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of successfully updated rules with non-solvable conflicts in bulk update request',
+          },
+        },
+        numOfSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of successfully updated rules with solvable conflicts in bulk update request',
+          },
+        },
+        numOfNoConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of successfully updated rules with no conflicts in bulk update request',
+          },
+        },
+      },
+    },
+    errorUpdates: {
+      properties: {
+        totalNumberOfRules: {
+          type: 'long',
+          _meta: { description: 'Number of rules that failed to update in bulk update request' },
+        },
+        numOfCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description: 'Number of customized rules that failed to update in bulk update request',
+          },
+        },
+        numOfNonCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of non-customized rules that failed to update in bulk update request',
+          },
+        },
+        numOfNonSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with non-solvable conflicts that failed to update in bulk update request',
+          },
+        },
+        numOfSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with solvable conflicts that failed to update in bulk update request',
+          },
+        },
+        numOfNoConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with no conflicts that failed to update in bulk update request',
+          },
+        },
+      },
+    },
+    skippedUpdates: {
+      properties: {
+        totalNumberOfRules: {
+          type: 'long',
+          _meta: { description: 'Number of rules that were skipped during bulk update request' },
+        },
+        numOfCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description: 'Number of customized rules that were skipped during bulk update request',
+          },
+        },
+        numOfNonCustomizedRules: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of non-customized rules that were skipped during bulk update request',
+          },
+        },
+        numOfNonSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with non-solvable conflicts that were skipped during bulk update request',
+          },
+        },
+        numOfSolvableConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with solvable conflicts that were skipped during bulk update request',
+          },
+        },
+        numOfNoConflicts: {
+          type: 'long',
+          _meta: {
+            description:
+              'Number of rules with no conflicts that were skipped during bulk update request',
+          },
+        },
+      },
+    },
+  },
+};
 
 export const RISK_SCORE_EXECUTION_SUCCESS_EVENT: EventTypeOpts<{
   scoresWritten: number;
@@ -101,13 +314,178 @@ export const RISK_SCORE_EXECUTION_CANCELLATION_EVENT: EventTypeOpts<{
   },
 };
 
+export type RiskScoreMaintainerStatus = 'success' | 'error' | 'skipped' | 'aborted';
+export type RiskScoreMaintainerSkipReason =
+  | 'license_insufficient'
+  | 'feature_disabled'
+  | 'risk_engine_disabled'
+  | 'reset_to_zero_disabled'
+  | 'lookup_empty'
+  | 'resolution_disabled'
+  | 'phase_not_available';
+export type RiskScoreMaintainerErrorKind =
+  | 'esql_query_failed'
+  | 'bulk_write_failed'
+  | 'entity_store_write_failed'
+  | 'entity_fetch_failed'
+  | 'unexpected';
+export type RiskScoreMaintainerStage =
+  | 'phase1_base_scoring'
+  | 'phase1_lookup_sync'
+  | 'phase2_resolution_scoring'
+  | 'reset_to_zero';
+
+export const RISK_SCORE_MAINTAINER_RUN_SUMMARY_EVENT: EventTypeOpts<{
+  namespace: string;
+  entityType: string;
+  status: RiskScoreMaintainerStatus;
+  skipReason?: RiskScoreMaintainerSkipReason;
+  errorKind?: RiskScoreMaintainerErrorKind;
+  durationMs: number;
+  scoresWrittenTotal: number;
+  scoresWrittenBase: number;
+  scoresWrittenResolution: number;
+  scoresWrittenResetToZero: number;
+  pagesProcessed: number;
+  deferToPhase2Count: number;
+  notInStoreCount: number;
+  lookupDocsUpserted: number;
+  lookupDocsDeleted: number;
+  lookupPrunedDocs: number;
+  idBasedRiskScoringEnabled: boolean;
+}> = {
+  eventType: 'risk_score_maintainer_run_summary',
+  schema: {
+    namespace: { type: 'keyword', _meta: { description: 'Kibana space where scoring ran' } },
+    entityType: { type: 'keyword', _meta: { description: 'Entity type scored (e.g. host, user)' } },
+    status: { type: 'keyword', _meta: { description: 'Run outcome status' } },
+    skipReason: {
+      type: 'keyword',
+      _meta: { optional: true, description: 'Bounded reason when status is skipped' },
+    },
+    errorKind: {
+      type: 'keyword',
+      _meta: { optional: true, description: 'Bounded error category when status is error' },
+    },
+    durationMs: { type: 'long', _meta: { description: 'Run duration in milliseconds' } },
+    scoresWrittenTotal: { type: 'long', _meta: { description: 'Total risk score docs written' } },
+    scoresWrittenBase: {
+      type: 'long',
+      _meta: { description: 'Risk score docs written during base scoring stage' },
+    },
+    scoresWrittenResolution: {
+      type: 'long',
+      _meta: { description: 'Risk score docs written during resolution scoring stage' },
+    },
+    scoresWrittenResetToZero: {
+      type: 'long',
+      _meta: { description: 'Risk score docs written during reset-to-zero stage' },
+    },
+    pagesProcessed: {
+      type: 'long',
+      _meta: { description: 'Number of base-scoring pages processed' },
+    },
+    deferToPhase2Count: {
+      type: 'long',
+      _meta: { description: 'Entities classified as defer_to_phase_2' },
+    },
+    notInStoreCount: {
+      type: 'long',
+      _meta: { description: 'Entities classified as not_in_store' },
+    },
+    lookupDocsUpserted: {
+      type: 'long',
+      _meta: { description: 'Lookup docs upserted during phase-1 lookup synchronization' },
+    },
+    lookupDocsDeleted: {
+      type: 'long',
+      _meta: { description: 'Lookup docs deleted during phase-1 lookup synchronization' },
+    },
+    lookupPrunedDocs: {
+      type: 'long',
+      _meta: { description: 'Lookup docs pruned after reset-to-zero cleanup' },
+    },
+    idBasedRiskScoringEnabled: {
+      type: 'boolean',
+      _meta: { description: 'Whether Entity Store dual-write was enabled' },
+    },
+  },
+};
+
+export const RISK_SCORE_MAINTAINER_STAGE_SUMMARY_EVENT: EventTypeOpts<{
+  namespace: string;
+  entityType: string;
+  stage: RiskScoreMaintainerStage;
+  status: RiskScoreMaintainerStatus;
+  skipReason?: RiskScoreMaintainerSkipReason;
+  errorKind?: RiskScoreMaintainerErrorKind;
+  durationMs: number;
+  pagesProcessed?: number;
+  scoresWritten?: number;
+  deferToPhase2Count?: number;
+  notInStoreCount?: number;
+  lookupDocsUpserted?: number;
+  lookupDocsDeleted?: number;
+  resetBatchLimitHit?: boolean;
+  idBasedRiskScoringEnabled: boolean;
+}> = {
+  eventType: 'risk_score_maintainer_stage_summary',
+  schema: {
+    namespace: { type: 'keyword', _meta: { description: 'Kibana space where scoring ran' } },
+    entityType: { type: 'keyword', _meta: { description: 'Entity type scored (e.g. host, user)' } },
+    stage: { type: 'keyword', _meta: { description: 'Maintainer stage identifier' } },
+    status: { type: 'keyword', _meta: { description: 'Stage outcome status' } },
+    skipReason: {
+      type: 'keyword',
+      _meta: { optional: true, description: 'Bounded reason when status is skipped' },
+    },
+    errorKind: {
+      type: 'keyword',
+      _meta: { optional: true, description: 'Bounded error category when status is error' },
+    },
+    durationMs: { type: 'long', _meta: { description: 'Stage duration in milliseconds' } },
+    pagesProcessed: {
+      type: 'long',
+      _meta: { optional: true, description: 'Number of pages processed in this stage' },
+    },
+    scoresWritten: {
+      type: 'long',
+      _meta: { optional: true, description: 'Risk score docs written in this stage' },
+    },
+    deferToPhase2Count: {
+      type: 'long',
+      _meta: { optional: true, description: 'Entities classified as defer_to_phase_2' },
+    },
+    notInStoreCount: {
+      type: 'long',
+      _meta: { optional: true, description: 'Entities classified as not_in_store' },
+    },
+    lookupDocsUpserted: {
+      type: 'long',
+      _meta: { optional: true, description: 'Lookup docs upserted in this stage' },
+    },
+    lookupDocsDeleted: {
+      type: 'long',
+      _meta: { optional: true, description: 'Lookup docs deleted in this stage' },
+    },
+    resetBatchLimitHit: {
+      type: 'boolean',
+      _meta: { optional: true, description: 'Whether reset-to-zero hit per-run batch limit' },
+    },
+    idBasedRiskScoringEnabled: {
+      type: 'boolean',
+      _meta: { description: 'Whether Entity Store dual-write was enabled' },
+    },
+  },
+};
+
 interface AssetCriticalitySystemProcessedAssignmentFileEvent {
   processing: {
     startTime: string;
     endTime: string;
     tookMs: number;
   };
-  result?: BulkUpsertAssetCriticalityRecordsResponse['stats'];
+  result?: BulkUpsertAssetCriticalityRecordsResponse['stats'] & { unmatched?: number };
   status: 'success' | 'partial_success' | 'fail';
 }
 
@@ -131,6 +509,14 @@ export const ASSET_CRITICALITY_SYSTEM_PROCESSED_ASSIGNMENT_FILE_EVENT: EventType
           failed: {
             type: 'long',
             _meta: { description: 'Number of criticality records which had errors' },
+          },
+          unmatched: {
+            type: 'long',
+            _meta: {
+              optional: true,
+              description:
+                'Number of criticality records which did not match any entities to update',
+            },
           },
           total: { type: 'long', _meta: { description: 'Total number of lines in the file' } },
         },
@@ -184,6 +570,72 @@ export const ENTITY_STORE_DATA_VIEW_REFRESH_EXECUTION_EVENT: EventTypeOpts<{
   },
 };
 
+export const ENTITY_STORE_SNAPSHOT_TASK_EXECUTION_EVENT: EventTypeOpts<{
+  entityType: string;
+  namespace: string;
+  snapshotDate: Date;
+  snapshotIndex: string;
+  entityCount: number;
+  durationMs: number;
+  success: boolean;
+  errorMessage: string | undefined;
+}> = {
+  eventType: 'entity_store_data_view_refresh_execution',
+  schema: {
+    entityType: {
+      type: 'keyword',
+      _meta: {
+        description: 'Type of entities stored (e.g. "host")',
+      },
+    },
+    namespace: {
+      type: 'keyword',
+      _meta: {
+        description: 'Namespace where the entities are stored (e.g. "default")',
+      },
+    },
+    snapshotDate: {
+      type: 'date',
+      _meta: {
+        description:
+          'Snapshot date marks the date on which the entities were captured (the day before the task run)',
+      },
+    },
+    snapshotIndex: {
+      type: 'keyword',
+      _meta: {
+        description: 'Name of the index containing captured entities',
+      },
+    },
+    entityCount: {
+      type: 'long',
+      _meta: {
+        description: 'Number of entities captured in the snapshot',
+      },
+    },
+    durationMs: {
+      type: 'long',
+      _meta: {
+        description:
+          'Duration (in milliseconds) of the entity store data view refresh execution time',
+      },
+    },
+    success: {
+      type: 'boolean',
+      _meta: {
+        description: 'True if the task run was completed succesfully, false otherwise',
+      },
+    },
+    errorMessage: {
+      type: 'keyword',
+      _meta: {
+        optional: true,
+        description: 'Contains the error message in case the task run failed (success: false)',
+      },
+    },
+  },
+};
+
 export const ENTITY_ENGINE_RESOURCE_INIT_FAILURE_EVENT: EventTypeOpts<{
   error: string;
 }> = {
@@ -200,6 +652,8 @@ export const ENTITY_ENGINE_RESOURCE_INIT_FAILURE_EVENT: EventTypeOpts<{
 
 export const ENTITY_ENGINE_INITIALIZATION_EVENT: EventTypeOpts<{
   duration: number;
+  entityType: string;
+  namespace: string;
 }> = {
   eventType: 'entity_engine_initialization',
   schema: {
@@ -209,18 +663,143 @@ export const ENTITY_ENGINE_INITIALIZATION_EVENT: EventTypeOpts<{
         description: 'Duration (in seconds) of the entity engine initialization',
       },
     },
+    entityType: {
+      type: 'keyword',
+      _meta: {
+        description: 'Type of entities stored (e.g. "host")',
+      },
+    },
+    namespace: {
+      type: 'keyword',
+      _meta: {
+        description: 'Namespace where the entities are stored (e.g. "default")',
+      },
+    },
   },
 };
 
-export const ENTITY_STORE_USAGE_EVENT: EventTypeOpts<{
-  storeSize: number;
+export const ENTITY_ENGINE_DELETION_EVENT: EventTypeOpts<{
+  duration: number;
+  entityType: string;
+  namespace: string;
 }> = {
-  eventType: 'entity_store_usage',
+  eventType: 'entity_engine_deletion',
   schema: {
-    storeSize: {
+    duration: {
       type: 'long',
       _meta: {
-        description: 'Number of entities stored in the entity store',
+        description: 'Duration (in seconds) of the entity engine deletion',
+      },
+    },
+    entityType: {
+      type: 'keyword',
+      _meta: {
+        description: 'Type of entities stored (e.g. "host")',
+      },
+    },
+    namespace: {
+      type: 'keyword',
+      _meta: {
+        description: 'Namespace where the entities are stored (e.g. "default")',
+      },
+    },
+  },
+};
+
+export const ENTITY_HIGHLIGHTS_USAGE_EVENT: EventTypeOpts<{
+  entityType: string;
+  spaceId: string;
+}> = {
+  eventType: 'entity_highlights_usage',
+  schema: {
+    entityType: {
+      type: 'keyword',
+      _meta: {
+        description: 'Type of entity highlights have been request for  (e.g. "host")',
+      },
+    },
+    spaceId: {
+      type: 'keyword',
+      _meta: {
+        description: 'Space where the highlight request originated (e.g. "default")',
+      },
+    },
+  },
+};
+
+export const ENTITY_ANALYTICS_AI_TOOL_USAGE_EVENT: EventTypeOpts<{
+  entitiesReturned: number;
+  entityTypes: string[];
+  errorMessage?: string;
+  spaceId: string;
+  success: boolean;
+  toolId: string;
+}> = {
+  eventType: 'entity_ai_tool_usage',
+  schema: {
+    toolId: {
+      type: 'keyword',
+      _meta: {
+        description: 'ID of the agent tool being used (e.g. "security.get_entity")',
+      },
+    },
+    entityTypes: {
+      type: 'array',
+      items: {
+        type: 'keyword',
+        _meta: {
+          description: 'Type of entity the tool was called for (e.g. "host")',
+        },
+      },
+      _meta: {
+        description: 'Entity types the tool was called for (e.g. ["host", "user"])',
+      },
+    },
+    spaceId: {
+      type: 'keyword',
+      _meta: {
+        description: 'Space where the highlight request originated (e.g. "default")',
+      },
+    },
+    success: {
+      type: 'boolean',
+      _meta: {
+        description: 'Whether the tool usage was successful or not',
+      },
+    },
+    entitiesReturned: {
+      type: 'long',
+      _meta: {
+        description: 'Number of entities returned by the tool',
+      },
+    },
+    errorMessage: {
+      type: 'keyword',
+      _meta: {
+        optional: true,
+        description: 'Contains the error message in case the tool usage was not successful',
+      },
+    },
+  },
+};
+
+export const ENTITY_STORE_API_CALL_EVENT: EventTypeOpts<{
+  endpoint: string;
+  error?: string;
+}> = {
+  eventType: 'entity_store_api_call',
+  schema: {
+    endpoint: {
+      type: 'keyword',
+      _meta: {
+        description: 'Name of the endpoint called',
+      },
+    },
+    error: {
+      type: 'keyword',
+      _meta: {
+        optional: true,
+        description: 'Contains error message in case the call failed',
       },
     },
   },
@@ -961,6 +1540,10 @@ export const TELEMETRY_HEALTH_DIAGNOSTIC_QUERY_STATS_EVENT: EventTypeOpts<Health
                 },
               },
             },
+            _meta: {
+              optional: true,
+              description: 'Reason for the failure if the query execution was unsuccessful.',
+            },
           },
         },
         _meta: {
@@ -982,6 +1565,49 @@ export const TELEMETRY_HEALTH_DIAGNOSTIC_QUERY_STATS_EVENT: EventTypeOpts<Health
         _meta: {
           optional: true,
           description: 'Circuit breaker metrics such as execution time and memory usage.',
+        },
+      },
+      descriptorVersion: {
+        type: 'integer',
+        _meta: {
+          description: 'Version of the query descriptor that produced this event.',
+        },
+      },
+      status: {
+        type: 'keyword',
+        _meta: {
+          description: "Execution status: 'success', 'failed', or 'skipped'.",
+        },
+      },
+      skipReason: {
+        type: 'keyword',
+        _meta: {
+          optional: true,
+          description:
+            "Reason for skipping: 'datastreams_not_matched', 'integration_not_installed' or 'unknown_version'.",
+        },
+      },
+      integration: {
+        properties: {
+          name: {
+            type: 'keyword',
+            _meta: { description: 'Name of the matched integration.' },
+          },
+          version: {
+            type: 'keyword',
+            _meta: { description: 'Version of the matched integration.' },
+          },
+          indices: {
+            type: 'array',
+            items: {
+              type: 'keyword',
+              _meta: { description: 'Index patterns for this integration after type filtering.' },
+            },
+          },
+        },
+        _meta: {
+          optional: true,
+          description: 'Integration resolution metadata. Present only for v2 query descriptors.',
         },
       },
     },
@@ -1161,397 +1787,6 @@ export const ENDPOINT_RESPONSE_ACTION_STATUS_CHANGE_EVENT: EventTypeOpts<{
   },
 };
 
-export const SIEM_MIGRATIONS_MIGRATION_SUCCESS: EventTypeOpts<{
-  model: string;
-  migrationId: string;
-  duration: number;
-  completed: number;
-  failed: number;
-  total: number;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.MigrationSuccess,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    duration: {
-      type: 'long',
-      _meta: {
-        description: 'Duration of the migration in milliseconds',
-      },
-    },
-    completed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules successfully migrated',
-      },
-    },
-    failed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules that failed to migrate',
-      },
-    },
-    total: {
-      type: 'long',
-      _meta: {
-        description: 'Total number of rules to migrate',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_RULE_TRANSLATION_SUCCESS: EventTypeOpts<{
-  model: string;
-  migrationId: string;
-  duration: number;
-  translationResult: string;
-  prebuiltMatch: boolean;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.TranslationSuccess,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    translationResult: {
-      type: 'keyword',
-      _meta: {
-        description: 'Describes if the translation was full or partial',
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    duration: {
-      type: 'long',
-      _meta: {
-        description: 'Duration of the migration in milliseconds',
-      },
-    },
-    prebuiltMatch: {
-      type: 'boolean',
-      _meta: {
-        description: 'Whether a prebuilt rule was matched',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_PREBUILT_RULES_MATCH: EventTypeOpts<{
-  model: string;
-  migrationId: string;
-  preFilterRuleNames: string[];
-  preFilterRuleCount: number;
-  postFilterRuleName: string;
-  postFilterRuleCount: number;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.PrebuiltRulesMatch,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    preFilterRuleNames: {
-      type: 'array',
-      items: {
-        type: 'keyword',
-        _meta: {
-          description: 'List of matched rules from Semantic search before LLM filtering',
-        },
-      },
-    },
-    preFilterRuleCount: {
-      type: 'long',
-      _meta: {
-        description: 'Count of rules matched before LLM filtering',
-      },
-    },
-    postFilterRuleName: {
-      type: 'keyword',
-      _meta: {
-        description: 'List of matched rules from Semantic search after LLM filtering',
-      },
-    },
-    postFilterRuleCount: {
-      type: 'long',
-      _meta: {
-        description: 'Count of rules matched before LLM filtering',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_INTEGRATIONS_MATCH: EventTypeOpts<{
-  model: string;
-  migrationId: string;
-  preFilterIntegrationNames: string[];
-  preFilterIntegrationCount: number;
-  postFilterIntegrationName: string;
-  postFilterIntegrationCount: number;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.IntegrationsMatch,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    preFilterIntegrationNames: {
-      type: 'array',
-      items: {
-        type: 'keyword',
-        _meta: {
-          description: 'List of matched integrations from Semantic search before LLM filtering',
-        },
-      },
-    },
-    preFilterIntegrationCount: {
-      type: 'long',
-      _meta: {
-        description: 'Count of integrations matched before LLM filtering',
-      },
-    },
-    postFilterIntegrationName: {
-      type: 'keyword',
-      _meta: {
-        description: 'List of matched integrations from Semantic search after LLM filtering',
-      },
-    },
-    postFilterIntegrationCount: {
-      type: 'long',
-      _meta: {
-        description: 'Count of integrations matched before LLM filtering',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_MIGRATION_FAILURE: EventTypeOpts<{
-  model: string;
-  error: string;
-  migrationId: string;
-  duration: number;
-  completed: number;
-  failed: number;
-  total: number;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.MigrationFailure,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    error: {
-      type: 'keyword',
-      _meta: {
-        description: 'Error message for the migration failure',
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    duration: {
-      type: 'long',
-      _meta: {
-        description: 'Duration of the migration in milliseconds',
-      },
-    },
-    completed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules successfully migrated',
-      },
-    },
-    failed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules that failed to migrate',
-      },
-    },
-    total: {
-      type: 'long',
-      _meta: {
-        description: 'Total number of rules to migrate',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_MIGRATION_ABORTED: EventTypeOpts<{
-  model: string;
-  reason: string;
-  migrationId: string;
-  duration: number;
-  completed: number;
-  failed: number;
-  total: number;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.MigrationAborted,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    reason: {
-      type: 'keyword',
-      _meta: {
-        description: 'The reason of the migration abort',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-    duration: {
-      type: 'long',
-      _meta: {
-        description: 'Duration of the migration in milliseconds',
-      },
-    },
-    completed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules successfully migrated',
-      },
-    },
-    failed: {
-      type: 'long',
-      _meta: {
-        description: 'Number of rules that failed to migrate',
-      },
-    },
-    total: {
-      type: 'long',
-      _meta: {
-        description: 'Total number of rules to migrate',
-      },
-    },
-  },
-};
-
-export const SIEM_MIGRATIONS_RULE_TRANSLATION_FAILURE: EventTypeOpts<{
-  model: string;
-  error: string;
-  migrationId: string;
-  eventName: string;
-}> = {
-  eventType: SiemMigrationsEventTypes.TranslationFailure,
-  schema: {
-    eventName: {
-      type: 'keyword',
-      _meta: {
-        description: 'The event name/description',
-        optional: false,
-      },
-    },
-    error: {
-      type: 'keyword',
-      _meta: {
-        description: 'Error message for the translation failure',
-      },
-    },
-    model: {
-      type: 'keyword',
-      _meta: {
-        description: 'The LLM model that was used',
-      },
-    },
-    migrationId: {
-      type: 'keyword',
-      _meta: {
-        description: 'Unique identifier for the migration',
-      },
-    },
-  },
-};
-
 export const ENDPOINT_WORKFLOW_INSIGHTS_REMEDIATED_EVENT: EventTypeOpts<{
   insightId: string;
 }> = {
@@ -1574,6 +1809,7 @@ export const GAP_DETECTED_EVENT: EventTypeOpts<{
   ruleType: string;
   ruleSource: string;
   isCustomized: boolean;
+  gapReasonType?: string;
 }> = {
   eventType: 'gap_detected_event',
   schema: {
@@ -1613,13 +1849,24 @@ export const GAP_DETECTED_EVENT: EventTypeOpts<{
         description: 'Whether the prebuilt rule is customized',
       },
     },
+    gapReasonType: {
+      type: 'keyword',
+      _meta: {
+        description: 'Detected reason for the gap (rule_disabled or rule_did_not_run)',
+        optional: true,
+      },
+    },
   },
 };
 
 export const events = [
+  DETECTION_RULE_UPGRADE_EVENT,
+  DETECTION_RULE_BULK_UPGRADE_EVENT,
   RISK_SCORE_EXECUTION_SUCCESS_EVENT,
   RISK_SCORE_EXECUTION_ERROR_EVENT,
   RISK_SCORE_EXECUTION_CANCELLATION_EVENT,
+  RISK_SCORE_MAINTAINER_RUN_SUMMARY_EVENT,
+  RISK_SCORE_MAINTAINER_STAGE_SUMMARY_EVENT,
   ASSET_CRITICALITY_SYSTEM_PROCESSED_ASSIGNMENT_FILE_EVENT,
   ALERT_SUPPRESSION_EVENT,
   ENDPOINT_RESPONSE_ACTION_SENT_EVENT,
@@ -1628,9 +1875,13 @@ export const events = [
   ENDPOINT_WORKFLOW_INSIGHTS_REMEDIATED_EVENT,
   FIELD_RETENTION_ENRICH_POLICY_EXECUTION_EVENT,
   ENTITY_STORE_DATA_VIEW_REFRESH_EXECUTION_EVENT,
+  ENTITY_STORE_SNAPSHOT_TASK_EXECUTION_EVENT,
+  ENTITY_STORE_API_CALL_EVENT,
   ENTITY_ENGINE_RESOURCE_INIT_FAILURE_EVENT,
   ENTITY_ENGINE_INITIALIZATION_EVENT,
-  ENTITY_STORE_USAGE_EVENT,
+  ENTITY_ENGINE_DELETION_EVENT,
+  ENTITY_ANALYTICS_AI_TOOL_USAGE_EVENT,
+  ENTITY_HIGHLIGHTS_USAGE_EVENT,
   PRIVMON_ENGINE_INITIALIZATION_EVENT,
   PRIVMON_ENGINE_RESOURCE_INIT_FAILURE_EVENT,
   TELEMETRY_DATA_STREAM_EVENT,
@@ -1642,12 +1893,7 @@ export const events = [
   TELEMETRY_INDEX_STATS_EVENT,
   TELEMETRY_INDEX_TEMPLATES_EVENT,
   TELEMETRY_NODE_INGEST_PIPELINES_STATS_EVENT,
-  SIEM_MIGRATIONS_MIGRATION_SUCCESS,
-  SIEM_MIGRATIONS_MIGRATION_ABORTED,
-  SIEM_MIGRATIONS_MIGRATION_FAILURE,
-  SIEM_MIGRATIONS_RULE_TRANSLATION_SUCCESS,
-  SIEM_MIGRATIONS_RULE_TRANSLATION_FAILURE,
-  SIEM_MIGRATIONS_PREBUILT_RULES_MATCH,
-  SIEM_MIGRATIONS_INTEGRATIONS_MATCH,
+  ...SIEM_MIGRATIONS_EVENTS,
   GAP_DETECTED_EVENT,
+  ...TRIAL_COMPANION_EVENTS,
 ];

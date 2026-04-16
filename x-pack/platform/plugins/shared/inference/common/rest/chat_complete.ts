@@ -11,7 +11,6 @@ import type {
   ChatCompleteCompositeResponse,
   ChatCompleteOptions,
   ChatCompleteResponse,
-  ToolOptions,
 } from '@kbn/inference-common';
 import { defer, from, lastValueFrom } from 'rxjs';
 import type { ChatCompleteRequestBody } from '../http_apis';
@@ -32,22 +31,25 @@ export function createChatCompleteRestApi({
   fetch: HttpHandler;
   signal?: AbortSignal;
 }): ChatCompleteAPI;
+
 export function createChatCompleteRestApi({ fetch, signal }: CreatePublicChatCompleteOptions) {
-  return ({
-    connectorId,
-    messages,
-    system,
-    toolChoice,
-    tools,
-    temperature,
-    modelName,
-    functionCalling,
-    stream,
-    abortSignal,
-    maxRetries,
-    metadata,
-    retryConfiguration,
-  }: ChatCompleteOptions): ChatCompleteCompositeResponse => {
+  return (options: ChatCompleteOptions): ChatCompleteCompositeResponse => {
+    const {
+      connectorId,
+      messages,
+      system,
+      toolChoice,
+      tools,
+      temperature,
+      modelName,
+      functionCalling,
+      stream,
+      abortSignal,
+      maxRetries,
+      metadata,
+      retryConfiguration,
+    } = options;
+
     const body: ChatCompleteRequestBody = {
       connectorId,
       system,
@@ -84,7 +86,7 @@ export function createChatCompleteRestApi({ fetch, signal }: CreatePublicChatCom
     } else {
       return lastValueFrom(
         defer(() =>
-          fetch<ChatCompleteResponse<ToolOptions<string>>>('/internal/inference/chat_complete', {
+          fetch<ChatCompleteResponse>('/internal/inference/chat_complete', {
             method: 'POST',
             body: JSON.stringify(body),
             signal: combineSignal(signal, abortSignal),

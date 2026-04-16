@@ -8,22 +8,40 @@
  */
 
 import { coreWorkerFixtures } from '../core_fixtures';
+import type { AlertingApiService } from './alerting';
+import { getAlertingApiHelper } from './alerting';
+import type { CasesApiService } from './cases';
+import { getCasesApiHelper } from './cases';
 import type { CoreApiService } from './core';
 import { getCoreApiHelper } from './core';
+import type { DataViewsApiService } from './data_views';
+import { getDataViewsApiHelper } from './data_views';
 import type { FleetApiService } from './fleet';
 import { getFleetApiHelper } from './fleet';
+import type { SampleDataApiService } from './sample_data';
+import { getSampleDataApiHelper } from './sample_data';
+import type { SpacesApiService } from './spaces';
+import { getSpacesApiHelper } from './spaces';
 import type { StreamsApiService } from './streams';
 import { getStreamsApiService } from './streams';
+import type { MlApiService } from './ml';
+import { getMlApiHelper } from './ml';
 
 export interface ApiServicesFixture {
+  alerting: AlertingApiService;
+  cases: CasesApiService;
+  dataViews: DataViewsApiService;
   fleet: FleetApiService;
+  ml: MlApiService;
+  sampleData: SampleDataApiService;
+  spaces: SpacesApiService;
   streams: StreamsApiService;
   core: CoreApiService;
   // add more services here
 }
 
 /**
- * This fixture provides a helper to interact with the Kibana APIs like Fleet, Spaces, Alerting, etc.
+ * This fixture provides a helper to interact with the Kibana APIs like Alerting, Cases, Fleet, Streams, Spaces, etc.
  */
 export const apiServicesFixture = coreWorkerFixtures.extend<
   {},
@@ -32,7 +50,13 @@ export const apiServicesFixture = coreWorkerFixtures.extend<
   apiServices: [
     async ({ kbnClient, log }, use) => {
       const services = {
+        alerting: getAlertingApiHelper(log, kbnClient),
+        cases: getCasesApiHelper(log, kbnClient),
+        dataViews: getDataViewsApiHelper(log, kbnClient),
         fleet: getFleetApiHelper(log, kbnClient),
+        ml: getMlApiHelper(log, kbnClient),
+        sampleData: getSampleDataApiHelper(log, kbnClient),
+        spaces: getSpacesApiHelper(log, kbnClient),
         streams: getStreamsApiService({ kbnClient, log }),
         core: getCoreApiHelper(log, kbnClient),
       };

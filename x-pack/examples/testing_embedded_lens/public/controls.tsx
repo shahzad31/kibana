@@ -144,7 +144,7 @@ export function OverrideSwitch({
           content={<CodeExample propName="overrides" code={JSON.stringify(override, null, 2)} />}
           position="right"
         >
-          <span>
+          <span tabIndex={0}>
             {rowLabel} <EuiIcon type="question" color="subdued" />
           </span>
         </EuiToolTip>
@@ -199,7 +199,7 @@ export function AttributesMenu({
         <EuiButton
           data-test-subj="lns-example-change-attributes"
           onClick={() => setAttributesPopoverOpen(!attributesPopoverOpen)}
-          iconType="arrowDown"
+          iconType="chevronSingleDown"
           iconSide="right"
           color="primary"
           isDisabled={!isSupportedChart(currentAttributes)}
@@ -351,7 +351,7 @@ export function OverridesMenu({
         <EuiButton
           data-test-subj="lns-example-change-overrides"
           onClick={() => setOverridesPopoverOpen(!overridesPopoverOpen)}
-          iconType="arrowDown"
+          iconType="chevronSingleDown"
           iconSide="right"
         >
           Overrides{' '}
@@ -502,7 +502,7 @@ export function PanelMenu({
         <EuiButton
           data-test-subj="lns-example-change-overrides"
           onClick={() => setPanelPopoverOpen(!panelPopoverOpen)}
-          iconType="arrowDown"
+          iconType="chevronSingleDown"
           iconSide="right"
         >
           Embeddable settings
@@ -584,7 +584,7 @@ export function PanelMenu({
               }
               position="right"
             >
-              <span>
+              <span tabIndex={0}>
                 Show custom action <EuiIcon type="question" color="subdued" />
               </span>
             </EuiToolTip>

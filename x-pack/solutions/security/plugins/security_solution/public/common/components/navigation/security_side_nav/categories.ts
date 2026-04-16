@@ -8,32 +8,50 @@
 import { LinkCategoryType, type SeparatorLinkCategory } from '@kbn/security-solution-navigation';
 import { SecurityPageName } from '../../../../../common';
 
-export const CATEGORIES: SeparatorLinkCategory[] = [
-  {
-    type: LinkCategoryType.separator,
-    linkIds: [SecurityPageName.dashboards],
-  },
-  {
-    type: LinkCategoryType.separator,
-    linkIds: [
-      SecurityPageName.rulesLanding,
-      SecurityPageName.alerts,
-      SecurityPageName.attackDiscovery,
-      SecurityPageName.cloudSecurityPostureFindings,
-      SecurityPageName.case,
-    ],
-  },
-  {
-    type: LinkCategoryType.separator,
-    linkIds: [
-      SecurityPageName.entityAnalyticsLanding,
-      SecurityPageName.exploreLanding,
-      SecurityPageName.timelines,
-      SecurityPageName.threatIntelligence,
-    ],
-  },
-  {
-    type: LinkCategoryType.separator,
-    linkIds: [SecurityPageName.assetInventory],
-  },
-];
+export const getNavCategories = (
+  enableAlertsAndAttacksAlignment?: boolean,
+  securityClassicNavUpdate?: boolean
+): SeparatorLinkCategory[] => {
+  const categories: SeparatorLinkCategory[] = [
+    {
+      type: LinkCategoryType.separator,
+      linkIds: [SecurityPageName.dashboards],
+    },
+    {
+      type: LinkCategoryType.separator,
+      linkIds: [
+        SecurityPageName.rulesLanding,
+        enableAlertsAndAttacksAlignment
+          ? SecurityPageName.alertDetections
+          : SecurityPageName.alerts,
+        SecurityPageName.attackDiscovery,
+        SecurityPageName.cloudSecurityPostureFindings,
+        SecurityPageName.case,
+      ],
+    },
+    {
+      type: LinkCategoryType.separator,
+      linkIds: [
+        SecurityPageName.entityAnalyticsLanding,
+        SecurityPageName.exploreLanding,
+        SecurityPageName.timelines,
+        SecurityPageName.threatIntelligence,
+        SecurityPageName.assetInventory,
+      ],
+    },
+  ];
+
+  return securityClassicNavUpdate
+    ? categories
+    : [
+        ...categories,
+        {
+          type: LinkCategoryType.separator,
+          linkIds: [
+            SecurityPageName.siemReadiness,
+            SecurityPageName.aiValue,
+            SecurityPageName.siemMigrationsLanding,
+          ],
+        },
+      ];
+};

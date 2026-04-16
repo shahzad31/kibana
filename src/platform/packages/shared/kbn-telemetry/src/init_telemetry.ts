@@ -10,14 +10,13 @@ import { loadConfiguration } from '@kbn/apm-config-loader';
 import { initTracing } from '@kbn/tracing';
 import { initMetrics } from '@kbn/metrics';
 
-import type { InstrumentaionsMap } from '@elastic/opentelemetry-node/types/instrumentations';
-import { resources, getInstrumentations } from '@elastic/opentelemetry-node/sdk';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { resources } from '@elastic/opentelemetry-node/sdk';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import {
   ATTR_SERVICE_INSTANCE_ID,
   ATTR_DEPLOYMENT_ENVIRONMENT_NAME,
 } from '@opentelemetry/semantic-conventions/incubating';
+import { maybeInitAutoInstrumentations } from './init_autoinstrumentations';
 
 /**
  *
@@ -41,49 +40,61 @@ export const initTelemetry = (
   const telemetryConfig = apmConfigLoader.getTelemetryConfig();
   const monitoringCollectionConfig = apmConfigLoader.getMonitoringCollectionConfig();
 
-  // attributes.resource.*
-  const resource = resources.resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: apmConfig.serviceName,
-    [ATTR_SERVICE_VERSION]: apmConfig.serviceVersion,
-    [ATTR_SERVICE_INSTANCE_ID]: apmConfig.serviceNodeName,
-    // Reverse-mapping APM Server transformations:
-    // https://github.com/elastic/apm-data/blob/2f9cdbf722e5be5bf77d99fbcaab7a70a7e83fff/input/otlp/metadata.go#L69-L74
-    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: apmConfig.environment,
-    ...(apmConfig.globalLabels as Record<string, unknown>),
-  });
+  if (apmConfig.active !== false && telemetryConfig.tracing.enabled) {
+    throw new Error(
+      'Elastic APM and OpenTelemetry tracing cannot be enabled simultaneously.\n' +
+        'To use OpenTelemetry tracing, disable APM by setting `elastic.apm.active: false` in your Kibana configuration.\n' +
+        'To use Elastic APM, disable OpenTelemetry tracing by setting `telemetry.tracing.enabled: false`.'
+    );
+  }
+
+  // resource.attributes.*
+  const resource = resources
+    .detectResources({
+      detectors: [
+        resources.envDetector,
+        resources.hostDetector,
+        resources.osDetector,
+        resources.processDetector,
+      ],
+    })
+    .merge(
+      resources.resourceFromAttributes({
+        // TODO: Since we are deprecating `elastic.apm.*` settings, we should provide a way to set these attributes in the `telemetry.*` config.
+        [ATTR_SERVICE_NAME]: apmConfig.serviceName,
+        [ATTR_SERVICE_VERSION]: apmConfig.serviceVersion,
+        [ATTR_SERVICE_INSTANCE_ID]: apmConfig.serviceNodeName,
+        // Reverse-mapping APM Server transformations:
+        // https://github.com/elastic/apm-data/blob/2f9cdbf722e5be5bf77d99fbcaab7a70a7e83fff/input/otlp/metadata.go#L69-L74
+        [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: apmConfig.environment,
+
+        // From https://opentelemetry.io/docs/specs/semconv/resource/process/
+        'process.pid': process.pid,
+        'process.runtime.name': 'nodejs',
+        'process.runtime.version': process.version,
+
+        ...(apmConfig.globalLabels as Record<string, unknown>),
+      })
+    );
 
   if (telemetryConfig.enabled) {
-    const desiredInstrumentations = new Set<keyof InstrumentaionsMap>();
-
     if (telemetryConfig.tracing.enabled) {
-      initTracing({ resource, tracingConfig: telemetryConfig.tracing });
+      maybeInitAutoInstrumentations();
     }
 
-    if (telemetryConfig.metrics.enabled || monitoringCollectionConfig.enabled) {
-      initMetrics({ resource, metricsConfig: telemetryConfig.metrics, monitoringCollectionConfig });
+    const asyncSettled = resource.waitForAsyncAttributes?.() ?? Promise.resolve();
+    asyncSettled.then(() => {
+      if (telemetryConfig.tracing.enabled) {
+        initTracing({ resource, tracingConfig: telemetryConfig.tracing });
+      }
 
-      // Uncomment the ones below when we clarify the performance impact of having them enabled
-      // // HTTP Server and Client durations
-      // desiredInstrumentations.add('@opentelemetry/instrumentation-http');
-      // // Undici client's request duration
-      // desiredInstrumentations.add('@opentelemetry/instrumentation-undici');
-    }
-
-    if (telemetryConfig.metrics.enabled) {
-      // Provides metrics about the Event Loop, GC Collector, and Heap stats.
-      desiredInstrumentations.add('@opentelemetry/instrumentation-runtime-node');
-    }
-
-    if (desiredInstrumentations.size > 0) {
-      // register opted-in EDOT auto-instrumentations (node-runtime, http, hapi, and more)
-      // https://www.elastic.co/docs/reference/opentelemetry/edot-sdks/nodejs/supported-technologies#instrumentations
-
-      // We want to be selective for now to avoid potential conflicts with the Elastic APM agent (hapi is a good example)
-      const instrumentations = getInstrumentations().filter((instrumentation) =>
-        desiredInstrumentations.has(instrumentation.instrumentationName as keyof InstrumentaionsMap)
-      );
-
-      registerInstrumentations({ instrumentations });
-    }
+      if (telemetryConfig.metrics.enabled || monitoringCollectionConfig.enabled) {
+        initMetrics({
+          resource,
+          metricsConfig: telemetryConfig.metrics,
+          monitoringCollectionConfig,
+        });
+      }
+    });
   }
 };

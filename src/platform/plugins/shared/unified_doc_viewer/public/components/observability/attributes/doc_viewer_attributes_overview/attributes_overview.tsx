@@ -6,7 +6,7 @@
  * your election, the "Elastic License 2.0", the "GNU Affero General Public
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { DocViewRenderProps } from '@kbn/unified-doc-viewer/types';
 import type { EuiSwitchEvent } from '@elastic/eui';
 import { EuiSpacer, EuiFieldSearch, EuiFlexGroup, EuiFlexItem, EuiSwitch } from '@elastic/eui';
@@ -16,7 +16,7 @@ import { SHOW_MULTIFIELDS, getShouldShowFieldHandler } from '@kbn/discover-utils
 import useLocalStorage from 'react-use/lib/useLocalStorage';
 import {
   LOCAL_STORAGE_KEY_SEARCH_TERM,
-  useTableFilters,
+  useTableFiltersState,
 } from '../../../doc_viewer_table/table_filters';
 import { getUnifiedDocViewerServices } from '../../../../plugin';
 import {
@@ -45,11 +45,11 @@ export function AttributesOverview({
   onAddColumn,
   onRemoveColumn,
 }: DocViewRenderProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
   const { storage, uiSettings } = getUnifiedDocViewerServices();
   const isEsqlMode = Array.isArray(textBasedHits);
   const showMultiFields = uiSettings.get(SHOW_MULTIFIELDS);
-  const { searchTerm, onChangeSearchTerm } = useTableFilters({
+  const { searchTerm, onChangeSearchTerm } = useTableFiltersState({
     storage,
     storageKey: LOCAL_STORAGE_KEY_SEARCH_TERM,
   });
@@ -58,8 +58,9 @@ export function AttributesOverview({
   const flattened = hit.flattened;
 
   const shouldShowFieldHandler = useMemo(
-    () => getShouldShowFieldHandler(Object.keys(flattened), dataView, showMultiFields),
-    [flattened, dataView, showMultiFields]
+    () =>
+      getShouldShowFieldHandler(Object.keys(flattened), dataView, isEsqlMode || showMultiFields),
+    [flattened, dataView, isEsqlMode, showMultiFields]
   );
 
   const attributesTitle = getAttributesTitle(hit);
@@ -81,8 +82,8 @@ export function AttributesOverview({
 
   const { attributesFields, resourceAttributesFields, scopeAttributesFields } = groupedFields;
 
-  const containerHeight = containerRef.current
-    ? getTabContentAvailableHeight(containerRef.current, decreaseAvailableHeightBy)
+  const containerHeight = containerRef
+    ? getTabContentAvailableHeight(containerRef, decreaseAvailableHeightBy)
     : 0;
 
   const filterFieldsBySearchTerm = (fields: AttributeField[]) =>
@@ -155,19 +156,17 @@ export function AttributesOverview({
 
   return (
     <EuiFlexGroup
-      ref={containerRef}
       direction="column"
       gutterSize="none"
       responsive={false}
+      ref={setContainerRef}
       css={
         containerHeight
           ? css`
-              height: ${containerHeight}px;
+              max-height: ${containerHeight}px;
               overflow: hidden;
             `
-          : css`
-              display: block;
-            `
+          : undefined
       }
     >
       <EuiFlexItem grow={false}>

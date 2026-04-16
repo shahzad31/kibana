@@ -22,13 +22,13 @@ import type { DataViewsContract } from '@kbn/data-views-plugin/public';
 import type {
   LayerAction,
   RegisterLibraryAnnotationGroupFunction,
-  StartServices,
+  LensStartServices as StartServices,
   StateSetter,
-} from '../../../../types';
+} from '@kbn/lens-common';
 import type {
   XYByReferenceAnnotationLayerConfig,
   XYAnnotationLayerConfig,
-  XYState,
+  XYVisualizationState,
 } from '../../types';
 import {
   getAnnotationLayerTitle,
@@ -50,7 +50,7 @@ export const SaveModal = ({
 }: {
   domElement: HTMLDivElement;
   savedObjectsTagging: SavedObjectTaggingPluginStart | undefined;
-  onSave: (props: ModalOnSaveProps) => void;
+  onSave: (props: ModalOnSaveProps) => Promise<void>;
   title: string;
   description: string;
   tags: string[];
@@ -62,7 +62,9 @@ export const SaveModal = ({
 
   return (
     <SavedObjectSaveModal
-      onSave={async (props) => onSave({ ...props, closeModal, newTags: selectedTags })}
+      onSave={async (props) => {
+        await onSave({ ...props, closeModal, newTags: selectedTags });
+      }}
       onClose={closeModal}
       title={title}
       description={description}
@@ -81,7 +83,7 @@ export const SaveModal = ({
       confirmButtonLabel={
         <>
           <div>
-            <EuiIcon type="save" />
+            <EuiIcon type="save" aria-hidden={true} />
           </div>
           <div>
             {i18n.translate(
@@ -186,9 +188,9 @@ export const onSave = async ({
   goToAnnotationLibrary,
   startServices,
 }: {
-  state: XYState;
+  state: XYVisualizationState;
   layer: XYAnnotationLayerConfig;
-  setState: StateSetter<XYState, unknown>;
+  setState: StateSetter<XYVisualizationState, unknown>;
   registerLibraryAnnotationGroup: (props: {
     id: string;
     group: EventAnnotationGroupConfig;
@@ -266,7 +268,7 @@ export const onSave = async ({
         },
       }
     ),
-    text: ((element) =>
+    text: ((element) => {
       render(
         <KibanaRenderContextProvider {...startServices}>
           <FormattedMessage
@@ -290,7 +292,9 @@ export const onSave = async ({
           />
         </KibanaRenderContextProvider>,
         element
-      )) as MountPoint,
+      );
+      return () => unmountComponentAtNode(element);
+    }) as MountPoint,
   });
 };
 
@@ -306,9 +310,9 @@ export const getSaveLayerAction = ({
   goToAnnotationLibrary,
   startServices,
 }: {
-  state: XYState;
+  state: XYVisualizationState;
   layer: XYAnnotationLayerConfig;
-  setState: StateSetter<XYState, unknown>;
+  setState: StateSetter<XYVisualizationState, unknown>;
   registerLibraryAnnotationGroup: RegisterLibraryAnnotationGroupFunction;
   eventAnnotationService: EventAnnotationServiceType;
   toasts: ToastsStart;
@@ -367,6 +371,6 @@ export const getSaveLayerAction = ({
     isCompatible: true,
     'data-test-subj': 'lnsXY_annotationLayer_saveToLibrary',
     order: 100,
-    showOutsideList: true,
+    showOutsideList: false,
   };
 };

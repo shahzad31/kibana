@@ -25,7 +25,6 @@ import { HumanMessage } from '@langchain/core/messages';
 
 jest.mock('./graph');
 jest.mock('./helpers');
-jest.mock('langchain/agents');
 jest.mock('@kbn/langchain/server/tracers/apm');
 jest.mock('@kbn/langchain/server/tracers/telemetry');
 jest.mock('@kbn/security-ai-prompts');
@@ -99,6 +98,9 @@ describe('callAssistantGraph', () => {
     traceOptions: {},
     responseLanguage: 'English',
     contentReferencesStore: newContentReferencesStoreMock(),
+    assistantContext: {
+      getCheckpointSaver: jest.fn().mockResolvedValue(null),
+    },
     core: {
       uiSettings: {
         client: {
@@ -301,7 +303,22 @@ describe('callAssistantGraph', () => {
         status: 'ok',
         conversationId: 'new-conversation-id',
       });
-      expect(getChatModel).toHaveBeenCalled();
+      expect(getChatModel).toHaveBeenCalledWith({
+        chatModelOptions: {
+          maxRetries: 0,
+          model: 'test-model',
+          telemetryMetadata: {
+            pluginId: 'security_ai_assistant',
+          },
+          temperature: 0.2,
+        },
+        connectorId: 'test-connector',
+        request: {
+          body: {
+            model: 'test-model',
+          },
+        },
+      });
     });
 
     it('calls streamGraph with correct parameters for streaming', async () => {

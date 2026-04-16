@@ -43,6 +43,7 @@ const createConversationsDataClientMock = () => {
     createConversation: jest.fn(),
     deleteConversation: jest.fn(),
     deleteAllConversations: jest.fn(),
+    conversationExists: jest.fn(),
     getConversation: jest.fn(),
     updateConversation: jest.fn(),
     getReader: jest.fn(),
@@ -58,24 +59,18 @@ export const conversationsDataClientMock: {
 };
 
 const createAttackDiscoveryDataClientMock = (): AttackDiscoveryDataClientMock => {
-  const mockDataClient = {
+  const mockDataClient: AttackDiscoveryDataClientMock = {
     bulkUpdateAttackDiscoveryAlerts: jest.fn(),
-    createAttackDiscovery: jest.fn(),
     getAdHocAlertsIndexPattern: jest.fn(),
     getScheduledAndAdHocIndexPattern: jest.fn(),
     createAttackDiscoveryAlerts: jest.fn(),
-    findAllAttackDiscoveries: jest.fn(),
-    getAlertConnectorNames: jest.fn(),
-    getAttackDiscovery: jest.fn(),
     findAttackDiscoveryAlerts: jest.fn(),
     findDocuments: jest.fn(),
-    findAttackDiscoveryByConnectorId: jest.fn(),
     getAttackDiscoveryGenerations: jest.fn(),
     getAttackDiscoveryGenerationById: jest.fn(),
     getReader: jest.fn(),
     getWriter: jest.fn().mockResolvedValue({ bulk: jest.fn() }),
     refreshEventLogIndex: jest.fn(),
-    updateAttackDiscovery: jest.fn(),
     // Properties from AIAssistantDataClient
     spaceId: 'default',
     indexTemplateAndPattern: {
@@ -101,7 +96,7 @@ const createAttackDiscoveryDataClientMock = (): AttackDiscoveryDataClientMock =>
     currentUser: null,
     writerCache: new Map(),
     initializeWriter: jest.fn(),
-  } as AttackDiscoveryDataClientMock;
+  };
 
   return mockDataClient;
 };
@@ -144,11 +139,13 @@ const createKnowledgeBaseDataClientMock = () => {
     isInferenceEndpointExists: jest.fn(),
     isModelInstalled: jest.fn(),
     isSecurityLabsDocsLoaded: jest.fn(),
+    isDefendInsightsDocsLoaded: jest.fn(),
     isSetupAvailable: jest.fn(),
     isSetupInProgress: jest.fn().mockReturnValue(false)(),
     isUserDataExists: jest.fn(),
     setupKnowledgeBase: jest.fn(),
     getLoadedSecurityLabsDocsCount: jest.fn(),
+    getLoadedDefendInsightsDocsCount: jest.fn(),
     getProductDocumentationStatus: jest.fn(),
   };
 

@@ -7,21 +7,35 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import type { Condition, StreamlangDSL } from '@kbn/streamlang';
-import type { IngestStream } from '@kbn/streams-schema/src/models/ingest';
-import { type Ingest } from '@kbn/streams-schema/src/models/ingest';
-import { WiredStream } from '@kbn/streams-schema/src/models/ingest/wired';
+import { omit } from 'lodash';
 import type { KbnClient, ScoutLogger } from '../../../../../../common';
 import { measurePerformanceAsync } from '../../../../../../common';
 import type { ScoutSpaceParallelFixture } from '../../scout_space';
+import {
+  type Condition,
+  type IngestUpsertRequest,
+  type RoutingStatus,
+  type StreamlangDSL,
+  type StreamsIngestGetResponse,
+  isClassicStreamDefinition,
+  isWiredStreamDefinition,
+} from './types';
 
 export interface StreamsApiService {
   enable: () => Promise<void>;
   disable: () => Promise<void>;
-  forkStream: (streamName: string, destination: string, condition: Condition) => Promise<void>;
-  getStreamDefinition: (streamName: string) => Promise<IngestStream.all.GetResponse>;
+  forkStream: (
+    streamName: string,
+    destination: string,
+    condition: Condition,
+    status?: RoutingStatus
+  ) => Promise<void>;
+  /** See `./types` JSDoc for casting to `@kbn/streams-schema` definition types in tests. */
+  getStreamDefinition: (streamName: string) => Promise<StreamsIngestGetResponse>;
+  /** Materialize backing data stream for deferred wired roots (e.g. `logs.otel`). */
+  restoreDataStream: (streamName: string) => Promise<void>;
   deleteStream: (streamName: string) => Promise<void>;
-  updateStream: (streamName: string, updateBody: { ingest: Ingest }) => Promise<void>;
+  updateStream: (streamName: string, updateBody: { ingest: IngestUpsertRequest }) => Promise<void>;
   clearStreamChildren: (streamName: string) => Promise<void>;
   clearStreamMappings: (streamName: string) => Promise<void>;
   clearStreamProcessors: (streamName: string) => Promise<void>;
@@ -59,13 +73,19 @@ export const getStreamsApiService = ({
         });
       });
     },
-    forkStream: async (streamName: string, newStreamName: string, condition: Condition) => {
+    forkStream: async (
+      streamName: string,
+      newStreamName: string,
+      condition: Condition,
+      status: RoutingStatus = 'enabled'
+    ) => {
       await measurePerformanceAsync(log, 'streamsApi.createRoutingRule', async () => {
         await kbnClient.request({
           method: 'POST',
           path: `${basePath}/api/streams/${streamName}/_fork`,
           body: {
             where: condition,
+            status,
             stream: {
               name: newStreamName,
             },
@@ -79,7 +99,15 @@ export const getStreamsApiService = ({
           method: 'GET',
           path: `${basePath}/api/streams/${streamName}`,
         });
-        return response.data as IngestStream.all.GetResponse;
+        return response.data as StreamsIngestGetResponse;
+      });
+    },
+    restoreDataStream: async (streamName: string) => {
+      await measurePerformanceAsync(log, 'streamsApi.restoreDataStream', async () => {
+        await kbnClient.request({
+          method: 'POST',
+          path: `${basePath}/internal/streams/${streamName}/_restore_data_stream`,
+        });
       });
     },
     deleteStream: async (streamName: string) => {
@@ -90,7 +118,7 @@ export const getStreamsApiService = ({
         });
       });
     },
-    updateStream: async (streamName: string, updateBody: { ingest: Ingest }) => {
+    updateStream: async (streamName: string, updateBody: { ingest: IngestUpsertRequest }) => {
       await measurePerformanceAsync(log, 'streamsApi.updateStream', async () => {
         await kbnClient.request({
           method: 'PUT',
@@ -102,30 +130,43 @@ export const getStreamsApiService = ({
     clearStreamChildren: async (streamName: string) => {
       await measurePerformanceAsync(log, 'streamsApi.clearStreamChildren', async () => {
         const definition = await service.getStreamDefinition(streamName);
-        if (WiredStream.Definition.is(definition.stream)) {
-          await Promise.all(
-            definition.stream.ingest.wired.routing.map((child) =>
-              service.deleteStream(child.destination)
-            )
-          );
+        if (isWiredStreamDefinition(definition.stream)) {
+          for (const child of definition.stream.ingest.wired.routing) {
+            await service.deleteStream(child.destination);
+          }
         }
       });
     },
     clearStreamMappings: async (streamName: string) => {
       await measurePerformanceAsync(log, 'streamsApi.clearStreamMappings', async () => {
         const definition = await service.getStreamDefinition(streamName);
-        if (!WiredStream.Definition.is(definition.stream)) {
-          throw new Error(`Stream ${streamName} is not a wired stream, cannot clear mappings.`);
-        }
-        await service.updateStream(streamName, {
-          ingest: {
-            ...definition.stream.ingest,
-            wired: {
-              ...definition.stream.ingest.wired,
-              fields: {},
+        if (isWiredStreamDefinition(definition.stream)) {
+          await service.updateStream(streamName, {
+            ingest: {
+              ...definition.stream.ingest,
+              processing: omit(definition.stream.ingest.processing, 'updated_at'),
+              wired: {
+                ...definition.stream.ingest.wired,
+                fields: {},
+              },
             },
-          },
-        });
+          });
+        } else if (isClassicStreamDefinition(definition.stream)) {
+          await service.updateStream(streamName, {
+            ingest: {
+              ...definition.stream.ingest,
+              processing: omit(definition.stream.ingest.processing, 'updated_at'),
+              classic: {
+                ...definition.stream.ingest.classic,
+                field_overrides: {},
+              },
+            },
+          });
+        } else {
+          throw new Error(
+            `Stream ${streamName} is not a wired or classic stream, cannot clear mappings.`
+          );
+        }
       });
     },
     clearStreamProcessors: async (streamName: string) => {
@@ -153,7 +194,9 @@ export const getStreamsApiService = ({
         await service.updateStream(streamName, {
           ingest: {
             ...definition.stream.ingest,
-            processing,
+            processing: {
+              ...processing,
+            },
           },
         });
       });

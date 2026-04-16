@@ -92,7 +92,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         mockEsClient.cluster.health.mockResolvedValue({ status: 'green' });
         mockEsClient.nodes.stats.mockResolvedValue({
           nodes: {
-            node1: createMockNodeResponse(nodeOverrides),
+            'real-node-id': createMockNodeResponse(nodeOverrides),
           },
         });
       };
@@ -130,7 +130,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         expectInvalidCircuitBreakerResult(
           result,
           'ElasticsearchCircuitBreaker',
-          'Node node1 is stale'
+          'Node node-0 is stale'
         );
       });
 
@@ -147,7 +147,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         expectInvalidCircuitBreakerResult(
           result,
           'ElasticsearchCircuitBreaker',
-          'Node node1 is stale'
+          'Node node-0 is stale'
         );
       });
 
@@ -157,7 +157,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         expectInvalidCircuitBreakerResult(
           result,
           'ElasticsearchCircuitBreaker',
-          'Node node1 JVM heap used 90% exceeds threshold'
+          'Node node-0 JVM heap used 90% exceeds threshold'
         );
       });
 
@@ -167,7 +167,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         expectInvalidCircuitBreakerResult(
           result,
           'ElasticsearchCircuitBreaker',
-          'Node node1 CPU usage 95% exceeds threshold'
+          'Node node-0 CPU usage 95% exceeds threshold'
         );
       });
 
@@ -185,7 +185,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         mockEsClient.cluster.health.mockResolvedValue({ status: 'green' });
         mockEsClient.nodes.stats.mockResolvedValue({
           nodes: {
-            node1: {
+            'real-node-id': {
               timestamp: 1234567890,
               // Missing jvm and os stats
             },
@@ -195,7 +195,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
         expectInvalidCircuitBreakerResult(
           result,
           'ElasticsearchCircuitBreaker',
-          'Node node1 missing metrics. JVM: undefined, OS: undefined'
+          'Node node-0 missing metrics. JVM: undefined, OS: undefined'
         );
       });
     });
@@ -290,6 +290,7 @@ describe('Security Solution - Health Diagnostic Queries - Circuit Breakers', () 
           percentiles: {
             50: 2,
             75: 3,
+            90: 4,
             95: 4,
             99: 4.5,
           },

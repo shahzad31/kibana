@@ -208,6 +208,7 @@ paths:
                     - 15c1929b-0af7-42bd-85a8-56e234cc7c4e
                   items:
                     type: string
+                  maxItems: 100
                   type: array
                 searchIds:
                   description: >-
@@ -218,6 +219,7 @@ paths:
                     - 6ce1b592-84e3-4b4a-9552-f189d4b82075
                   items:
                     type: string
+                  maxItems: 100
                   type: array
               required:
                 - savedObjectIds
@@ -437,7 +439,7 @@ paths:
           description: Indicates that the draft Timeline was successfully retrieved.
         '403':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -451,7 +453,7 @@ paths:
             create a draft Timeline.
         '409':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -502,7 +504,7 @@ paths:
             Timeline is cleared and returned.
         '403':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -515,7 +517,7 @@ paths:
             create a draft Timeline.
         '409':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -550,6 +552,8 @@ paths:
                 ids:
                   items:
                     type: string
+                  maxItems: 1000
+                  minItems: 1
                   nullable: true
                   type: array
         description: The IDs of the Timelines to export.
@@ -615,7 +619,7 @@ paths:
           description: Indicates the favorite status was successfully updated.
         '403':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -748,7 +752,7 @@ paths:
           description: Indicates the installation of prepackaged Timelines was successful.
         '500':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -889,7 +893,7 @@ paths:
           description: Indicates that the (template) Timelines were found and returned.
         '400':
           content:
-            application:json:
+            application/json:
               schema:
                 type: object
                 properties:

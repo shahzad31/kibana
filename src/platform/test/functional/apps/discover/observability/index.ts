@@ -31,5 +31,7 @@ export default function ({ getPageObjects, loadTestFile }: FtrProviderContext) {
     loadTestFile(require.resolve('./logs/_get_pagination_config'));
     loadTestFile(require.resolve('./embeddable/_get_doc_viewer'));
     loadTestFile(require.resolve('./logs/_get_doc_viewer'));
+    loadTestFile(require.resolve('./logs/_get_recommended_fields'));
+    loadTestFile(require.resolve('./logs/_summary_column'));
   });
 }

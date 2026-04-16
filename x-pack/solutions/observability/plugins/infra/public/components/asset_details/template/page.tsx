@@ -14,6 +14,7 @@ import { useKibanaContextForPlugin } from '../../../hooks/use_kibana';
 import { ASSET_DETAILS_PAGE_COMPONENT_NAME } from '../constants';
 import { Content } from '../content/content';
 import { useAssetDetailsRenderPropsContext } from '../hooks/use_asset_details_render_props';
+import { useHostAttachmentConfig } from '../hooks/use_host_attachment_config';
 import { useMetadataStateContext } from '../hooks/use_metadata_state';
 import { usePageHeader } from '../hooks/use_page_header';
 import { useTabSwitcherContext } from '../hooks/use_tab_switcher';
@@ -24,15 +25,17 @@ import { OnboardingFlow } from '../../shared/templates/no_data_config';
 import { HostHeaderTitle } from '../header/host_header_title';
 
 export const Page = ({ tabs = [], links = [] }: ContentTemplateProps) => {
-  const { loading } = useAssetDetailsRenderPropsContext();
   const { metadata, loading: metadataLoading } = useMetadataStateContext();
   const { rightSideItems, tabEntries, breadcrumbs: headerBreadcrumbs } = usePageHeader(tabs, links);
-  const { entity, schema } = useAssetDetailsRenderPropsContext();
+  const { entity, loading, schema } = useAssetDetailsRenderPropsContext();
   const trackOnlyOnce = React.useRef(false);
   const { activeTabId } = useTabSwitcherContext();
   const {
     services: { telemetry },
   } = useKibanaContextForPlugin();
+
+  // Configure agent builder global flyout with the host attachment
+  useHostAttachmentConfig();
 
   const parentBreadcrumbResolver = useParentBreadcrumbResolver();
   const breadcrumbOptions = parentBreadcrumbResolver.getBreadcrumbOptions(entity.type);

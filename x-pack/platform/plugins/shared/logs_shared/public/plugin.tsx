@@ -6,6 +6,7 @@
  */
 
 import type { CoreStart } from '@kbn/core/public';
+import { IS_ESQL_DEFAULT_FEATURE_FLAG_KEY } from '@kbn/discover-utils';
 import { LogsLocatorDefinition } from '../common/locators';
 import { createLogAIAssistant, createLogsAIAssistantRenderer } from './components/log_ai_assistant';
 import { createLogsOverview } from './components/logs_overview';
@@ -16,6 +17,7 @@ import type {
   LogsSharedClientSetupDeps,
   LogsSharedClientStartDeps,
 } from './types';
+import { createLogEventsRenderer } from './components/log_events';
 
 export class LogsSharedPlugin implements LogsSharedClientPluginClass {
   private logViews: LogViewsService;
@@ -33,6 +35,10 @@ export class LogsSharedPlugin implements LogsSharedClientPluginClass {
         getLogSourcesService: async () => {
           const [_, pluginsStart] = await coreSetup.getStartServices();
           return pluginsStart.logsDataAccess.services.logSourcesService;
+        },
+        getIsEsqlDefault: async () => {
+          const [coreStart] = await coreSetup.getStartServices();
+          return coreStart.featureFlags.getBooleanValue(IS_ESQL_DEFAULT_FEATURE_FLAG_KEY, false);
         },
       })
     );
@@ -83,11 +89,40 @@ export class LogsSharedPlugin implements LogsSharedClientPluginClass {
       };
     }
 
-    const LogAIAssistant = createLogAIAssistant({ observabilityAIAssistant });
+    const LogAIAssistant = createLogAIAssistant({
+      observabilityAIAssistant,
+    });
 
     discoverShared.features.registry.register({
       id: 'observability-logs-ai-assistant',
       render: createLogsAIAssistantRenderer(LogAIAssistant),
+    });
+
+    // Register "Log Events" as a feature in Discover.
+    // The LazySavedSearchComponent cannot be used directly because of circular dependencies
+    // (see https://github.com/elastic/kibana/issues/233132).
+    discoverShared.features.registry.register({
+      id: 'observability-log-events',
+      render: createLogEventsRenderer({
+        dataViews,
+        embeddable: plugins.embeddable,
+        searchSource: data.search.searchSource,
+      }),
+    });
+
+    discoverShared.features.registry.register({
+      id: 'observability-logs-fetch-document-by-id',
+      fetchLogDocumentById: async (params, signal) => {
+        const { fetchLogDocumentById } = await import('./services/log/fetch_log_document_by_id');
+        return fetchLogDocumentById(
+          {
+            ...params,
+            data,
+            logSourcesService: logsDataAccess.services.logSourcesService,
+          },
+          signal
+        );
+      },
     });
 
     return {

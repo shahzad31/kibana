@@ -9,6 +9,7 @@ import React, { memo, useCallback, useMemo, useState } from 'react';
 import { EuiButtonIcon, EuiContextMenu, EuiPopover } from '@elastic/eui';
 import type { EcsSecurityExtension as Ecs } from '@kbn/securitysolution-ecs';
 import { i18n } from '@kbn/i18n';
+import { flattenObject } from '@kbn/object-utils';
 import { useAlertTagsActions } from '../../alerts_table/timeline_actions/use_alert_tags_actions';
 import { useAddToCaseActions } from '../../alerts_table/timeline_actions/use_add_to_case_actions';
 
@@ -37,7 +38,7 @@ export interface MoreActionsRowControlColumnProps {
 
 /**
  * Renders a horizontal 3-dot button which displays a context menu when clicked.
- * This is used in the AI for SOC alert summary table.
+ * This is used in EASE alert summary table.
  * The following options are available:
  * - add to existing case
  * - add to new case
@@ -55,19 +56,26 @@ export const MoreActionsRowControlColumn = memo(
         <EuiButtonIcon
           aria-label={MORE_ACTIONS_BUTTON_ARIA_LABEL}
           data-test-subj={MORE_ACTIONS_BUTTON_TEST_ID}
-          iconType="boxesHorizontal"
+          iconType="boxesVertical"
           onClick={togglePopover}
         />
       ),
       [togglePopover]
     );
 
+    const nonEcsData = useMemo(() => {
+      const flattened = flattenObject(ecsAlert);
+      return Object.entries(flattened).map(([key, value]) => ({
+        field: key,
+        value: value as string[],
+      }));
+    }, [ecsAlert]);
+
     const { addToCaseActionItems } = useAddToCaseActions({
       ecsData: ecsAlert,
+      nonEcsData,
       onMenuItemClick: closePopover,
-      isActiveTimelines: false,
       ariaLabel: ADD_TO_CASE_ARIA_LABEL,
-      isInDetections: true,
     });
 
     const { alertTagsItems, alertTagsPanels } = useAlertTagsActions({

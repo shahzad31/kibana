@@ -4,6 +4,7 @@
  * 2.0; you may not use this file except in compliance with the Elastic License
  * 2.0.
  */
+import { trialCompanionTelemetryEvents } from './trial_companion';
 import { alertsTelemetryEvents } from './alerts_grouping';
 import { appTelemetryEvents } from './app';
 import { dataQualityTelemetryEvents } from './data_quality';
@@ -17,8 +18,11 @@ import { onboardingHubTelemetryEvents } from './onboarding';
 import { previewRuleTelemetryEvents } from './preview_rule';
 import { siemMigrationsTelemetryEvents } from './siem_migrations';
 import { ruleUpgradeTelemetryEvents } from './rule_upgrade';
+import { aiValueReportTelemetryEvents } from './ai_value_report';
+import { attacksTelemetryEvents } from './attacks';
 
 export const telemetryEvents = [
+  ...attacksTelemetryEvents,
   ...alertsTelemetryEvents,
   ...previewRuleTelemetryEvents,
   ...entityTelemetryEvents,
@@ -32,4 +36,6 @@ export const telemetryEvents = [
   ...notesTelemetryEvents,
   ...appTelemetryEvents,
   ...siemMigrationsTelemetryEvents,
+  ...aiValueReportTelemetryEvents,
+  ...trialCompanionTelemetryEvents,
 ];

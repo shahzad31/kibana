@@ -29,9 +29,9 @@ import type {
 import type {
   FilterManager,
   TimefilterContract,
-  DataViewsContract,
   DataPublicPluginStart,
 } from '@kbn/data-plugin/public';
+import type { DataViewsContract } from '@kbn/data-views-plugin/public';
 import type { ExpressionsStart } from '@kbn/expressions-plugin/public';
 import type { Start as InspectorPublicPluginStart } from '@kbn/inspector-plugin/public';
 import type { SharePluginStart } from '@kbn/share-plugin/public';
@@ -62,15 +62,21 @@ import type { AiopsPluginStart } from '@kbn/aiops-plugin/public';
 import type { DataVisualizerPluginStart } from '@kbn/data-visualizer-plugin/public';
 import type { FieldsMetadataPublicStart } from '@kbn/fields-metadata-plugin/public';
 import type { LogsDataAccessPluginStart } from '@kbn/logs-data-access-plugin/public';
-import type { ApmSourceAccessPluginStart } from '@kbn/apm-sources-access-plugin/public';
 import type { DiscoverSharedPublicStart } from '@kbn/discover-shared-plugin/public';
-import type { EmbeddableEnhancedPluginStart } from '@kbn/embeddable-enhanced-plugin/public';
+import type { CPSPluginStart } from '@kbn/cps/public';
+import type { AlertingV2PublicStart } from '@kbn/alerting-v2-plugin/public';
 import type { DiscoverStartPlugins } from './types';
 import type { DiscoverContextAppLocator } from './application/context/services/locator';
 import type { DiscoverSingleDocLocator } from './application/doc/locator';
 import type { DiscoverAppLocator } from '../common';
 import type { ProfilesManager } from './context_awareness';
 import type { DiscoverEBTManager } from './ebt_manager';
+import {
+  CASCADE_LAYOUT_ENABLED_FEATURE_FLAG_KEY,
+  EMBEDDABLE_TRANSFORMS_FEATURE_FLAG_KEY,
+  IS_ESQL_DEFAULT_FEATURE_FLAG_KEY,
+} from './constants';
+import { EmbeddableEditorService } from './plugin_imports/embeddable_editor_service';
 
 /**
  * Location state of internal Discover history instance
@@ -85,8 +91,15 @@ export interface UrlTracker {
   setTrackingEnabled: (value: boolean) => void;
 }
 
+export interface DiscoverFeatureFlags {
+  getCascadeLayoutEnabled: () => boolean;
+  getIsEsqlDefault: () => boolean;
+  getEmbeddableTransformsEnabled: () => boolean;
+}
+
 export interface DiscoverServices {
   aiops?: AiopsPluginStart;
+  alertingVTwo?: AlertingV2PublicStart;
   application: ApplicationStart;
   addBasePath: (path: string) => string;
   analytics: AnalyticsServiceStart;
@@ -97,6 +110,7 @@ export interface DiscoverServices {
   core: CoreStart;
   data: DataPublicPluginStart;
   discoverShared: DiscoverSharedPublicStart;
+  discoverFeatureFlags: DiscoverFeatureFlags;
   docLinks: DocLinksStart;
   embeddable: EmbeddableStart;
   history: History<HistoryLocationState>;
@@ -144,8 +158,8 @@ export interface DiscoverServices {
   ebtManager: DiscoverEBTManager;
   fieldsMetadata?: FieldsMetadataPublicStart;
   logsDataAccess?: LogsDataAccessPluginStart;
-  embeddableEnhanced?: EmbeddableEnhancedPluginStart;
-  apmSourcesAccess?: ApmSourceAccessPluginStart;
+  cps?: CPSPluginStart;
+  embeddableEditor: EmbeddableEditorService;
 }
 
 export const buildServices = ({
@@ -180,6 +194,7 @@ export const buildServices = ({
 
   return {
     aiops: plugins.aiops,
+    alertingVTwo: plugins.alertingVTwo,
     application: core.application,
     addBasePath: core.http.basePath.prepend,
     analytics: core.analytics,
@@ -190,6 +205,14 @@ export const buildServices = ({
     data: plugins.data,
     dataVisualizer: plugins.dataVisualizer,
     discoverShared: plugins.discoverShared,
+    discoverFeatureFlags: {
+      getCascadeLayoutEnabled: () =>
+        core.featureFlags.getBooleanValue(CASCADE_LAYOUT_ENABLED_FEATURE_FLAG_KEY, true),
+      getIsEsqlDefault: () =>
+        core.featureFlags.getBooleanValue(IS_ESQL_DEFAULT_FEATURE_FLAG_KEY, false),
+      getEmbeddableTransformsEnabled: () =>
+        core.featureFlags.getBooleanValue(EMBEDDABLE_TRANSFORMS_FEATURE_FLAG_KEY, true),
+    },
     docLinks: core.docLinks,
     embeddable: plugins.embeddable,
     i18n: core.i18n,
@@ -239,7 +262,10 @@ export const buildServices = ({
     ebtManager,
     fieldsMetadata: plugins.fieldsMetadata,
     logsDataAccess: plugins.logsDataAccess,
-    embeddableEnhanced: plugins.embeddableEnhanced,
-    apmSourcesAccess: plugins.apmSourcesAccess,
+    cps: plugins.cps,
+    embeddableEditor: new EmbeddableEditorService(
+      plugins.embeddable.getStateTransfer(),
+      core.application
+    ),
   };
 };

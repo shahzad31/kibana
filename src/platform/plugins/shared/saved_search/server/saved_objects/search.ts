@@ -21,6 +21,12 @@ import {
   SCHEMA_SEARCH_MODEL_VERSION_4,
   SCHEMA_SEARCH_MODEL_VERSION_5,
   SCHEMA_SEARCH_MODEL_VERSION_6,
+  SCHEMA_SEARCH_MODEL_VERSION_7,
+  SCHEMA_SEARCH_MODEL_VERSION_8,
+  SCHEMA_SEARCH_MODEL_VERSION_9_SO_API_WORKAROUND,
+  SCHEMA_SEARCH_MODEL_VERSION_10_SO_API_WORKAROUND,
+  SCHEMA_SEARCH_MODEL_VERSION_11_SO_API_WORKAROUND,
+  SCHEMA_SEARCH_MODEL_VERSION_12_SO_API_WORKAROUND,
 } from './schema';
 
 export function getSavedSearchObjectType(
@@ -93,6 +99,60 @@ export function getSavedSearchObjectType(
         schemas: {
           forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_6.extends({}, { unknowns: 'ignore' }),
           create: SCHEMA_SEARCH_MODEL_VERSION_6,
+        },
+      },
+      7: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_7.extends({}, { unknowns: 'ignore' }),
+          create: SCHEMA_SEARCH_MODEL_VERSION_7,
+        },
+      },
+      8: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_8.extends({}, { unknowns: 'ignore' }),
+          create: SCHEMA_SEARCH_MODEL_VERSION_8,
+        },
+      },
+      9: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_9_SO_API_WORKAROUND.extends(
+            {},
+            { unknowns: 'ignore' }
+          ),
+          create: SCHEMA_SEARCH_MODEL_VERSION_9_SO_API_WORKAROUND,
+        },
+      },
+      10: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_10_SO_API_WORKAROUND.extends(
+            {},
+            { unknowns: 'ignore' }
+          ),
+          create: SCHEMA_SEARCH_MODEL_VERSION_10_SO_API_WORKAROUND,
+        },
+      },
+      11: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_11_SO_API_WORKAROUND.extends(
+            {},
+            { unknowns: 'ignore' }
+          ),
+          create: SCHEMA_SEARCH_MODEL_VERSION_11_SO_API_WORKAROUND,
+        },
+      },
+      12: {
+        changes: [],
+        schemas: {
+          forwardCompatibility: SCHEMA_SEARCH_MODEL_VERSION_12_SO_API_WORKAROUND.extends(
+            {},
+            { unknowns: 'ignore' }
+          ),
+          create: SCHEMA_SEARCH_MODEL_VERSION_12_SO_API_WORKAROUND,
         },
       },
     },

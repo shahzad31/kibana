@@ -5,15 +5,15 @@
  * 2.0.
  */
 
+import type { BaseCheckpointSaver } from '@langchain/langgraph';
 import { END, START, StateGraph } from '@langchain/langgraph';
 import type { StructuredTool } from '@langchain/core/tools';
 import type { Logger } from '@kbn/logging';
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ContentReferencesStore } from '@kbn/elastic-assistant-common';
-import type { PublicMethodsOf } from '@kbn/utility-types';
-import type { ActionsClient } from '@kbn/actions-plugin/server';
 import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
+import type { InferenceConnector } from '@kbn/inference-common';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import type { AgentState, NodeParamsBase } from './types';
 
@@ -25,19 +25,21 @@ import { AssistantStateAnnotation } from './state';
 export const DEFAULT_ASSISTANT_GRAPH_ID = 'Default Security Assistant Graph';
 
 export interface GetDefaultAssistantGraphParams {
-  actionsClient: PublicMethodsOf<ActionsClient>;
+  getInferenceConnectorById: (id: string) => Promise<InferenceConnector>;
   createLlmInstance: () => Promise<BaseChatModel>;
   logger: Logger;
   savedObjectsClient: SavedObjectsClientContract;
   signal?: AbortSignal;
   tools: StructuredTool[];
   contentReferencesStore: ContentReferencesStore;
+  checkpointSaver: BaseCheckpointSaver | null;
 }
 
 export type DefaultAssistantGraph = Awaited<ReturnType<typeof getDefaultAssistantGraph>>;
 
 export const getDefaultAssistantGraph = async ({
-  actionsClient,
+  getInferenceConnectorById,
+  checkpointSaver,
   contentReferencesStore,
   createLlmInstance,
   logger,
@@ -49,7 +51,7 @@ export const getDefaultAssistantGraph = async ({
   try {
     // Default node parameters
     const nodeParams: NodeParamsBase = {
-      actionsClient,
+      getInferenceConnectorById,
       logger,
       savedObjectsClient,
       contentReferencesStore,
@@ -80,7 +82,9 @@ export const getDefaultAssistantGraph = async ({
         [NodeType.TOOLS]: NodeType.TOOLS,
         [NodeType.END]: END,
       });
-    return graph.compile();
+    return graph.compile({
+      ...(checkpointSaver !== null ? { checkpointer: checkpointSaver } : {}),
+    });
   } catch (e) {
     throw new Error(`Unable to compile DefaultAssistantGraph\n${e}`);
   }

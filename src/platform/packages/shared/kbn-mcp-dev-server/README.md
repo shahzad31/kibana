@@ -12,7 +12,7 @@ From the Kibana repo root:
 node scripts/mcp_dev
 ```
 
-This starts a [stdio](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio) MCP Server.
+This starts a [stdio](https://modelcontextprotocol.io/specification/2025-06-18/transports#stdio) MCP Server.
 
 ## MCP configuration example
 
@@ -25,7 +25,7 @@ Add the following snippet to your settings for your AI Coding IDE so it will aut
       "command": "bash",
       "args": [
         "-lc",
-        "source \"$NVM_DIR/nvm.sh\" && cd ${KIBANA_WORKSPACE} && nvm use --silent && node --no-experimental-require-module ./scripts/mcp_dev.js"
+        "source \"$NVM_DIR/nvm.sh\" && cd ${KIBANA_WORKSPACE} && nvm use --silent && node ./scripts/mcp_dev.js"
       ]
     }
   }
@@ -86,7 +86,7 @@ Inside the new file, create a `ToolDefinition` object. This object will contain 
 **Example:** `src/platform/packages/shared/kbn-mcp-dev-server/src/tools/my_new_tool.ts`
 
 ```typescript
-import { z } from '@kbn/zod';
+import { z } from '@kbn/zod/v4';
 import { ToolDefinition } from '@kbn/mcp-server-common';
 
 // Define the input schema for your tool using Zod
@@ -140,3 +140,13 @@ addTool(server, myNewTool);
 ```
 
 By following these steps, you can successfully add and register a new tool to the MCP dev server, making it available for use.
+
+# Available Tools
+
+The following tools are available in the MCP Dev Server.
+
+# Semantic Code Search
+
+For semantic code search, please use the [semantic-code-search-mcp-server](https://github.com/elastic/semantic-code-search-mcp-server). This server provides a suite of tools for exploring and understanding the Kibana codebase.
+
+Contact @simianhacker for details on how to get started.

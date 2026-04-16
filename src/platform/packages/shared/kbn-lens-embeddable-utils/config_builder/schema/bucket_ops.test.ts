@@ -10,11 +10,18 @@
 import {
   bucketDateHistogramOperationSchema,
   bucketTermsOperationSchema,
-  bucketFilterOperationSchema,
+  bucketFiltersOperationSchema,
   bucketHistogramOperationSchema,
   bucketRangesOperationSchema,
   bucketOperationDefinitionSchema,
 } from './bucket_ops';
+import {
+  LENS_HISTOGRAM_EMPTY_ROWS_DEFAULT,
+  LENS_HISTOGRAM_GRANULARITY_DEFAULT_VALUE,
+  LENS_PERCENTILE_DEFAULT_VALUE,
+  LENS_PERCENTILE_RANK_DEFAULT_VALUE,
+  LENS_TERMS_LIMIT_DEFAULT,
+} from './constants';
 
 describe('Bucket Operation Schemas', () => {
   describe('dateHistogram operation', () => {
@@ -22,6 +29,9 @@ describe('Bucket Operation Schemas', () => {
       const input = {
         operation: 'date_histogram',
         field: 'timestamp',
+        suggested_interval: 'auto',
+        include_empty_rows: true,
+        use_original_time_range: true,
       };
 
       const validated = bucketDateHistogramOperationSchema.validate(input);
@@ -42,17 +52,16 @@ describe('Bucket Operation Schemas', () => {
       const input = {
         operation: 'terms',
         fields: ['category'],
-        size: 5,
       };
       const validated = bucketTermsOperationSchema.validate(input);
-      expect(validated).toEqual(input);
+      expect(validated).toEqual({ ...input, limit: LENS_TERMS_LIMIT_DEFAULT });
     });
 
     it('validates a valid terms configuration', () => {
       const input = {
         operation: 'terms',
         fields: ['category'],
-        size: 10,
+        limit: 10,
         increase_accuracy: true,
         includes: {
           values: ['value1', 'value2'],
@@ -85,13 +94,13 @@ describe('Bucket Operation Schemas', () => {
           type: 'significant' as const,
         },
         {
-          type: 'column' as const,
-          metric: 1,
+          type: 'metric' as const,
+          metric_index: 1,
           direction: 'desc' as const,
         },
         {
           type: 'custom' as const,
-          operation: 'field-op-only' as const,
+          operation: 'average' as const,
           field: 'myfield',
           direction: 'asc' as const,
         },
@@ -108,6 +117,78 @@ describe('Bucket Operation Schemas', () => {
         expect(validated.rank_by).toEqual(rankBy);
       });
     });
+
+    it('validates rank_by custom with percentile operation', () => {
+      const input = {
+        operation: 'terms',
+        fields: ['category'],
+        rank_by: {
+          type: 'custom',
+          operation: 'percentile',
+          field: 'latency',
+          direction: 'desc',
+          percentile: 90,
+        },
+      };
+
+      const validated = bucketTermsOperationSchema.validate(input);
+      expect(validated.rank_by).toEqual(input.rank_by);
+    });
+
+    it('validates rank_by custom with percentile operation uses default', () => {
+      const input = {
+        operation: 'terms',
+        fields: ['category'],
+        rank_by: {
+          type: 'custom',
+          operation: 'percentile',
+          field: 'latency',
+          direction: 'desc',
+        },
+      };
+
+      const validated = bucketTermsOperationSchema.validate(input);
+      expect(validated.rank_by).toEqual({
+        ...input.rank_by,
+        percentile: LENS_PERCENTILE_DEFAULT_VALUE,
+      });
+    });
+
+    it('validates rank_by custom with percentile_rank operation', () => {
+      const input = {
+        operation: 'terms',
+        fields: ['category'],
+        rank_by: {
+          type: 'custom',
+          operation: 'percentile_rank',
+          field: 'latency',
+          direction: 'asc',
+          rank: 500,
+        },
+      };
+
+      const validated = bucketTermsOperationSchema.validate(input);
+      expect(validated.rank_by).toEqual(input.rank_by);
+    });
+
+    it('validates rank_by custom with percentile_rank operation uses default', () => {
+      const input = {
+        operation: 'terms',
+        fields: ['category'],
+        rank_by: {
+          type: 'custom',
+          operation: 'percentile_rank',
+          field: 'latency',
+          direction: 'asc',
+        },
+      };
+
+      const validated = bucketTermsOperationSchema.validate(input);
+      expect(validated.rank_by).toEqual({
+        ...input.rank_by,
+        rank: LENS_PERCENTILE_RANK_DEFAULT_VALUE,
+      });
+    });
   });
 
   describe('filter operation', () => {
@@ -118,14 +199,14 @@ describe('Bucket Operation Schemas', () => {
           {
             label: 'My Filter',
             filter: {
-              language: 'kuery',
-              query: 'category: "electronics"',
+              language: 'kql',
+              expression: 'category: "electronics"',
             },
           },
         ],
       };
 
-      const validated = bucketFilterOperationSchema.validate(input);
+      const validated = bucketFiltersOperationSchema.validate(input);
       expect(validated).toEqual(input);
     });
   });
@@ -135,11 +216,14 @@ describe('Bucket Operation Schemas', () => {
       const input = {
         operation: 'histogram',
         field: 'price',
-        granularity: 5,
       };
 
       const validated = bucketHistogramOperationSchema.validate(input);
-      expect(validated).toEqual(input);
+      expect(validated).toEqual({
+        ...input,
+        granularity: LENS_HISTOGRAM_GRANULARITY_DEFAULT_VALUE,
+        include_empty_rows: LENS_HISTOGRAM_EMPTY_ROWS_DEFAULT,
+      });
     });
 
     it('enforces granularity limits', () => {
@@ -184,16 +268,20 @@ describe('Bucket Operation Schemas', () => {
         {
           operation: 'date_histogram',
           field: 'timestamp',
+          suggested_interval: 'auto',
+          include_empty_rows: true,
+          use_original_time_range: true,
         },
         {
           operation: 'terms',
           fields: ['category'],
-          size: 5,
+          limit: LENS_TERMS_LIMIT_DEFAULT,
         },
         {
           operation: 'histogram',
           field: 'price',
-          granularity: 5,
+          granularity: LENS_HISTOGRAM_GRANULARITY_DEFAULT_VALUE,
+          include_empty_rows: LENS_HISTOGRAM_EMPTY_ROWS_DEFAULT,
         },
         {
           operation: 'range',
@@ -205,7 +293,7 @@ describe('Bucket Operation Schemas', () => {
           filters: [
             {
               label: 'Filter',
-              filter: { language: 'kuery', query: 'status:active' },
+              filter: { language: 'kql', expression: 'status:active' },
             },
           ],
         },

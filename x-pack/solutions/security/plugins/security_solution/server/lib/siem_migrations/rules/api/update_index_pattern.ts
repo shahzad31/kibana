@@ -6,7 +6,7 @@
  */
 
 import type { IKibanaResponse, Logger } from '@kbn/core/server';
-import { buildRouteValidationWithZod } from '@kbn/zod-helpers';
+import { buildRouteValidationWithZod } from '@kbn/zod-helpers/v4';
 import type { UpdateRuleMigrationIndexPatternResponse } from '../../../../../common/siem_migrations/model/api/rules/rule_migration.gen';
 import {
   UpdateRuleMigrationIndexPatternRequestParams,
@@ -14,10 +14,10 @@ import {
 } from '../../../../../common/siem_migrations/model/api/rules/rule_migration.gen';
 import { SIEM_RULE_MIGRATION_UPDATE_INDEX_PATTERN_PATH } from '../../../../../common/siem_migrations/constants';
 import type { SecuritySolutionPluginRouter } from '../../../../types';
-import { authz } from '../../common/utils/authz';
-import { withLicense } from '../../common/utils/with_license';
-import { withExistingMigration } from './util/with_existing_migration_id';
-import { SiemMigrationAuditLogger } from '../../common/utils/audit';
+import { authz } from './util/authz';
+import { withLicense } from '../../common/api/util/with_license';
+import { withExistingMigration } from '../../common/api/util/with_existing_migration_id';
+import { SiemMigrationAuditLogger } from '../../common/api/util/audit';
 
 export const registerSiemRuleMigrationsUpdateIndexPatternRoute = (
   router: SecuritySolutionPluginRouter,
@@ -62,7 +62,7 @@ export const registerSiemRuleMigrationsUpdateIndexPatternRoute = (
                 ids: ids ?? [],
               });
 
-              const stats = await ruleMigrationsClient.data.rules.updateIndexPattern(
+              const stats = await ruleMigrationsClient.data.items.updateIndexPattern(
                 migrationId,
                 indexPattern,
                 ids

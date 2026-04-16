@@ -33,11 +33,13 @@ import type { SavedObjectsServiceStart } from '@kbn/core-saved-objects-server';
 import { SavedObjectsService } from '@kbn/core-saved-objects-server-internal';
 import { I18nService } from '@kbn/core-i18n-server-internal';
 import { DeprecationsService } from '@kbn/core-deprecations-server-internal';
+import { UserActivityService } from '@kbn/core-user-activity-server-internal';
 import { CoreUsageDataService } from '@kbn/core-usage-data-server-internal';
 import { StatusService } from '@kbn/core-status-server-internal';
 import { UiSettingsService } from '@kbn/core-ui-settings-server-internal';
 import { CustomBrandingService } from '@kbn/core-custom-branding-server-internal';
 import { UserSettingsService } from '@kbn/core-user-settings-server-internal';
+import { DataStreamsService } from '@kbn/core-data-streams-server-internal';
 import {
   CoreRouteHandlerContext,
   PrebootCoreRouteHandlerContext,
@@ -60,8 +62,9 @@ import { CoreAppsService } from '@kbn/core-apps-server-internal';
 import { SecurityService } from '@kbn/core-security-server-internal';
 import { UserProfileService } from '@kbn/core-user-profile-server-internal';
 import { PricingService } from '@kbn/core-pricing-server-internal';
-import { CoreInjectionService } from '@kbn/core-di-internal';
-import { http as httpModule } from '@kbn/core-di-server-internal';
+import { CoreInjectionService } from '@kbn/core-di-server-internal';
+import { SpanStatusCode } from '@opentelemetry/api';
+import { withActiveSpan } from '@kbn/tracing-utils';
 import { registerServiceConfig } from './register_service_config';
 import { MIGRATION_EXCEPTION_CODE } from './constants';
 import { coreConfig, type CoreConfigType } from './core_config';
@@ -95,6 +98,7 @@ export class Server {
   private readonly coreUsageData: CoreUsageDataService;
   private readonly i18n: I18nService;
   private readonly deprecations: DeprecationsService;
+  private readonly userActivity: UserActivityService;
   private readonly executionContext: ExecutionContextService;
   private readonly prebootService: PrebootService;
   private readonly pricing: PricingService;
@@ -104,6 +108,7 @@ export class Server {
   private readonly security: SecurityService;
   private readonly userProfile: UserProfileService;
   private readonly injection: CoreInjectionService;
+  private readonly dataStreams: DataStreamsService;
 
   private readonly savedObjectsStartPromise: Promise<SavedObjectsServiceStart>;
   private resolveSavedObjectsStartPromise?: (value: SavedObjectsServiceStart) => void;
@@ -123,6 +128,13 @@ export class Server {
   ) {
     const constructorStartUptime = performance.now();
 
+    const serviceVersion =
+      env.packageInfo.buildFlavor === 'serverless'
+        ? env.packageInfo.buildShaShort
+        : env.packageInfo.version;
+    this.loggingSystem.setGlobalContext({
+      service: { version: serviceVersion, type: 'kibana', state: 'initializing' },
+    });
     this.logger = this.loggingSystem.asLoggerFactory();
     this.log = this.logger.get('server');
     this.configService = new ConfigService(rawConfigProvider, env, this.logger);
@@ -150,6 +162,7 @@ export class Server {
     this.coreUsageData = new CoreUsageDataService(core);
     this.i18n = new I18nService(core);
     this.deprecations = new DeprecationsService(core);
+    this.userActivity = new UserActivityService(core);
     this.executionContext = new ExecutionContextService(core);
     this.prebootService = new PrebootService(core);
     this.pricing = new PricingService(core);
@@ -158,6 +171,7 @@ export class Server {
     this.userSettingsService = new UserSettingsService(core);
     this.security = new SecurityService(core);
     this.userProfile = new UserProfileService(core);
+    this.dataStreams = new DataStreamsService(core);
 
     this.savedObjectsStartPromise = new Promise((resolve) => {
       this.resolveSavedObjectsStartPromise = resolve;
@@ -178,9 +192,29 @@ export class Server {
     const prebootStartUptime = performance.now();
     const prebootTransaction = apm.startTransaction('server-preboot', 'kibana-platform');
 
+    return withActiveSpan(
+      'server-preboot',
+      { attributes: { 'transaction.type': 'kibana-platform' } },
+      async () => {
+        try {
+          const corePreboot = await this.#preboot(disablePreboot);
+          prebootTransaction.end();
+          this.uptimePerStep.preboot = { start: prebootStartUptime, end: performance.now() };
+          return corePreboot;
+        } catch (error) {
+          prebootTransaction.end('error');
+          throw error;
+        }
+      }
+    );
+  }
+
+  async #preboot(disablePreboot: boolean) {
     // service required for plugin discovery
     const analyticsPreboot = this.analytics.preboot();
-    const environmentPreboot = await this.environment.preboot({ analytics: analyticsPreboot });
+    const environmentPreboot = await this.environment.preboot({
+      analytics: analyticsPreboot,
+    });
     const nodePreboot = await this.node.preboot({ loggingSystem: this.loggingSystem });
     this.nodeRoles = nodePreboot.roles;
 
@@ -208,8 +242,12 @@ export class Server {
       const contextServicePreboot = this.context.preboot({
         pluginDependencies: new Map([...pluginTree.asOpaqueIds]),
       });
+      const docLinksPreboot = this.docLinks.setup();
 
-      const httpPreboot = await this.http.preboot({ context: contextServicePreboot });
+      const httpPreboot = await this.http.preboot({
+        context: contextServicePreboot,
+        docLinks: docLinksPreboot,
+      });
 
       // setup i18n prior to any other service, to have translations ready
       const i18nPreboot = await this.i18n.preboot({ http: httpPreboot, pluginPaths });
@@ -256,10 +294,6 @@ export class Server {
 
       this.coreApp.preboot(corePreboot, uiPlugins);
     }
-
-    prebootTransaction.end();
-    this.uptimePerStep.preboot = { start: prebootStartUptime, end: performance.now() };
-
     return corePreboot;
   }
 
@@ -268,6 +302,24 @@ export class Server {
     const setupStartUptime = performance.now();
     const setupTransaction = apm.startTransaction('server-setup', 'kibana-platform');
 
+    return withActiveSpan(
+      'server-setup',
+      { attributes: { 'transaction.type': 'kibana-platform' } },
+      async () => {
+        try {
+          const coreSetup = await this.#setup();
+          setupTransaction.end();
+          this.uptimePerStep.setup = { start: setupStartUptime, end: performance.now() };
+          return coreSetup;
+        } catch (error) {
+          setupTransaction.end('error');
+          throw error;
+        }
+      }
+    );
+  }
+
+  async #setup() {
     const analyticsSetup = this.analytics.setup();
 
     registerRootEvents(analyticsSetup);
@@ -288,9 +340,14 @@ export class Server {
 
     const injectionSetup = this.injection.setup();
 
+    const loggingSetup = this.logging.setup();
+
+    const userActivitySetup = this.userActivity.setup({ logging: loggingSetup });
+
     const httpSetup = await this.http.setup({
       context: contextServiceSetup,
       executionContext: executionContextSetup,
+      userActivity: userActivitySetup,
     });
 
     // setup i18n prior to any other service, to have translations ready
@@ -302,7 +359,11 @@ export class Server {
       analytics: analyticsSetup,
       http: httpSetup,
       executionContext: executionContextSetup,
+      security: securitySetup,
+      loggingSystem: this.loggingSystem,
     });
+
+    const dataStreamsSetup = await this.dataStreams.setup();
 
     const metricsSetup = await this.metrics.setup({
       http: httpSetup,
@@ -320,8 +381,6 @@ export class Server {
       savedObjectsStartPromise: this.savedObjectsStartPromise,
       changedDeprecatedConfigPath$: this.configService.getDeprecatedConfigPath$(),
     });
-
-    const loggingSetup = this.logging.setup();
 
     const deprecationsSetup = await this.deprecations.setup({
       http: httpSetup,
@@ -353,6 +412,7 @@ export class Server {
       httpRateLimiter: httpRateLimiterSetup,
       metrics: metricsSetup,
       coreUsageData: coreUsageDataSetup,
+      loggingSystem: this.loggingSystem,
     });
 
     const customBrandingSetup = this.customBranding.setup();
@@ -397,16 +457,15 @@ export class Server {
       logging: loggingSetup,
       metrics: metricsSetup,
       deprecations: deprecationsSetup,
+      userActivity: userActivitySetup,
       coreUsageData: coreUsageDataSetup,
       pricing: pricingSetup,
       userSettings: userSettingsServiceSetup,
       security: securitySetup,
       userProfile: userProfileSetup,
       injection: injectionSetup,
+      dataStreams: dataStreamsSetup,
     };
-
-    const container = injectionSetup.getContainer();
-    container.loadSync(httpModule);
 
     const pluginsSetup = await this.plugins.setup(coreSetup);
     this.#pluginsInitialized = pluginsSetup.initialized;
@@ -421,8 +480,6 @@ export class Server {
     this.registerCoreContext(coreSetup);
     await this.coreApp.setup(coreSetup, uiPlugins);
 
-    setupTransaction.end();
-    this.uptimePerStep.setup = { start: setupStartUptime, end: performance.now() };
     return coreSetup;
   }
 
@@ -430,7 +487,38 @@ export class Server {
     this.log.debug('starting server');
     const startStartUptime = performance.now();
     const startTransaction = apm.startTransaction('server-start', 'kibana-platform');
+    return withActiveSpan(
+      'server-start',
+      { attributes: { 'transaction.type': 'kibana-platform' } },
+      async (span) => {
+        try {
+          const coreStart = await this.#start(startTransaction);
+          startTransaction.end();
+          this.uptimePerStep.start = { start: startStartUptime, end: performance.now() };
 
+          reportKibanaStartedEvent({
+            uptimeSteps: this.uptimePerStep as UptimeSteps,
+            analytics: coreStart.analytics,
+          });
+
+          return coreStart;
+        } catch (error) {
+          if (error instanceof CriticalError && error.code === MIGRATION_EXCEPTION_CODE) {
+            // Intentionally setting this span as sucessful as this is not an error condition.
+            // The `withActiveSpan` wrapper utility won't reset it to error because we're ending the span (and it checks that it's still recording before setting anything else).
+            span?.setStatus({ code: SpanStatusCode.OK });
+            span?.end();
+            startTransaction.end();
+          } else {
+            startTransaction.end('error');
+          }
+          throw error;
+        }
+      }
+    );
+  }
+
+  async #start(startTransaction: apm.Transaction) {
     const injectionStart = this.injection.start();
     const analyticsStart = this.analytics.start();
     const securityStart = this.security.start();
@@ -444,23 +532,43 @@ export class Server {
       waitTime: elasticsearchStart.metrics.elasticsearchWaitTime,
     };
 
-    const deprecationsStart = this.deprecations.start();
-    const soStartSpan = startTransaction.startSpan('saved_objects.migration', 'migration');
-    const savedObjectsStart = await this.savedObjects.start({
+    const dataStreamsStart = await this.dataStreams.start({
       elasticsearch: elasticsearchStart,
-      pluginsInitialized: this.#pluginsInitialized,
-      docLinks: docLinkStart,
-      node: await this.node.start(),
     });
-    this.uptimePerStep.savedObjects = {
-      migrationTime: savedObjectsStart.metrics.migrationDuration,
-    };
-    await this.resolveSavedObjectsStartPromise!(savedObjectsStart);
 
-    soStartSpan?.end();
+    const deprecationsStart = this.deprecations.start();
+    const userActivityStart = this.userActivity.start();
+    const soStartSpan = startTransaction.startSpan('saved_objects.migration', 'migration');
+    const savedObjectsStart = await withActiveSpan(
+      'saved_objects.migration',
+      {
+        attributes: {
+          'transaction.type': 'migration',
+        },
+      },
+      async () => {
+        try {
+          const _savedObjectsStart = await this.savedObjects.start({
+            elasticsearch: elasticsearchStart,
+            pluginsInitialized: this.#pluginsInitialized,
+            docLinks: docLinkStart,
+            node: await this.node.start(),
+          });
+          this.uptimePerStep.savedObjects = {
+            migrationTime: _savedObjectsStart.metrics.migrationDuration,
+          };
+          await this.resolveSavedObjectsStartPromise!(_savedObjectsStart);
+          soStartSpan?.end();
+          return _savedObjectsStart;
+        } catch (error) {
+          soStartSpan?.setOutcome('failure');
+          soStartSpan?.end();
+          throw error;
+        }
+      }
+    );
 
     if (this.nodeRoles?.migrator === true) {
-      startTransaction.end();
       this.log.info('Detected migrator node role; shutting down Kibana...');
       throw new CriticalError(
         'Migrations completed, shutting down Kibana',
@@ -474,6 +582,9 @@ export class Server {
     const customBrandingStart = this.customBranding.start();
     const metricsStart = await this.metrics.start();
     const httpStart = this.http.getStartContract();
+    httpStart.setRedactedSessionIdGetter((request) =>
+      securityStart.authc.getRedactedSessionId(request)
+    );
     const coreUsageDataStart = this.coreUsageData.start({
       elasticsearch: elasticsearchStart,
       savedObjects: savedObjectsStart,
@@ -504,27 +615,21 @@ export class Server {
       savedObjects: savedObjectsStart,
       uiSettings: uiSettingsStart,
       coreUsageData: coreUsageDataStart,
+      userActivity: userActivityStart,
       deprecations: deprecationsStart,
       security: securityStart,
       userProfile: userProfileStart,
       pricing: pricingStart,
       injection: injectionStart,
+      dataStreams: dataStreamsStart,
     };
 
     this.coreApp.start(this.coreStart);
 
-    await this.plugins.start(this.coreStart);
+    const { contracts } = await this.plugins.start(this.coreStart);
+    this.coreStart._plugins = contracts;
 
     await this.http.start();
-
-    startTransaction.end();
-
-    this.uptimePerStep.start = { start: startStartUptime, end: performance.now() };
-
-    reportKibanaStartedEvent({
-      uptimeSteps: this.uptimePerStep as UptimeSteps,
-      analytics: analyticsStart,
-    });
 
     return this.coreStart;
   }

@@ -76,6 +76,7 @@ export function AlertDetailsAppSection({ rule, alert, timeZone }: AlertDetailsAp
   if (!from || !to) {
     return (
       <EuiCallOut
+        announceOnMount
         title={
           <FormattedMessage
             id="xpack.apm.alertDetails.error.toastTitle"
@@ -118,8 +119,9 @@ export function AlertDetailsAppSection({ rule, alert, timeZone }: AlertDetailsAp
               timeZone={timeZone}
               latencyAggregationType={latencyAggregationType}
               comparisonEnabled={false}
-              offset={''}
+              offset=""
               threshold={thresholdComponent}
+              ruleTypeId={alertRuleTypeId}
             />
             <EuiSpacer size="s" />
             <EuiFlexGroup direction="row" gutterSize="s">
@@ -132,8 +134,9 @@ export function AlertDetailsAppSection({ rule, alert, timeZone }: AlertDetailsAp
                 end={to}
                 comparisonChartTheme={comparisonChartTheme}
                 comparisonEnabled={false}
-                offset={''}
+                offset=""
                 timeZone={timeZone}
+                ruleTypeId={alertRuleTypeId}
               />
               <FailedTransactionChart
                 transactionType={transactionType}
@@ -144,6 +147,7 @@ export function AlertDetailsAppSection({ rule, alert, timeZone }: AlertDetailsAp
                 end={to}
                 comparisonChartTheme={comparisonChartTheme}
                 timeZone={timeZone}
+                ruleTypeId={alertRuleTypeId}
               />
             </EuiFlexGroup>
           </EuiFlexItem>

@@ -31,6 +31,7 @@ jest.mock('@elastic/eui', () => ({
 
 // Mock for discover-utils UI_SETTINGS in case META_FIELDS is imported from there
 jest.mock('@kbn/discover-utils', () => ({
+  ...jest.requireActual('@kbn/discover-utils/src/constants'),
   UI_SETTINGS: {
     META_FIELDS: 'metaFields',
     SORT_DEFAULT_ORDER_SETTING: 'discover:sort:defaultOrder',
@@ -68,13 +69,17 @@ jest.mock('react-router', () => ({
   }),
   withRouter: jest.fn(),
 }));
+
 jest.mock('../../../../common/lib/kibana');
+
 jest.mock('../../../../sourcerer/containers');
+
 jest.mock('../../../../common/hooks/use_space_id', () => {
   return {
     useSpaceId: jest.fn().mockReturnValue('default'),
   };
 });
+
 jest.mock('../../../../data_view_manager/hooks/use_data_view', () => ({
   useDataView: jest.fn().mockReturnValue({
     dataView: {
@@ -84,9 +89,7 @@ jest.mock('../../../../data_view_manager/hooks/use_data_view', () => ({
     status: 'ready',
   }),
 }));
-jest.mock('../../use_kibana_feature_flags', () => ({
-  useKibanaFeatureFlags: () => mockUseKibanaFeatureFlags(),
-}));
+
 jest.mock('../../../../common/lib/kuery', () => ({
   convertToBuildEsQuery: jest
     .fn()
@@ -138,9 +141,6 @@ const defaultProps = {
 const mockUseKibana = useKibana as jest.MockedFunction<typeof useKibana>;
 const mockUseSourcererDataView: jest.MockedFunction<typeof useSourcererDataView> =
   useSourcererDataView as jest.MockedFunction<typeof useSourcererDataView>;
-const mockUseKibanaFeatureFlags = jest.fn().mockReturnValue({
-  attackDiscoveryAlertsEnabled: true,
-});
 
 describe('useSettingsView', () => {
   beforeEach(() => {
@@ -152,9 +152,6 @@ describe('useSettingsView', () => {
           query: {
             filterManager: mockFilterManager,
           },
-        },
-        featureFlags: {
-          getBooleanValue: jest.fn().mockReturnValue(true),
         },
         lens: {
           EmbeddableComponent: () => <div data-test-subj="mockEmbeddableComponent" />,

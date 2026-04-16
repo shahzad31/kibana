@@ -9,12 +9,12 @@ import { euiPaletteColorBlind } from '@elastic/eui';
 import { ProcessorEvent } from '@kbn/observability-plugin/common';
 import type { Dictionary } from 'lodash';
 import { first, flatten, groupBy, isEmpty, sortBy, uniq } from 'lodash';
+import type { Error } from '@kbn/apm-types';
 import type { IWaterfallLegend } from '../../../../../../../../common/waterfall/legend';
 import { WaterfallLegendType } from '../../../../../../../../common/waterfall/legend';
 import { isOpenTelemetryAgentName } from '../../../../../../../../common/agent_name';
-import type { CriticalPathSegment } from '../../../../../../../../common/critical_path/types';
+import type { CriticalPathSegment } from '../../../../../../shared/trace_waterfall/critical_path';
 import type {
-  WaterfallError,
   WaterfallSpan,
   WaterfallTransaction,
 } from '../../../../../../../../common/waterfall/typings';
@@ -78,7 +78,7 @@ interface IWaterfallItemBase<TDocument, TDoctype> {
 }
 
 export type IWaterfallError = Omit<
-  IWaterfallItemBase<WaterfallError, 'error'>,
+  IWaterfallItemBase<Error, 'error'>,
   'duration' | 'legendValues' | 'spanLinksCount'
 >;
 
@@ -158,19 +158,19 @@ export function getSpanItem(span: WaterfallSpan, linkedChildrenCount: number = 0
 }
 
 function getErrorItem(
-  error: WaterfallError,
+  error: Error,
   items: IWaterfallItem[],
   entryWaterfallTransaction?: IWaterfallTransaction
 ): IWaterfallError {
   const entryTimestamp = entryWaterfallTransaction?.doc.timestamp.us ?? 0;
-  const parent = items.find((waterfallItem) => waterfallItem.id === error.parent?.id) as
+  const parent = items?.find((waterfallItem) => waterfallItem.id === error.parent?.id) as
     | IWaterfallSpanOrTransaction
     | undefined;
 
   const errorItem: IWaterfallError = {
     docType: 'error',
     doc: error,
-    id: error.error.id,
+    id: error.error.id ?? error.id,
     parent,
     parentId: parent?.id,
     offset: error.timestamp.us - entryTimestamp,
@@ -387,7 +387,7 @@ const getEntryWaterfallTransaction = (
   entryTransactionId: string,
   waterfallItems: IWaterfallItem[]
 ): IWaterfallTransaction | undefined =>
-  waterfallItems.find(
+  waterfallItems?.find(
     (item) => item.docType === 'transaction' && item.id === entryTransactionId
   ) as IWaterfallTransaction;
 
@@ -431,6 +431,10 @@ function getWaterfallErrors(
   { 'parentId': 2 }
   */
 function getErrorCountByParentId(errorDocs: TraceAPIResponse['traceItems']['errorDocs']) {
+  if (!Array.isArray(errorDocs)) {
+    return {};
+  }
+
   return errorDocs.reduce<Record<string, number>>((acc, doc) => {
     const parentId = doc.parent?.id;
 
@@ -519,7 +523,7 @@ export function getWaterfall(apiResponse: TraceAPIResponse): IWaterfall {
     traceItems.spanLinksCountById
   );
 
-  const entryWaterfallTransaction = getEntryWaterfallTransaction(
+  let entryWaterfallTransaction: IWaterfallTransaction | undefined = getEntryWaterfallTransaction(
     entryTransaction.transaction.id,
     waterfallItems
   );
@@ -529,10 +533,14 @@ export function getWaterfall(apiResponse: TraceAPIResponse): IWaterfall {
     reparentOrphanItems(orphanItemsIds, reparentSpans(waterfallItems), entryWaterfallTransaction)
   );
 
+  const rootWaterfallTransaction = getRootWaterfallTransaction(childrenByParentId);
+
+  if (!entryWaterfallTransaction && rootWaterfallTransaction) {
+    entryWaterfallTransaction = rootWaterfallTransaction;
+  }
+
   const items = getOrderedWaterfallItems(childrenByParentId, entryWaterfallTransaction);
   const errorItems = getWaterfallErrors(traceItems.errorDocs, items, entryWaterfallTransaction);
-
-  const rootWaterfallTransaction = getRootWaterfallTransaction(childrenByParentId);
 
   const duration = getWaterfallDuration(items);
   const { legends, colorBy } = generateLegendsAndAssignColorsToWaterfall(items);
@@ -565,7 +573,7 @@ function getChildren({
   waterfallItemId: string;
   waterfall: IWaterfall;
   path: {
-    criticalPathSegmentsById: Dictionary<CriticalPathSegment[]>;
+    criticalPathSegmentsById: Dictionary<CriticalPathSegment<IWaterfallSpanOrTransaction>[]>;
     showCriticalPath: boolean;
   };
   rootId: string;
@@ -587,7 +595,7 @@ function buildTree({
   waterfall: IWaterfall;
   maxLevelOpen: number;
   path: {
-    criticalPathSegmentsById: Dictionary<CriticalPathSegment[]>;
+    criticalPathSegmentsById: Dictionary<CriticalPathSegment<IWaterfallSpanOrTransaction>[]>;
     showCriticalPath: boolean;
   };
 }) {
@@ -655,7 +663,7 @@ export function buildTraceTree({
   maxLevelOpen: number;
   isOpen: boolean;
   path: {
-    criticalPathSegmentsById: Dictionary<CriticalPathSegment[]>;
+    criticalPathSegmentsById: Dictionary<CriticalPathSegment<IWaterfallSpanOrTransaction>[]>;
     showCriticalPath: boolean;
   };
 }): IWaterfallNode | null {
@@ -711,7 +719,7 @@ export const updateTraceTreeNode = ({
   updatedNode: IWaterfallNodeFlatten;
   waterfall: IWaterfall;
   path: {
-    criticalPathSegmentsById: Dictionary<CriticalPathSegment[]>;
+    criticalPathSegmentsById: Dictionary<CriticalPathSegment<IWaterfallSpanOrTransaction>[]>;
     showCriticalPath: boolean;
   };
 }) => {

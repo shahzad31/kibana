@@ -9,6 +9,7 @@
 
 import { NumberFormat } from './number';
 import { FORMATS_UI_SETTINGS } from '../constants/ui_settings';
+import { NULL_LABEL } from '@kbn/field-formats-common';
 
 describe('NumberFormat', () => {
   const config: { [key: string]: string } = {
@@ -36,13 +37,13 @@ describe('NumberFormat', () => {
     ).toMatchInlineSnapshot(`"{\\"min\\":150,\\"max\\":1000,\\"sum\\":5000,\\"value_count\\":10}"`);
     expect(formatter.convert({ min: 150, max: 1000, sum: 5000, value_count: 10 }, 'html'))
       .toMatchInlineSnapshot(`
-    "{
-      \\"min\\": 150,
-      \\"max\\": 1000,
-      \\"sum\\": 5000,
-      \\"value_count\\": 10
-    }"
-  `);
+      "{
+        &quot;min&quot;: 150,
+        &quot;max&quot;: 1000,
+        &quot;sum&quot;: 5000,
+        &quot;value_count&quot;: 10
+      }"
+    `);
   });
 
   test('object input stringified', () => {
@@ -55,13 +56,23 @@ describe('NumberFormat', () => {
     expect(
       formatter.convert('{"min":-302.5,"max":702.3,"sum":200.0,"value_count":25}', 'html')
     ).toMatchInlineSnapshot(
-      `"{\\"min\\":-302.5,\\"max\\":702.3,\\"sum\\":200.0,\\"value_count\\":25}"`
+      `"{&quot;min&quot;:-302.5,&quot;max&quot;:702.3,&quot;sum&quot;:200.0,&quot;value_count&quot;:25}"`
     );
   });
 
   test('null input', () => {
     const formatter = new NumberFormat({}, getConfig);
-    expect(formatter.convert(null)).toMatchInlineSnapshot(`"-"`);
-    expect(formatter.convert(null, 'html')).toMatchInlineSnapshot(`" - "`);
+    expect(formatter.convert(null)).toMatchInlineSnapshot(`"${NULL_LABEL}"`);
+    expect(formatter.convert(null, 'html')).toMatchInlineSnapshot(
+      `"<span class=\\"ffString__emptyValue\\">${NULL_LABEL}</span>"`
+    );
+  });
+
+  test('escapes HTML characters in html context', () => {
+    const formatter = new NumberFormat({}, getConfig);
+    const objWithHtml = { value: '<script>alert("test")</script>' };
+    expect(formatter.convert(objWithHtml, 'html')).toBe(
+      '{\n  &quot;value&quot;: &quot;&lt;script&gt;alert(\\&quot;test\\&quot;)&lt;/script&gt;&quot;\n}'
+    );
   });
 });

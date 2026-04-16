@@ -20,6 +20,8 @@ import {
   htmlIdGenerator,
   keys,
   useEuiTheme,
+  EuiFormPrepend,
+  EuiFormAppend,
 } from '@elastic/eui';
 import type { IFieldFormat } from '@kbn/field-formats-plugin/common';
 import {
@@ -28,8 +30,8 @@ import {
   NewBucketButton,
 } from '@kbn/visualization-ui-components';
 import { css } from '@emotion/react';
+import type { RangeTypeLens } from '@kbn/lens-common';
 import { useDebounceWithOptions } from '../../../../../shared_components';
-import type { RangeTypeLens } from './ranges';
 import { isValidRange } from './ranges';
 import { FROM_PLACEHOLDER, TO_PLACEHOLDER, TYPING_DEBOUNCE_TIME } from './constants';
 import { LabelInput } from '../shared_components';
@@ -117,7 +119,7 @@ export const RangePopover = ({
               }}
               append={
                 <EuiToolTip content={lteTooltipContent}>
-                  <EuiText size="s">{lteAppendLabel}</EuiText>
+                  <EuiFormAppend label={lteAppendLabel} tabIndex={0} />
                 </EuiToolTip>
               }
               onKeyDown={({ key }: React.KeyboardEvent<HTMLInputElement>) => {
@@ -155,7 +157,7 @@ export const RangePopover = ({
               }}
               prepend={
                 <EuiToolTip content={ltTooltipContent}>
-                  <EuiText size="s">{ltPrependLabel}</EuiText>
+                  <EuiFormPrepend label={ltPrependLabel} tabIndex={0} />
                 </EuiToolTip>
               }
               compressed

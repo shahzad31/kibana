@@ -79,6 +79,33 @@ export class Plugin {
       management,
       mappings,
     });
+    core.savedObjects.registerType({
+      name: 'nestedtype',
+      hidden: false,
+      namespaceType: 'multiple',
+      management,
+      mappings: {
+        properties: {
+          title: { type: 'text' },
+          author: { type: 'keyword' },
+          comments: {
+            type: 'nested',
+            properties: {
+              user: { type: 'keyword' },
+              message: { type: 'text' },
+              date: { type: 'date' },
+              rating: { type: 'integer' },
+              metadata: {
+                properties: {
+                  author: { type: 'text' },
+                  tag: { type: 'keyword' },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   public start() {

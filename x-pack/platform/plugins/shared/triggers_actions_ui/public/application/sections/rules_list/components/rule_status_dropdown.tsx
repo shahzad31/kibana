@@ -188,7 +188,7 @@ export const RuleStatusDropdown: React.FunctionComponent<ComponentOpts> = ({
             : moment(new Date(rule.isSnoozedUntil!)).format(SNOOZE_END_TIME_FORMAT)
         }
       >
-        <EuiText color="subdued" size="xs">
+        <EuiText tabIndex={0} color="subdued" size="xs">
           {rule.muteAll ? INDEFINITELY : moment(new Date(rule.isSnoozedUntil!)).fromNow(true)}
         </EuiText>
       </EuiToolTip>
@@ -205,11 +205,9 @@ export const RuleStatusDropdown: React.FunctionComponent<ComponentOpts> = ({
       data-test-subj="ruleStatusDropdownBadge"
       color={badgeColor}
       iconSide="right"
-      iconType={!isUpdating && isEditable ? 'arrowDown' : undefined}
+      iconType={!isUpdating && isEditable ? 'chevronSingleDown' : undefined}
       onClick={onClickBadge}
-      iconOnClick={onClickBadge}
       onClickAriaLabel={OPEN_MENU_ARIA_LABEL}
-      iconOnClickAriaLabel={OPEN_MENU_ARIA_LABEL}
       isDisabled={isUpdating}
     >
       {badgeMessage}

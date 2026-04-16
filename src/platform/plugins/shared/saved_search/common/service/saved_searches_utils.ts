@@ -10,11 +10,10 @@
 import type { SavedObjectReference } from '@kbn/core-saved-objects-server';
 import type { SerializedSearchSourceFields } from '@kbn/data-plugin/common';
 import { pick } from 'lodash';
-import type { SavedSearch, SavedSearchAttributes } from '..';
-import { extractTabs, fromSavedSearchAttributes as fromSavedSearchAttributesCommon } from '..';
-import type { SerializableSavedSearch } from '../types';
-
-export { getSavedSearchFullPathUrl, getSavedSearchUrl } from '..';
+import type { SavedSearch } from '..';
+import { fromSavedSearchAttributes as fromSavedSearchAttributesCommon } from '../saved_searches_utils';
+import type { SavedSearchAttributes, SerializableSavedSearch } from '../types';
+import { extractTabs } from './extract_tabs';
 
 export const fromSavedSearchAttributes = (
   id: string | undefined,
@@ -43,12 +42,14 @@ export const toSavedSearchAttributes = (
     description: savedSearch.description ?? '',
     grid: savedSearch.grid ?? {},
     hideChart: savedSearch.hideChart ?? false,
+    hideTable: savedSearch.hideTable ?? false,
     viewMode: savedSearch.viewMode,
     hideAggregatedPreview: savedSearch.hideAggregatedPreview,
     rowHeight: savedSearch.rowHeight,
     headerRowHeight: savedSearch.headerRowHeight,
     isTextBasedQuery: savedSearch.isTextBasedQuery ?? false,
     usesAdHocDataView: savedSearch.usesAdHocDataView,
+    controlGroupJson: savedSearch.controlGroupJson,
     timeRestore: savedSearch.timeRestore ?? false,
     timeRange: savedSearch.timeRange ? pick(savedSearch.timeRange, ['from', 'to']) : undefined,
     refreshInterval: savedSearch.refreshInterval,
@@ -56,5 +57,6 @@ export const toSavedSearchAttributes = (
     sampleSize: savedSearch.sampleSize,
     density: savedSearch.density,
     breakdownField: savedSearch.breakdownField,
+    chartInterval: savedSearch.chartInterval,
     visContext: savedSearch.visContext,
-  }) as SavedSearchAttributes;
+  });

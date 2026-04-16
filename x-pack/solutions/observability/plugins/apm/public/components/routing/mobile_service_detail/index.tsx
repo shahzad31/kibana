@@ -162,15 +162,19 @@ export const mobileServiceDetailRoute = {
             element: <TransactionDetails />,
             params: t.type({
               query: t.intersection([
-                t.type({
-                  transactionName: t.string,
-                  comparisonEnabled: toBooleanRt,
-                  showCriticalPath: toBooleanRt,
-                }),
+                t.intersection([
+                  t.type({
+                    comparisonEnabled: toBooleanRt,
+                    showCriticalPath: toBooleanRt,
+                  }),
+                  t.partial({ transactionName: t.string }),
+                ]),
                 t.partial({
                   traceId: t.string,
                   transactionId: t.string,
                   flyoutDetailTab: t.string,
+                  sampleRangeTo: toNumberRt,
+                  sampleRangeFrom: toNumberRt,
                 }),
                 offsetRt,
               ]),
@@ -252,7 +256,7 @@ export const mobileServiceDetailRoute = {
         }),
         element: <ServiceMapServiceDetail />,
         searchBarOptions: {
-          hidden: true,
+          showTimeComparison: true,
         },
       }),
       '/mobile-services/{serviceName}/logs': page({

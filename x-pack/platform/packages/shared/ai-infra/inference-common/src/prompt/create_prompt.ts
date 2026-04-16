@@ -5,12 +5,12 @@
  * 2.0.
  */
 
-import type { z } from '@kbn/zod';
+import type { z } from '@kbn/zod/v4';
 import type { Prompt, PromptFactory, PromptVersion } from './types';
 
 export function createPrompt<TInput>(init: {
   name: string;
-  description: string;
+  description?: string;
   input: z.Schema<TInput>;
 }): PromptFactory<TInput, []> {
   function inner<TVersions extends PromptVersion[], TNextVersions extends PromptVersion[]>(

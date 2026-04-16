@@ -9,6 +9,7 @@
 
 import type {
   BulkOperationContainer,
+  BulkOperationType,
   IndexResponse,
   IndicesIndexState,
   IndicesIndexTemplate,
@@ -21,6 +22,7 @@ import { isResponseError } from '@kbn/es-errors';
 import { last, mapValues, padStart } from 'lodash';
 import type { DiagnosticResult } from '@elastic/elasticsearch';
 import { errors } from '@elastic/elasticsearch';
+import type { TransportRequestOptions } from '@elastic/transport';
 import type {
   IndexStorageSettings,
   StorageClientBulkResponse,
@@ -37,19 +39,22 @@ import type {
   StorageClientClean,
   StorageClientCleanResponse,
   InternalIStorageClient,
+  StorageTransportOptions,
 } from '../..';
 import { getSchemaVersion } from '../get_schema_version';
 import type { StorageMappingProperty } from '../../types';
+import { BulkOperationError } from '../errors';
 
 function getAliasName(name: string) {
   return name;
 }
 
-function getBackingIndexPattern(name: string) {
+function getIndexPattern(name: string) {
   return `${name}-*`;
 }
 
-function getBackingIndexName(name: string, count: number) {
+/** Creates names like: .my-index-0000001 */
+function getIndexName(name: string, count: number) {
   const countId = padStart(count.toString(), 6, '0');
   return `${name}-${countId}`;
 }
@@ -65,7 +70,11 @@ function toElasticsearchMappingProperty(property: StorageMappingProperty): Mappi
 }
 
 function catchConflictError(error: Error) {
-  if (isResponseError(error) && error.statusCode === 409) {
+  if (
+    isResponseError(error) &&
+    error.statusCode === 400 &&
+    error.body?.error?.type === 'resource_already_exists_exception'
+  ) {
     return;
   }
   throw error;
@@ -89,6 +98,12 @@ function wrapEsCall<T>(p: Promise<T>): Promise<T> {
   });
 }
 
+function optionalTransportArgs(
+  transportOptions?: StorageTransportOptions
+): [] | [TransportRequestOptions] {
+  return transportOptions ? [transportOptions] : [];
+}
+
 export interface StorageIndexAdapterOptions<TApplicationType> {
   /**
    * If this callback is provided, it will be called on every _source before returned to the caller of the search or get methods.
@@ -102,15 +117,28 @@ export interface StorageIndexAdapterOptions<TApplicationType> {
  * Adapter for writing and reading documents to/from Elasticsearch,
  * using plain indices.
  *
+ * Index management is lazy — no resources are created at construction time.
+ *
+ * - **Writes** (`index`, `bulk`): ensure the index template, backing index,
+ *   and mappings all exist and are up-to-date before executing.
+ * - **Reads** (`search`, `get`): ensure mappings are up-to-date before
+ *   executing.
+ *
+ * Mapping updates are applied in-place via `putMapping` on the existing
+ * write index — no rollover is performed. This supports additive schema
+ * changes (new fields, new sub-fields) but not incompatible ones
+ * (type changes, field removal).
+ *
  * TODO:
- * - Index Lifecycle Management
- * - Schema upgrades w/ fallbacks
+ * - Schema upgrades w/ fallbacks (rollover + reindex for incompatible changes)
  */
 export class StorageIndexAdapter<
   TStorageSettings extends IndexStorageSettings,
   TApplicationType extends Partial<StorageDocumentOf<TStorageSettings>>
 > {
   private readonly logger: Logger;
+  private updateMappingsPromise: Promise<void> | undefined;
+
   constructor(
     private readonly esClient: ElasticsearchClient,
     logger: Logger,
@@ -153,7 +181,7 @@ export class StorageIndexAdapter<
         name: getIndexTemplateName(this.storage.name),
         create: false,
         allow_auto_create: false,
-        index_patterns: getBackingIndexPattern(this.storage.name),
+        index_patterns: getIndexPattern(this.storage.name),
         _meta: {
           version,
         },
@@ -191,7 +219,7 @@ export class StorageIndexAdapter<
   private async getExistingIndices() {
     return wrapEsCall(
       this.esClient.indices.get({
-        index: getBackingIndexPattern(this.storage.name),
+        index: getIndexPattern(this.storage.name),
         allow_no_indices: true,
       })
     );
@@ -225,32 +253,25 @@ export class StorageIndexAdapter<
     return writeIndex?.name;
   }
 
-  private async createNextBackingIndex(): Promise<void> {
+  private async createIndex(): Promise<void> {
     const writeIndex = await this.getCurrentWriteIndexName();
 
-    const nextIndexName = getBackingIndexName(
+    const indexName = getIndexName(
       this.storage.name,
       writeIndex ? parseInt(last(writeIndex.split('-'))!, 10) : 1
     );
 
     await wrapEsCall(
       this.esClient.indices.create({
-        index: nextIndexName,
+        index: indexName,
       })
     ).catch(catchConflictError);
   }
 
   private async updateMappingsOfExistingIndex({ name }: { name: string }) {
     const simulateIndexTemplateResponse = await this.esClient.indices.simulateIndexTemplate({
-      name: getBackingIndexName(this.storage.name, 999999),
+      name: getIndexName(this.storage.name, 999999),
     });
-
-    if (simulateIndexTemplateResponse.template.settings) {
-      await this.esClient.indices.putSettings({
-        index: name,
-        settings: simulateIndexTemplateResponse.template.settings,
-      });
-    }
 
     if (simulateIndexTemplateResponse.template.mappings) {
       await this.esClient.indices.putMapping({
@@ -261,33 +282,45 @@ export class StorageIndexAdapter<
   }
 
   /**
+   * If a write index already exists and its mappings are stale,
+   * updates the index template and pushes the new mappings.
+   * No-op when no index exists yet (preserving lazy-write semantics)
+   * or when mappings are already up-to-date.
+   */
+  private async updateMappingsIfNeeded(): Promise<void> {
+    const expectedSchemaVersion = getSchemaVersion(this.storage);
+
+    const writeIndex = await this.getCurrentWriteIndex();
+    if (!writeIndex) {
+      return;
+    }
+
+    if (writeIndex.state.mappings?._meta?.version !== expectedSchemaVersion) {
+      this.logger.debug(
+        `Updating index template and mappings of existing index due to schema version mismatch`
+      );
+      await this.createOrUpdateIndexTemplate();
+      await this.updateMappingsOfExistingIndex({ name: writeIndex.name });
+    }
+  }
+
+  /**
    * Validates whether:
    * - an index template exists
    * - the index template has the right version (if not, update it)
-   * - a write index exists (if it doesn't, create it)
-   * - the write index has the right version (if not, update it)
+   * - the index exists (if it doesn't, create it)
+   * - the index has the right version (if not, update it)
    */
   private async validateComponentsBeforeWriting<T>(cb: () => Promise<T>): Promise<T> {
-    const [writeIndex, existingIndexTemplate] = await Promise.all([
-      this.getCurrentWriteIndex(),
-      this.getExistingIndexTemplate(),
-    ]);
-
     const expectedSchemaVersion = getSchemaVersion(this.storage);
+    await this.createOrUpdateIndexTemplate();
 
-    if (!existingIndexTemplate) {
-      this.logger.info(`Creating index template as it does not exist`);
-      await this.createOrUpdateIndexTemplate();
-    } else if (existingIndexTemplate._meta?.version !== expectedSchemaVersion) {
-      this.logger.info(`Updating existing index template`);
-      await this.createOrUpdateIndexTemplate();
-    }
-
+    const writeIndex = await this.getCurrentWriteIndex();
     if (!writeIndex) {
-      this.logger.info(`Creating first backing index`);
-      await this.createNextBackingIndex();
+      this.logger.debug(`Creating index`);
+      await this.createIndex();
     } else if (writeIndex?.state.mappings?._meta?.version !== expectedSchemaVersion) {
-      this.logger.info(`Updating mappings of existing write index due to schema version mismatch`);
+      this.logger.debug(`Updating mappings of existing index due to schema version mismatch`);
       await this.updateMappingsOfExistingIndex({
         name: writeIndex.name,
       });
@@ -296,114 +329,82 @@ export class StorageIndexAdapter<
     return await cb();
   }
 
-  /**
-   * Get items from all non-write indices for the specified ids.
-   */
-  private async getDanglingItems({ ids }: { ids: string[] }) {
-    if (!ids.length) {
-      return [];
-    }
-
-    const writeIndex = await this.getCurrentWriteIndexName();
-
-    if (writeIndex) {
-      const danglingItemsResponse = await this.search({
-        track_total_hits: false,
-        query: {
-          bool: {
-            filter: [{ terms: { _id: ids } }],
-            must_not: [
-              {
-                term: {
-                  _index: writeIndex,
-                },
-              },
-            ],
-          },
-        },
-        size: 10_000,
+  private async ensureMappingsBeforeReading<T>(cb: () => Promise<T>): Promise<T> {
+    if (!this.updateMappingsPromise) {
+      this.updateMappingsPromise = this.updateMappingsIfNeeded().catch((error) => {
+        this.updateMappingsPromise = undefined;
+        throw error;
       });
-
-      return danglingItemsResponse.hits.hits.map((hit) => ({
-        id: hit._id!,
-        index: hit._index,
-      }));
     }
-    return [];
+
+    await this.updateMappingsPromise;
+    return cb();
   }
 
-  private search: StorageClientSearch<TApplicationType> = async (request) => {
-    return (await wrapEsCall(
-      this.esClient
-        .search({
-          ...request,
-          index: this.getSearchIndexPattern(),
-          allow_no_indices: true,
-        })
-        .then((response) => {
-          return {
-            ...response,
-            hits: {
-              ...response.hits,
-              hits: response.hits.hits.map((hit) => ({
-                ...hit,
-                _source: this.maybeMigrateSource(hit._source),
-              })),
-            },
-          };
-        })
-        .catch((error): StorageClientSearchResponse<TApplicationType, any> => {
-          if (isNotFoundError(error)) {
+  private search: StorageClientSearch<TApplicationType> = async (request, transportOptions) => {
+    return this.ensureMappingsBeforeReading(async () => {
+      const searchRequest = {
+        ...request,
+        index: this.getSearchIndexPattern(),
+        allow_no_indices: true,
+      };
+      return (await wrapEsCall(
+        this.esClient
+          .search(searchRequest, ...optionalTransportArgs(transportOptions))
+          .then((response) => {
             return {
-              _shards: {
-                failed: 0,
-                successful: 0,
-                total: 0,
-              },
+              ...response,
               hits: {
-                hits: [],
-                total: {
-                  relation: 'eq',
-                  value: 0,
-                },
+                ...response.hits,
+                hits: response.hits.hits.map((hit) => ({
+                  ...hit,
+                  _source: this.maybeMigrateSource(hit._source),
+                })),
               },
-              timed_out: false,
-              took: 0,
             };
-          }
-          throw error;
-        })
-    )) as unknown as ReturnType<StorageClientSearch<TApplicationType>>;
+          })
+          .catch((error): StorageClientSearchResponse<TApplicationType, any> => {
+            if (isNotFoundError(error)) {
+              return {
+                _shards: {
+                  failed: 0,
+                  successful: 0,
+                  total: 0,
+                },
+                hits: {
+                  hits: [],
+                  total: {
+                    relation: 'eq',
+                    value: 0,
+                  },
+                },
+                timed_out: false,
+                took: 0,
+              };
+            }
+            throw error;
+          })
+      )) as unknown as ReturnType<StorageClientSearch<TApplicationType>>;
+    });
   };
 
-  private index: StorageClientIndex<TApplicationType> = async ({
-    id,
-    refresh = 'wait_for',
-    ...request
-  }): Promise<StorageClientIndexResponse> => {
+  private index: StorageClientIndex<TApplicationType> = async (
+    { id, refresh = 'wait_for', ...request },
+    transportOptions
+  ): Promise<StorageClientIndexResponse> => {
     const attemptIndex = async (): Promise<IndexResponse> => {
-      const [danglingItem] = id ? await this.getDanglingItems({ ids: [id] }) : [undefined];
-
-      const [indexResponse] = await Promise.all([
-        wrapEsCall(
-          this.esClient.index({
+      const indexResponse = await wrapEsCall(
+        this.esClient.index(
+          {
             ...request,
             id,
             refresh,
             index: this.getWriteTarget(),
             require_alias: true,
-          })
-        ),
-        danglingItem
-          ? wrapEsCall(
-              this.esClient.delete({
-                id: danglingItem.id,
-                index: danglingItem.index,
-                refresh,
-              })
-            )
-          : Promise.resolve(),
-      ]);
+          },
+          ...optionalTransportArgs(transportOptions)
+        )
+      );
 
       return indexResponse;
     };
@@ -415,11 +416,10 @@ export class StorageIndexAdapter<
     });
   };
 
-  private bulk: StorageClientBulk<TApplicationType> = ({
-    operations,
-    refresh = 'wait_for',
-    ...request
-  }): Promise<StorageClientBulkResponse> => {
+  private bulk: StorageClientBulk<TApplicationType> = (
+    { operations, refresh = 'wait_for', throwOnFail = false, ...request },
+    transportOptions
+  ): Promise<StorageClientBulkResponse> => {
     if (operations.length === 0) {
       this.logger.debug(`Bulk request with 0 operations is a noop`);
       return Promise.resolve({
@@ -448,40 +448,36 @@ export class StorageIndexAdapter<
     });
 
     const attemptBulk = async () => {
-      const indexedIds =
-        bulkOperations.flatMap((operation) => {
-          if (
-            'index' in operation &&
-            operation.index &&
-            typeof operation.index === 'object' &&
-            '_id' in operation.index &&
-            typeof operation.index._id === 'string'
-          ) {
-            return operation.index._id ?? [];
-          }
-          return [];
-        }) ?? [];
-
-      const danglingItems = await this.getDanglingItems({ ids: indexedIds });
-
-      if (danglingItems.length) {
-        this.logger.debug(`Deleting ${danglingItems.length} dangling items`);
-      }
-
       return wrapEsCall(
-        this.esClient.bulk({
-          ...request,
-          refresh,
-          operations: bulkOperations.concat(
-            danglingItems.map((item) => ({ delete: { _index: item.index, _id: item.id } }))
-          ),
-          index: this.getWriteTarget(),
-          require_alias: true,
-        })
+        this.esClient.bulk(
+          {
+            ...request,
+            refresh,
+            operations: bulkOperations,
+            index: this.getWriteTarget(),
+            require_alias: true,
+          },
+          ...optionalTransportArgs(transportOptions)
+        )
       );
     };
 
     return this.validateComponentsBeforeWriting(attemptBulk).then(async (response) => {
+      // Check for errors and throw if throwOnFail is true
+      if (throwOnFail) {
+        const erroredItems = response.items.filter((item) => {
+          const operation = Object.keys(item)[0] as BulkOperationType;
+          return item[operation]?.error;
+        });
+        if (erroredItems.length > 0) {
+          throw new BulkOperationError(
+            `Bulk operation failed for ${erroredItems.length} out of ${
+              response.items.length
+            } items: ${JSON.stringify(erroredItems)}`,
+            response
+          );
+        }
+      }
       return response;
     });
   };
@@ -516,11 +512,10 @@ export class StorageIndexAdapter<
     };
   };
 
-  private delete: StorageClientDelete = async ({
-    id,
-    refresh = 'wait_for',
-    ...request
-  }): Promise<StorageClientDeleteResponse> => {
+  private delete: StorageClientDelete = async (
+    { id, refresh = 'wait_for', ...request },
+    transportOptions
+  ): Promise<StorageClientDeleteResponse> => {
     this.logger.debug(`Deleting document with id ${id}`);
     const searchResponse = await this.search({
       track_total_hits: false,
@@ -542,12 +537,15 @@ export class StorageIndexAdapter<
 
     if (document) {
       await wrapEsCall(
-        this.esClient.delete({
-          ...request,
-          refresh,
-          id,
-          index: document._index,
-        })
+        this.esClient.delete(
+          {
+            ...request,
+            refresh,
+            id,
+            index: document._index,
+          },
+          ...optionalTransportArgs(transportOptions)
+        )
       );
 
       return { acknowledged: true, result: 'deleted' };
@@ -556,24 +554,30 @@ export class StorageIndexAdapter<
     return { acknowledged: true, result: 'not_found' };
   };
 
-  private get: StorageClientGet<TApplicationType> = async ({ id, ...request }) => {
-    const response = await this.search({
-      track_total_hits: false,
-      size: 1,
-      terminate_after: 1,
-      query: {
-        bool: {
-          filter: [
-            {
-              term: {
-                _id: id,
+  private get: StorageClientGet<TApplicationType> = async (
+    { id, ...request },
+    transportOptions
+  ) => {
+    const response = await this.search(
+      {
+        track_total_hits: false,
+        size: 1,
+        terminate_after: 1,
+        query: {
+          bool: {
+            filter: [
+              {
+                term: {
+                  _id: id,
+                },
               },
-            },
-          ],
+            ],
+          },
         },
+        ...request,
       },
-      ...request,
-    });
+      transportOptions
+    );
 
     const hit: SearchHit = response.hits.hits[0];
 
@@ -618,6 +622,10 @@ export class StorageIndexAdapter<
     return _source as TApplicationType;
   };
 
+  /**
+   * Checks whether the backing index exists. No mapping
+   * reconciliation is performed.
+   */
   private existsIndex: StorageClientExistsIndex = () => {
     return this.esClient.indices.exists({
       index: this.getSearchIndexPattern(),

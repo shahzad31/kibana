@@ -7,6 +7,11 @@
 
 import type { RouteSecurity } from '@kbn/core-http-server';
 
+import {
+  BulkRollbackAvailableCheckResponseSchema,
+  RollbackAvailableCheckResponseSchema,
+} from '../../../common/types/rest_spec/epm';
+
 import { parseExperimentalConfigValue } from '../../../common/experimental_features';
 import { API_VERSIONS } from '../../../common/constants';
 import type { FleetAuthz } from '../../../common';
@@ -25,13 +30,21 @@ import {
   GetInstalledPackagesRequestSchema,
   GetFileRequestSchema,
   GetInfoRequestSchema,
+  GetInfoWithoutVersionRequestSchema,
   GetBulkAssetsRequestSchema,
   InstallPackageFromRegistryRequestSchema,
+  InstallPackageFromRegistryWithoutVersionRequestSchema,
   InstallPackageByUploadRequestSchema,
   DeletePackageRequestSchema,
+  DeletePackageWithoutVersionRequestSchema,
   BulkInstallPackagesFromRegistryRequestSchema,
   GetStatsRequestSchema,
+  GetDependenciesRequestSchema,
+  GetDependenciesResponseSchema,
   UpdatePackageRequestSchema,
+  UpdatePackageWithoutVersionRequestSchema,
+  ReviewUpgradeRequestSchema,
+  ReviewUpgradeResponseSchema,
   ReauthorizeTransformRequestSchema,
   GetDataStreamsRequestSchema,
   CreateCustomIntegrationRequestSchema,
@@ -65,6 +78,11 @@ import {
   DeletePackageDatastreamAssetsResponseSchema,
   RollbackPackageRequestSchema,
   RollbackPackageResponseSchema,
+  GetKnowledgeBaseRequestSchema,
+  GetKnowledgeBaseResponseSchema,
+  BulkRollbackPackagesRequestSchema,
+  BulkRollbackPackagesResponseSchema,
+  InstallRuleAssetsRequestSchema,
 } from '../../types';
 import type { FleetConfigType } from '../../config';
 import { FLEET_API_PRIVILEGES } from '../../constants/api_privileges';
@@ -82,6 +100,7 @@ import {
   deletePackageHandler,
   bulkInstallPackagesFromRegistryHandler,
   getStatsHandler,
+  getDependenciesHandler,
   updatePackageHandler,
   getVerificationKeyIdHandler,
   reauthorizeTransformsHandler,
@@ -89,17 +108,23 @@ import {
   createCustomIntegrationHandler,
   getInputsHandler,
   updateCustomIntegrationHandler,
+  getKnowledgeBaseHandler,
   rollbackPackageHandler,
+  rollbackAvailableCheckHandler,
+  bulkRollbackAvailableCheckHandler,
+  reviewUpgradeHandler,
 } from './handlers';
 import { getFileHandler } from './file_handler';
 import {
   deletePackageKibanaAssetsHandler,
   installPackageKibanaAssetsHandler,
-} from './kibana_assets_handler';
+  installRuleAssetsHandler,
+} from './install_assets_handler';
 import {
   postBulkUpgradePackagesHandler,
   postBulkUninstallPackagesHandler,
   getOneBulkOperationPackagesHandler,
+  postBulkRollbackPackagesHandler,
 } from './bulk_handler';
 import { deletePackageDatastreamAssetsHandler } from './package_datastream_assets_handler';
 
@@ -137,7 +162,10 @@ export const READ_PACKAGE_INFO_SECURITY: RouteSecurity = {
 };
 
 export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType) => {
-  const experimentalFeatures = parseExperimentalConfigValue(config.enableExperimental);
+  const experimentalFeatures = parseExperimentalConfigValue(
+    config.enableExperimental || [],
+    config.experimentalFeatures || {}
+  );
 
   router.versioned
     .get({
@@ -155,9 +183,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetCategoriesRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetCategoriesResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -182,9 +212,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetPackagesRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetPackagesResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -209,9 +241,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetInstalledPackagesRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetInstalledPackagesResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -236,9 +270,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: {},
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetLimitedPackagesResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -263,15 +299,90 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetStatsRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetStatsResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
         },
       },
       getStatsHandler
+    );
+
+  router.versioned
+    .get({
+      path: EPM_API_ROUTES.DEPENDENCIES_PATTERN,
+      security: READ_PACKAGE_INFO_SECURITY,
+      summary: `Get package dependencies`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+        availability: {
+          stability: 'stable',
+          since: '9.4.0',
+        },
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        options: {
+          oasOperationObject: () => ({
+            responses: {
+              200: {
+                content: {
+                  'application/json': {
+                    examples: {
+                      dependenciesResponse: {
+                        value: {
+                          items: [
+                            { name: 'aws', version: '^2.0.0', title: 'AWS' },
+                            { name: 'system', version: '^1.0.0', title: 'System' },
+                          ],
+                        },
+                      },
+                      noDependenciesResponse: {
+                        value: {
+                          items: [],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              400: {
+                content: {
+                  'application/json': {
+                    examples: {
+                      packageNotFoundResponse: {
+                        value: {
+                          message: '[my-package-1.0.0] package not found in registry',
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        },
+        validate: {
+          request: GetDependenciesRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => GetDependenciesResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+      getDependenciesHandler
     );
 
   router.versioned
@@ -290,9 +401,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetInputsRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetInputsResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -317,15 +430,51 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetFileRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetFileResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
         },
       },
       getFileHandler
+    );
+
+  router.versioned
+    // @ts-ignore TODO move to kibana authz https://github.com/elastic/kibana/issues/203170
+    .get({
+      path: EPM_API_ROUTES.INFO_WITHOUT_VERSION_PATTERN,
+      fleetAuthz: (fleetAuthz: FleetAuthz): boolean =>
+        calculateRouteAuthz(
+          fleetAuthz,
+          getRouteRequiredAuthz('get', EPM_API_ROUTES.INFO_WITHOUT_VERSION_PATTERN)
+        ).granted,
+      summary: `Get a package`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: GetInfoWithoutVersionRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => GetInfoResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+      getInfoHandler
     );
 
   router.versioned
@@ -347,15 +496,87 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetInfoRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetInfoResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
         },
       },
       getInfoHandler
+    );
+
+  router.versioned
+    .get({
+      path: EPM_API_ROUTES.KNOWLEDGE_BASE_PATTERN,
+      fleetAuthz: (fleetAuthz: FleetAuthz): boolean =>
+        calculateRouteAuthz(
+          fleetAuthz,
+          getRouteRequiredAuthz('get', EPM_API_ROUTES.KNOWLEDGE_BASE_PATTERN)
+        ).granted,
+      security: {
+        authz: {
+          enabled: false,
+          reason:
+            'This route uses Fleet authorization via fleetAuthz instead of standard Kibana authorization',
+        },
+      },
+      summary: `Get all knowledge base content for a package`,
+      options: {
+        tags: ['internal', 'oas-tag:Elastic Package Manager (EPM)'],
+      },
+      access: 'internal',
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.internal.v1,
+        validate: {
+          request: GetKnowledgeBaseRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => GetKnowledgeBaseResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+      getKnowledgeBaseHandler
+    );
+
+  router.versioned
+    .put({
+      path: EPM_API_ROUTES.INFO_WITHOUT_VERSION_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Update package settings`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: UpdatePackageWithoutVersionRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => UpdatePackageResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+      updatePackageHandler
     );
 
   router.versioned
@@ -374,15 +595,118 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: UpdatePackageRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => UpdatePackageResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
         },
       },
       updatePackageHandler
+    );
+
+  router.versioned
+    .post({
+      path: EPM_API_ROUTES.REVIEW_UPGRADE_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Review a pending policy upgrade for a package with deprecations`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+        availability: {
+          since: '9.4.0',
+          stability: 'stable',
+        },
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        options: {
+          oasOperationObject: () => ({
+            requestBody: {
+              content: {
+                'application/json': {
+                  examples: {
+                    acceptUpgrade: {
+                      value: { action: 'accept', target_version: '2.0.0' },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              200: {
+                content: {
+                  'application/json': {
+                    examples: {
+                      successResponse: {
+                        value: { success: true },
+                      },
+                    },
+                  },
+                },
+              },
+              400: {
+                content: {
+                  'application/json': {
+                    examples: {
+                      badRequestResponse: {
+                        value: { message: 'Bad Request' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        },
+        validate: {
+          request: ReviewUpgradeRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => ReviewUpgradeResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+      reviewUpgradeHandler
+    );
+
+  router.versioned
+    .post({
+      path: EPM_API_ROUTES.INSTALL_FROM_REGISTRY_WITHOUT_VERSION_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Install a package from the registry`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: InstallPackageFromRegistryWithoutVersionRequestSchema,
+          response: {
+            200: {
+              body: () => InstallPackageResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
+            },
+          },
+        },
+      },
+      installPackageFromRegistryHandler
     );
 
   router.versioned
@@ -402,9 +726,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           response: {
             200: {
               body: () => InstallPackageResponseSchema,
+              description: 'OK: A successful request.',
             },
             400: {
               body: genericErrorResponse,
+              description: 'A bad request.',
             },
           },
         },
@@ -412,6 +738,34 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
       installPackageFromRegistryHandler
     );
 
+  router.versioned
+    .post({
+      path: EPM_API_ROUTES.INSTALL_RULE_ASSETS_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Install Kibana alert rule for a package`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: InstallRuleAssetsRequestSchema,
+          response: {
+            200: {
+              body: () => InstallKibanaAssetsResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
+            },
+          },
+        },
+      },
+      installRuleAssetsHandler
+    );
   router.versioned
     .post({
       path: EPM_API_ROUTES.INSTALL_KIBANA_ASSETS_PATTERN,
@@ -429,9 +783,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           response: {
             200: {
               body: () => InstallKibanaAssetsResponseSchema,
+              description: 'OK: A successful request.',
             },
             400: {
               body: genericErrorResponse,
+              description: 'A bad request.',
             },
           },
         },
@@ -456,9 +812,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           response: {
             200: {
               body: () => InstallKibanaAssetsResponseSchema,
+              description: 'OK: A successful request.',
             },
             400: {
               body: genericErrorResponse,
+              description: 'A bad request.',
             },
           },
         },
@@ -466,39 +824,70 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
       deletePackageKibanaAssetsHandler
     );
 
-  if (experimentalFeatures.installedIntegrationsTabularUI) {
-    router.versioned
-      .post({
-        path: EPM_API_ROUTES.BULK_UPGRADE_PATTERN,
-        security: INSTALL_PACKAGES_SECURITY,
-        summary: `Bulk upgrade packages`,
-        options: {
-          tags: ['oas-tag:Elastic Package Manager (EPM)'],
-        },
-      })
-      .addVersion(
-        {
-          version: API_VERSIONS.public.v1,
-          validate: {
-            request: BulkUpgradePackagesRequestSchema,
-            response: {
-              200: {
-                body: () => BulkUpgradePackagesResponseSchema,
-              },
-              400: {
-                body: genericErrorResponse,
-              },
+  router.versioned
+    .post({
+      path: EPM_API_ROUTES.BULK_UPGRADE_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Bulk upgrade packages`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: BulkUpgradePackagesRequestSchema,
+          response: {
+            200: {
+              body: () => BulkUpgradePackagesResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
             },
           },
         },
-        postBulkUpgradePackagesHandler
-      );
+      },
+      postBulkUpgradePackagesHandler
+    );
 
+  router.versioned
+    .post({
+      path: EPM_API_ROUTES.BULK_UNINSTALL_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Bulk uninstall packages`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: BulkUninstallPackagesRequestSchema,
+          response: {
+            200: {
+              body: () => BulkUpgradePackagesResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
+            },
+          },
+        },
+      },
+      postBulkUninstallPackagesHandler
+    );
+
+  if (experimentalFeatures.enablePackageRollback) {
     router.versioned
       .post({
-        path: EPM_API_ROUTES.BULK_UNINSTALL_PATTERN,
+        path: EPM_API_ROUTES.BULK_ROLLBACK_PATTERN,
         security: INSTALL_PACKAGES_SECURITY,
-        summary: `Bulk uninstall packages`,
+        summary: `Bulk rollback packages`,
         options: {
           tags: ['oas-tag:Elastic Package Manager (EPM)'],
         },
@@ -506,26 +895,73 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
       .addVersion(
         {
           version: API_VERSIONS.public.v1,
+          options: {
+            oasOperationObject: () => ({
+              requestBody: {
+                content: {
+                  'application/json': {
+                    examples: {
+                      bulkRollbackRequest: {
+                        value: {
+                          packages: [{ name: 'system' }],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              responses: {
+                200: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        successResponse: {
+                          value: {
+                            taskId: 'taskId',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                400: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        badRequestResponse: {
+                          value: {
+                            message: 'Bad Request',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
           validate: {
-            request: BulkUninstallPackagesRequestSchema,
+            request: BulkRollbackPackagesRequestSchema,
             response: {
               200: {
-                body: () => BulkUpgradePackagesResponseSchema,
+                body: () => BulkRollbackPackagesResponseSchema,
+                description: 'OK: A successful request.',
               },
               400: {
                 body: genericErrorResponse,
+                description: 'A bad request.',
               },
             },
           },
         },
-        postBulkUninstallPackagesHandler
+        postBulkRollbackPackagesHandler
       );
 
     router.versioned
       .get({
-        path: EPM_API_ROUTES.BULK_UNINSTALL_INFO_PATTERN,
+        path: EPM_API_ROUTES.BULK_ROLLBACK_INFO_PATTERN,
         security: INSTALL_PACKAGES_SECURITY,
-        summary: `Get Bulk uninstall packages details`,
+        summary: `Get Bulk rollback packages details`,
         options: {
           tags: ['oas-tag:Elastic Package Manager (EPM)'],
         },
@@ -533,41 +969,48 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
       .addVersion(
         {
           version: API_VERSIONS.public.v1,
+          options: {
+            oasOperationObject: () => ({
+              responses: {
+                200: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        successResponse: {
+                          value: {
+                            status: 'success',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                400: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        badRequestResponse: {
+                          value: {
+                            message: 'Bad Request',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
           validate: {
             request: GetOneBulkOperationPackagesRequestSchema,
             response: {
               200: {
                 body: () => GetOneBulkOperationPackagesResponseSchema,
+                description: 'OK: A successful request.',
               },
               400: {
                 body: genericErrorResponse,
-              },
-            },
-          },
-        },
-        getOneBulkOperationPackagesHandler
-      );
-
-    router.versioned
-      .get({
-        path: EPM_API_ROUTES.BULK_UPGRADE_INFO_PATTERN,
-        security: INSTALL_PACKAGES_SECURITY,
-        summary: `Get Bulk upgrade packages details`,
-        options: {
-          tags: ['oas-tag:Elastic Package Manager (EPM)'],
-        },
-      })
-      .addVersion(
-        {
-          version: API_VERSIONS.public.v1,
-          validate: {
-            request: GetOneBulkOperationPackagesRequestSchema,
-            response: {
-              200: {
-                body: () => GetOneBulkOperationPackagesResponseSchema,
-              },
-              400: {
-                body: genericErrorResponse,
+                description: 'A bad request.',
               },
             },
           },
@@ -575,6 +1018,64 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
         getOneBulkOperationPackagesHandler
       );
   }
+
+  router.versioned
+    .get({
+      path: EPM_API_ROUTES.BULK_UNINSTALL_INFO_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Get Bulk uninstall packages details`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: GetOneBulkOperationPackagesRequestSchema,
+          response: {
+            200: {
+              body: () => GetOneBulkOperationPackagesResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
+            },
+          },
+        },
+      },
+      getOneBulkOperationPackagesHandler
+    );
+
+  router.versioned
+    .get({
+      path: EPM_API_ROUTES.BULK_UPGRADE_INFO_PATTERN,
+      security: INSTALL_PACKAGES_SECURITY,
+      summary: `Get Bulk upgrade packages details`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: GetOneBulkOperationPackagesRequestSchema,
+          response: {
+            200: {
+              body: () => GetOneBulkOperationPackagesResponseSchema,
+              description: 'OK: A successful request.',
+            },
+            400: {
+              body: genericErrorResponse,
+              description: 'A bad request.',
+            },
+          },
+        },
+      },
+      getOneBulkOperationPackagesHandler
+    );
 
   router.versioned
     .post({
@@ -593,9 +1094,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           response: {
             200: {
               body: () => BulkInstallPackagesFromRegistryResponseSchema,
+              description: 'OK: A successful request.',
             },
             400: {
               body: genericErrorResponse,
+              description: 'A bad request.',
             },
           },
         },
@@ -625,9 +1128,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: InstallPackageByUploadRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => InstallPackageResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -652,15 +1157,54 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: CreateCustomIntegrationRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => InstallPackageResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
         },
       },
       createCustomIntegrationHandler
+    );
+
+  router.versioned
+    .delete({
+      path: EPM_API_ROUTES.DELETE_WITHOUT_VERSION_PATTERN,
+      security: {
+        authz: {
+          requiredPrivileges: [
+            FLEET_API_PRIVILEGES.INTEGRATIONS.ALL,
+            FLEET_API_PRIVILEGES.AGENT_POLICIES.ALL,
+          ],
+        },
+      },
+      summary: `Delete a package`,
+      options: {
+        tags: ['oas-tag:Elastic Package Manager (EPM)'],
+      },
+    })
+    .addVersion(
+      {
+        version: API_VERSIONS.public.v1,
+        validate: {
+          request: DeletePackageWithoutVersionRequestSchema,
+          response: {
+            200: {
+              description: 'OK: A successful request.',
+              body: () => DeletePackageResponseSchema,
+            },
+            400: {
+              description: 'A bad request.',
+              body: genericErrorResponse,
+            },
+          },
+        },
+      },
+
+      deletePackageHandler
     );
 
   router.versioned
@@ -686,9 +1230,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: DeletePackageRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => DeletePackageResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -714,9 +1260,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: {},
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetVerificationKeyIdResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -741,9 +1289,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetDataStreamsRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetDataStreamsResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -768,9 +1318,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: GetBulkAssetsRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => GetBulkAssetsResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -809,9 +1361,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: ReauthorizeTransformRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => ReauthorizeTransformResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -842,8 +1396,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
         validate: {
           request: CustomIntegrationRequestSchema,
           response: {
-            200: {},
+            200: {
+              description: 'OK: A successful request.',
+            },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -868,9 +1425,11 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
           request: DeletePackageDatastreamAssetsRequestSchema,
           response: {
             200: {
+              description: 'OK: A successful request.',
               body: () => DeletePackageDatastreamAssetsResponseSchema,
             },
             400: {
+              description: 'A bad request.',
               body: genericErrorResponse,
             },
           },
@@ -896,19 +1455,180 @@ export const registerRoutes = (router: FleetAuthzRouter, config: FleetConfigType
       .addVersion(
         {
           version: API_VERSIONS.public.v1,
+          options: {
+            oasOperationObject: () => ({
+              responses: {
+                200: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        successResponse: {
+                          value: {
+                            version: '1.0.0',
+                            success: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                400: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        badRequestResponse: {
+                          value: {
+                            message: 'Bad Request',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
           validate: {
             request: RollbackPackageRequestSchema,
             response: {
               200: {
+                description: 'OK: A successful request.',
                 body: () => RollbackPackageResponseSchema,
               },
               400: {
+                description: 'A bad request.',
                 body: genericErrorResponse,
               },
             },
           },
         },
         rollbackPackageHandler
+      );
+
+    router.versioned
+      .get({
+        path: EPM_API_ROUTES.ROLLBACK_AVAILABLE_CHECK_PATTERN,
+        security: READ_PACKAGE_INFO_SECURITY,
+        summary: `Check if rollback is available for a package`,
+        options: {
+          tags: ['internal', 'oas-tag:Elastic Package Manager (EPM)'],
+        },
+        access: 'internal',
+      })
+      .addVersion(
+        {
+          version: API_VERSIONS.internal.v1,
+          options: {
+            oasOperationObject: () => ({
+              responses: {
+                200: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        successResponse: {
+                          value: {
+                            reason: 'reason',
+                            isAvailable: false,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                400: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        badRequestResponse: {
+                          value: {
+                            message: 'Bad Request',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+          validate: {
+            request: RollbackPackageRequestSchema,
+            response: {
+              200: {
+                description: 'OK: A successful request.',
+                body: () => RollbackAvailableCheckResponseSchema,
+              },
+              400: {
+                description: 'A bad request.',
+                body: genericErrorResponse,
+              },
+            },
+          },
+        },
+        rollbackAvailableCheckHandler
+      );
+
+    router.versioned
+      .get({
+        path: EPM_API_ROUTES.BULK_ROLLBACK_AVAILABLE_CHECK_PATTERN,
+        security: READ_PACKAGE_INFO_SECURITY,
+        summary: `Check if rollback is available for installed packages`,
+        options: {
+          tags: ['internal', 'oas-tag:Elastic Package Manager (EPM)'],
+        },
+        access: 'internal',
+      })
+      .addVersion(
+        {
+          version: API_VERSIONS.internal.v1,
+          options: {
+            oasOperationObject: () => ({
+              responses: {
+                200: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        successResponse: {
+                          value: {
+                            reason: 'reason',
+                            isAvailable: false,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                400: {
+                  content: {
+                    'application/json': {
+                      examples: {
+                        badRequestResponse: {
+                          value: {
+                            message: 'Bad Request',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+          validate: {
+            request: {},
+            response: {
+              200: {
+                description: 'OK: A successful request.',
+                body: () => BulkRollbackAvailableCheckResponseSchema,
+              },
+              400: {
+                description: 'A bad request.',
+                body: genericErrorResponse,
+              },
+            },
+          },
+        },
+        bulkRollbackAvailableCheckHandler
       );
   }
 };

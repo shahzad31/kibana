@@ -6,17 +6,17 @@
  */
 
 import type { IKibanaResponse, Logger } from '@kbn/core/server';
-import { buildRouteValidationWithZod } from '@kbn/zod-helpers';
+import { buildRouteValidationWithZod } from '@kbn/zod-helpers/v4';
 import { SIEM_RULE_MIGRATION_PATH } from '../../../../../common/siem_migrations/constants';
 import {
   UpdateRuleMigrationRequestBody,
   UpdateRuleMigrationRequestParams,
 } from '../../../../../common/siem_migrations/model/api/rules/rule_migration.gen';
 import type { SecuritySolutionPluginRouter } from '../../../../types';
-import { SiemMigrationAuditLogger } from '../../common/utils/audit';
-import { authz } from '../../common/utils/authz';
-import { withLicense } from '../../common/utils/with_license';
-import { withExistingMigration } from './util/with_existing_migration_id';
+import { SiemMigrationAuditLogger } from '../../common/api/util/audit';
+import { authz } from './util/authz';
+import { withLicense } from '../../common/api/util/with_license';
+import { withExistingMigration } from '../../common/api/util/with_existing_migration_id';
 
 export const registerSiemRuleMigrationsUpdateRoute = (
   router: SecuritySolutionPluginRouter,

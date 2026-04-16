@@ -47,10 +47,14 @@ export const InsightsTabCsp = memo(
     value,
     field,
     scopeId,
+    entityId,
+    entityType,
   }: {
     value: string;
     field: CloudPostureEntityIdentifier;
     scopeId: string;
+    entityId?: string;
+    entityType?: string;
   }) => {
     const panels = useExpandableFlyoutState();
 
@@ -137,8 +141,12 @@ export const InsightsTabCsp = memo(
       panels.left?.params?.hasVulnerabilitiesFindings,
     ]);
 
+    const isSingleOption = insightsButtons.length === 1;
+
     const onTabChange = (id: string) => {
-      setActiveInsightsId(id);
+      if (!isSingleOption) {
+        setActiveInsightsId(id);
+      }
     };
 
     if (insightsButtons.length === 0) {
@@ -160,15 +168,28 @@ export const InsightsTabCsp = memo(
           onChange={onTabChange}
           buttonSize="compressed"
           isFullWidth
+          isDisabled={isSingleOption}
           data-test-subj={'insightButtonGroupsTestId'}
         />
         <EuiSpacer size="xl" />
         {activeInsightsId === CspInsightLeftPanelSubTab.MISCONFIGURATIONS ? (
-          <MisconfigurationFindingsDetailsTable field={field} value={value} scopeId={scopeId} />
+          <MisconfigurationFindingsDetailsTable
+            field={field}
+            value={value}
+            scopeId={scopeId}
+            entityId={entityId}
+            entityType={entityType}
+          />
         ) : activeInsightsId === CspInsightLeftPanelSubTab.VULNERABILITIES ? (
-          <VulnerabilitiesFindingsDetailsTable value={value} scopeId={scopeId} />
+          <VulnerabilitiesFindingsDetailsTable
+            identityField={field}
+            value={value}
+            scopeId={scopeId}
+            entityId={entityId}
+            entityType={entityType}
+          />
         ) : (
-          <AlertsDetailsTable field={field} value={value} />
+          <AlertsDetailsTable field={field} value={value} entityId={entityId} />
         )}
       </>
     );

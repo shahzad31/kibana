@@ -7,7 +7,7 @@
 
 import type { History } from 'history';
 import type { FC } from 'react';
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import type { Store, Action } from 'redux';
 import { Provider as ReduxStoreProvider } from 'react-redux';
 
@@ -18,9 +18,10 @@ import type { AppMountParameters } from '@kbn/core/public';
 import { EuiThemeProvider } from '@kbn/kibana-react-plugin/common';
 import { CellActionsProvider } from '@kbn/cell-actions';
 import { NavigationProvider } from '@kbn/security-solution-navigation';
+import { EntityStoreEuidApiProvider, useInstallEntityStoreV2 } from '@kbn/entity-store/public';
+import { APP_NAME } from '../../common/constants';
 import { UpsellingProvider } from '../common/components/upselling_provider';
 import { ManageUserInfo } from '../detections/components/user_info';
-import { APP_NAME } from '../../common/constants';
 import { ErrorToastDispatcher } from '../common/components/error_toast_dispatcher';
 import { MlCapabilitiesProvider } from '../common/components/ml/permissions/ml_capabilities_provider';
 import { GlobalToaster, ManageGlobalToaster } from '../common/components/toasters';
@@ -31,7 +32,9 @@ import { PageRouter } from './routes';
 import { UserPrivilegesProvider } from '../common/components/user_privileges/user_privileges_context';
 import { ReactQueryClientProvider } from '../common/containers/query_client/query_client_provider';
 import { DiscoverInTimelineContextProvider } from '../common/components/discover_in_timeline/provider';
+import { InitializationProvider } from '../common/components/initialization';
 import { AssistantProvider } from '../assistant/provider';
+import { TrialCompanion } from '../trial_companion/trial_companion';
 
 interface StartAppComponent {
   children: React.ReactNode;
@@ -54,29 +57,34 @@ const StartAppComponent: FC<StartAppComponent> = ({ children, history, store, th
     <KibanaRenderContextProvider {...services}>
       <ManageGlobalToaster>
         <ReduxStoreProvider store={store}>
-          <EuiThemeProvider darkMode={darkMode}>
-            <MlCapabilitiesProvider>
-              <UserPrivilegesProvider kibanaCapabilities={capabilities}>
-                <ManageUserInfo>
-                  <NavigationProvider core={services}>
-                    <ReactQueryClientProvider>
-                      <CellActionsProvider
-                        getTriggerCompatibleActions={uiActions.getTriggerCompatibleActions}
-                      >
-                        <UpsellingProvider upsellingService={upselling}>
-                          <DiscoverInTimelineContextProvider>
-                            <PageRouter history={history}>
-                              <AssistantProvider>{children}</AssistantProvider>
-                            </PageRouter>
-                          </DiscoverInTimelineContextProvider>
-                        </UpsellingProvider>
-                      </CellActionsProvider>
-                    </ReactQueryClientProvider>
-                  </NavigationProvider>
-                </ManageUserInfo>
-              </UserPrivilegesProvider>
-            </MlCapabilitiesProvider>
-          </EuiThemeProvider>
+          <EntityStoreEuidApiProvider>
+            <EuiThemeProvider darkMode={darkMode}>
+              <MlCapabilitiesProvider>
+                <UserPrivilegesProvider kibanaCapabilities={capabilities}>
+                  <ManageUserInfo>
+                    <NavigationProvider core={services}>
+                      <ReactQueryClientProvider>
+                        <InitializationProvider>
+                          <CellActionsProvider
+                            getTriggerCompatibleActions={uiActions.getTriggerCompatibleActions}
+                          >
+                            <UpsellingProvider upsellingService={upselling}>
+                              <DiscoverInTimelineContextProvider>
+                                <PageRouter history={history}>
+                                  <AssistantProvider>{children}</AssistantProvider>
+                                  <TrialCompanion />
+                                </PageRouter>
+                              </DiscoverInTimelineContextProvider>
+                            </UpsellingProvider>
+                          </CellActionsProvider>
+                        </InitializationProvider>
+                      </ReactQueryClientProvider>
+                    </NavigationProvider>
+                  </ManageUserInfo>
+                </UserPrivilegesProvider>
+              </MlCapabilitiesProvider>
+            </EuiThemeProvider>
+          </EntityStoreEuidApiProvider>
           <ErrorToastDispatcher />
           <GlobalToaster />
         </ReduxStoreProvider>
@@ -103,6 +111,24 @@ const SecurityAppComponent: React.FC<SecurityAppComponentProps> = ({
   theme$,
 }) => {
   const CloudProvider = services.cloud?.CloudContextProvider ?? React.Fragment;
+
+  useInstallEntityStoreV2(services);
+
+  // Set conversation flyout active config on mount, clear on unmount
+  useEffect(() => {
+    if (services.agentBuilder?.setChatConfig) {
+      services.agentBuilder.setChatConfig({
+        sessionTag: 'security',
+        newConversation: false,
+      });
+    }
+
+    return () => {
+      if (services.agentBuilder?.clearChatConfig) {
+        services.agentBuilder.clearChatConfig();
+      }
+    };
+  }, [services.agentBuilder, services.uiSettings]);
 
   return (
     <KibanaContextProvider

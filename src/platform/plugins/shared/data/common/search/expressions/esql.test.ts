@@ -28,19 +28,25 @@ describe('getEsqlFn', () => {
     const esqlFn = getEsqlFn({
       getStartDependencies: async () => ({
         search: mockSearch,
-        uiSettings: {} as UiSettingsCommon,
+        uiSettings: {
+          get: jest.fn((key: string) => {
+            if (key === 'dateFormat:tz') return 'UTC';
+            return undefined;
+          }),
+        } as unknown as UiSettingsCommon,
       }),
     });
 
     const input = null; // Mock input
     const args = {
-      query: 'SELECT * FROM index',
+      query: 'FROM index',
     };
 
     const context = {
       abortSignal: new AbortController().signal,
       inspectorAdapters: {},
       getKibanaRequest: jest.fn(),
+      getSearchSessionId: jest.fn(),
     } as unknown as ExecutionContext;
 
     const result = await esqlFn.fn(input, args, context).toPromise();

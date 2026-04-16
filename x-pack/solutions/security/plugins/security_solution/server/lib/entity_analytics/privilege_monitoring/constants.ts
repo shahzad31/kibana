@@ -24,10 +24,6 @@ export const PRIVILEGE_MONITORING_ENGINE_STATUS = {
   NOT_INSTALLED: 'not_installed',
 } as const;
 
-// Base constants
-export const PRIVMON_BASE_PREFIX = 'privmon' as const;
-export const PRIVILEGE_MONITORING_INTERNAL_INDICES_PATTERN = `.${PRIVMON_BASE_PREFIX}*` as const;
-
 // Indices that are exclude from the search
 export const PRE_EXCLUDE_INDICES: string[] = [
   ...INCLUDE_INDEX_PATTERN.map((index) => `-${index}`),
@@ -36,3 +32,5 @@ export const PRE_EXCLUDE_INDICES: string[] = [
 
 // Indices that are excludes from the search result (This patterns can't be excluded from the search)
 export const POST_EXCLUDE_INDICES = ['.']; // internal indices
+
+export const PRIVILEGED_USERS_RISK_MODIFIER = 1.5;

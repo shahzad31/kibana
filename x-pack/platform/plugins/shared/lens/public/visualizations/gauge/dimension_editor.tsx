@@ -9,15 +9,15 @@ import type { EuiSwitchEvent } from '@elastic/eui';
 import { EuiFormRow, EuiSwitch, EuiIcon } from '@elastic/eui';
 import React from 'react';
 import { i18n } from '@kbn/i18n';
-import type { PaletteRegistry } from '@kbn/coloring';
+import type { CustomPaletteParams, PaletteOutput, PaletteRegistry } from '@kbn/coloring';
 import { CustomizablePalette, CUSTOM_PALETTE, applyPaletteParams } from '@kbn/coloring';
 import { GaugeTicksPositions, GaugeColorModes } from '@kbn/expression-gauge-plugin/common';
 import { getMaxValue, getMinValue } from '@kbn/expression-gauge-plugin/public';
 import { TooltipWrapper } from '@kbn/visualization-utils';
 import { css } from '@emotion/react';
+import type { VisualizationDimensionEditorProps } from '@kbn/lens-common';
 import { isNumericFieldForDatatable } from '../../../common/expressions/impl/datatable/utils';
 import { PalettePanelContainer } from '../../shared_components';
-import type { VisualizationDimensionEditorProps } from '../../types';
 import type { GaugeVisualizationState } from './constants';
 import { defaultPaletteParams } from './palette_config';
 import { getAccessorsFromState } from './utils';
@@ -47,23 +47,25 @@ export function GaugeDimensionEditor(
     max: getMaxValue(firstRow, accessors),
   };
 
-  const activePalette = state?.palette || {
-    type: 'palette',
-    name: defaultPaletteParams.name,
-    params: {
-      ...defaultPaletteParams,
-      continuity: 'all',
-      colorStops: undefined,
-      stops: undefined,
-      rangeMin: currentMinMax.min,
-      rangeMax: (currentMinMax.max * 3) / 4,
-    },
-  };
+  const activePalette =
+    state?.palette ||
+    ({
+      type: 'palette',
+      name: defaultPaletteParams.name,
+      params: {
+        ...defaultPaletteParams,
+        continuity: 'all',
+        colorStops: undefined,
+        stops: undefined,
+        rangeMin: undefined,
+        rangeMax: undefined,
+      },
+    } satisfies PaletteOutput<CustomPaletteParams>);
 
   const displayStops = applyPaletteParams(props.paletteService, activePalette, currentMinMax);
 
   return (
-    <>
+    <div className="lnsIndexPatternDimensionEditor--padded">
       <EuiFormRow
         display="columnCompressed"
         fullWidth
@@ -191,6 +193,6 @@ export function GaugeDimensionEditor(
           </EuiFormRow>
         </>
       )}
-    </>
+    </div>
   );
 }

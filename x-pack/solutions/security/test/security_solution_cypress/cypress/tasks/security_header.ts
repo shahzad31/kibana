@@ -10,12 +10,12 @@ import { KQL_INPUT, openNavigationPanelFor, REFRESH_BUTTON } from '../screens/se
 import { openNavigationPanelFor as openServerlessNavigationPanelFor } from '../screens/serverless_security_header';
 
 export const clearSearchBar = () => {
-  cy.get(KQL_INPUT).clear();
-  cy.get(KQL_INPUT).realPress('Enter');
+  cy.get(KQL_INPUT()).clear();
+  cy.get(KQL_INPUT()).realPress('Enter');
 };
 
-export const kqlSearch = (search: string) => {
-  cy.get(KQL_INPUT).type(search, { force: true });
+export const kqlSearch = (search: string, dataTestSubj?: string) => {
+  cy.get(KQL_INPUT(dataTestSubj)).type(search, { force: true });
 };
 
 export const navigateFromHeaderTo = (page: string, isServerless: boolean = false) => {
@@ -25,6 +25,11 @@ export const navigateFromHeaderTo = (page: string, isServerless: boolean = false
     openNavigationPanelFor(page);
   }
   cy.get(page).click();
+};
+
+export const verifyNavigatesFromDashboardLandingTo = (dashboardId: string, URL: string) => {
+  cy.get(`[data-test-subj="LandingImageCard-item-${dashboardId}"]`).click();
+  cy.url().should('include', URL);
 };
 
 export const refreshPage = () => {

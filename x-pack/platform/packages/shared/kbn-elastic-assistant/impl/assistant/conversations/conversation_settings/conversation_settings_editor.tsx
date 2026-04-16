@@ -10,9 +10,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { HttpSetup } from '@kbn/core-http-browser';
 import { FormattedMessage } from '@kbn/i18n-react';
-import { OpenAiProviderType } from '@kbn/stack-connectors-plugin/public/common';
-import type { PromptResponse } from '@kbn/elastic-assistant-common';
-import type { Conversation } from '../../../..';
+import { OpenAiProviderType } from '@kbn/connector-schemas/openai';
+import type { PromptResponse, User } from '@kbn/elastic-assistant-common';
+import {
+  getCurrentConversationOwner,
+  ConversationSharedState,
+} from '@kbn/elastic-assistant-common';
+import { useLoadConnectors } from '@kbn/inference-connectors';
+import { ShareSelect } from '../../share_conversation/share_select';
+import { useAssistantContext, type Conversation } from '../../../..';
 import * as i18n from './translations';
 import * as i18nModel from '../../../connectorland/models/model_selector/translations';
 
@@ -20,7 +26,6 @@ import type { AIConnector } from '../../../connectorland/connector_selector';
 import { ConnectorSelector } from '../../../connectorland/connector_selector';
 import { SelectSystemPrompt } from '../../prompt_editor/system_prompt/select_system_prompt';
 import { ModelSelector } from '../../../connectorland/models/model_selector/model_selector';
-import { useLoadConnectors } from '../../../connectorland/use_load_connectors';
 import { getGenAiConfig } from '../../../connectorland/helpers';
 import type { ConversationsBulkActions } from '../../api';
 import { getDefaultSystemPrompt } from '../../use_conversation/helpers';
@@ -28,6 +33,7 @@ import { getDefaultSystemPrompt } from '../../use_conversation/helpers';
 export interface ConversationSettingsEditorProps {
   allSystemPrompts: PromptResponse[];
   conversationSettings: Record<string, Conversation>;
+  currentUser?: User;
   conversationsSettingsBulkActions: ConversationsBulkActions;
   http: HttpSetup;
   isDisabled?: boolean;
@@ -45,13 +51,17 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
   ({
     allSystemPrompts,
     conversationsSettingsBulkActions,
+    currentUser,
     http,
     isDisabled = false,
     selectedConversation,
     setConversationsSettingsBulkActions,
   }) => {
+    const { settings } = useAssistantContext();
     const { data: connectors, isSuccess: areConnectorsFetched } = useLoadConnectors({
       http,
+      featureId: 'elastic_assistant',
+      settings,
     });
     const [conversationUpdates, setConversationUpdates] =
       useState<Conversation>(selectedConversation);
@@ -94,6 +104,7 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
                   ).apiConfig ?? {}),
                   defaultSystemPromptId: newSystemPromptId,
                 },
+                id: updatedConversation.id,
               },
             },
           });
@@ -150,6 +161,7 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
                   provider: config?.apiProvider,
                   model: config?.defaultModel,
                 },
+                id: updatedConversation.id,
               },
             },
           });
@@ -191,6 +203,7 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
                   ).apiConfig ?? {}),
                   model,
                 },
+                id: updatedConversation.id,
               },
             },
           });
@@ -198,6 +211,49 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
       },
       [conversationsSettingsBulkActions, conversationUpdates, setConversationsSettingsBulkActions]
     );
+    const handleOnSharedSelectionChange = useCallback(
+      (conversationSharedState: ConversationSharedState, nextUsers?: User[]) => {
+        if (conversationUpdates != null) {
+          let users: User[] = [];
+          if (conversationSharedState === ConversationSharedState.PRIVATE) {
+            users = [getCurrentConversationOwner(selectedConversation)];
+          } else if (conversationSharedState === ConversationSharedState.RESTRICTED) {
+            users = nextUsers ?? [];
+          }
+          // For ConversationSharedState.SHARED (globally), users remains []
+          const updatedConversation = {
+            ...conversationUpdates,
+            users,
+          };
+          setConversationUpdates(updatedConversation);
+          setConversationsSettingsBulkActions({
+            ...conversationsSettingsBulkActions,
+            update: {
+              ...(conversationsSettingsBulkActions.update ?? {}),
+              [updatedConversation.id]: {
+                ...(conversationsSettingsBulkActions.update
+                  ? conversationsSettingsBulkActions.update[updatedConversation.id] ?? {}
+                  : {}),
+                users,
+                id: updatedConversation.id,
+              },
+            },
+          });
+        }
+      },
+      [
+        conversationUpdates,
+        selectedConversation,
+        conversationsSettingsBulkActions,
+        setConversationsSettingsBulkActions,
+      ]
+    );
+
+    const handleUsersUpdate = useCallback(
+      (users: User[]) => handleOnSharedSelectionChange(ConversationSharedState.RESTRICTED, users),
+      [handleOnSharedSelectionChange]
+    );
+
     return (
       <>
         <EuiFormRow
@@ -220,41 +276,57 @@ export const ConversationSettingsEditor: React.FC<ConversationSettingsEditorProp
         <EuiFormRow
           data-test-subj="connector-field"
           display="rowCompressed"
+          fullWidth
           label={i18n.CONNECTOR_TITLE}
           helpText={
             <EuiLink
-              href={`${http.basePath.get()}/app/management/insightsAndAlerting/triggersActionsConnectors/connectors`}
+              href={`${http.basePath.get()}/app/management/modelManagement/model_settings`}
               target="_blank"
               external
             >
               <FormattedMessage
                 id="xpack.elasticAssistant.assistant.settings.connectorHelpTextTitle"
-                defaultMessage="The default LLM connector for this conversation type."
+                defaultMessage="The default LLM for this conversation type."
               />
             </EuiLink>
           }
         >
           <ConnectorSelector
             isDisabled={isDisabled}
+            fullWidth
             onConnectorSelectionChange={handleOnConnectorSelectionChange}
             selectedConnectorId={selectedConnector?.id}
           />
         </EuiFormRow>
 
-        {selectedConnector?.isPreconfigured === false &&
-          selectedProvider === OpenAiProviderType.OpenAi && (
-            <EuiFormRow
-              data-test-subj="model-field"
-              display="rowCompressed"
-              label={i18nModel.MODEL_TITLE}
-              helpText={i18nModel.HELP_LABEL}
-            >
-              <ModelSelector
-                onModelSelectionChange={handleOnModelSelectionChange}
-                selectedModel={selectedModel}
-              />
-            </EuiFormRow>
-          )}
+        {!selectedConnector?.isPreconfigured && selectedProvider === OpenAiProviderType.OpenAi && (
+          <EuiFormRow
+            data-test-subj="model-field"
+            display="rowCompressed"
+            fullWidth
+            label={i18nModel.MODEL_TITLE}
+            helpText={i18nModel.HELP_LABEL}
+          >
+            <ModelSelector
+              onModelSelectionChange={handleOnModelSelectionChange}
+              selectedModel={selectedModel}
+            />
+          </EuiFormRow>
+        )}
+        {currentUser && (
+          <EuiFormRow
+            data-test-subj="shared-field"
+            display="rowCompressed"
+            fullWidth
+            label={i18n.SHARING_OPTIONS}
+          >
+            <ShareSelect
+              selectedConversation={selectedConversation}
+              onSharedSelectionChange={handleOnSharedSelectionChange}
+              onUsersUpdate={handleUsersUpdate}
+            />
+          </EuiFormRow>
+        )}
       </>
     );
   }

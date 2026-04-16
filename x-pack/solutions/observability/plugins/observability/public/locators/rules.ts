@@ -6,21 +6,8 @@
  */
 
 import { setStateToKbnUrl } from '@kbn/kibana-utils-plugin/public';
-import type { SerializableRecord } from '@kbn/utility-types';
 import type { LocatorDefinition } from '@kbn/share-plugin/public';
-import type { RuleStatus } from '@kbn/triggers-actions-ui-plugin/public';
-import { rulesLocatorID } from '../../common';
-import { RULES_PATH } from '../../common/locators/paths';
-
-export interface RulesParams extends SerializableRecord {
-  lastResponse?: string[];
-  params?: Record<string, string | number>;
-  search?: string;
-  status?: RuleStatus[];
-  type?: string[];
-}
-
-export type RulesLocatorParams = RulesParams;
+import { rulesLocatorID, type RulesLocatorParams } from '@kbn/deeplinks-observability';
 
 export class RulesLocatorDefinition implements LocatorDefinition<RulesLocatorParams> {
   public readonly id = rulesLocatorID;
@@ -33,7 +20,7 @@ export class RulesLocatorDefinition implements LocatorDefinition<RulesLocatorPar
     type = [],
   }: RulesLocatorParams) => {
     return {
-      app: 'observability',
+      app: 'rules',
       path: setStateToKbnUrl(
         '_a',
         {
@@ -44,7 +31,7 @@ export class RulesLocatorDefinition implements LocatorDefinition<RulesLocatorPar
           type,
         },
         { useHash: false, storeInHashQuery: false },
-        RULES_PATH
+        '/'
       ),
       state: {},
     };

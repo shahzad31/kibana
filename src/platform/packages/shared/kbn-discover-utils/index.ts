@@ -16,6 +16,7 @@ export {
   DOC_HIDE_TIME_COLUMN_SETTING,
   FIELDS_LIMIT_SETTING,
   HIDE_ANNOUNCEMENTS,
+  IS_ESQL_DEFAULT_FEATURE_FLAG_KEY,
   MAX_DOC_FIELDS_DISPLAYED,
   MODIFY_COLUMNS_ON_SWITCH,
   ROW_HEIGHT_OPTION,
@@ -26,13 +27,13 @@ export {
   SHOW_FIELD_STATISTICS,
   SHOW_MULTIFIELDS,
   SORT_DEFAULT_ORDER_SETTING,
+  DataGridDensity,
   IgnoredReason,
   buildDataTableRecord,
   buildDataTableRecordList,
   convertValueToString,
   createLogsContextService,
-  createTracesContextService,
-  createApmErrorsContextService,
+  createApmContextService,
   createDegradedDocsControl,
   createStacktraceControl,
   fieldConstants,
@@ -40,10 +41,15 @@ export {
   formatHit,
   getDocId,
   getLogDocumentOverview,
-  getTransactionDocumentOverview,
-  getSpanDocumentOverview,
+  getTraceDocumentOverview,
+  getFlattenedTraceDocumentOverview,
   getIgnoredReason,
   getMessageFieldWithFallbacks,
+  getAvailableResourceFields,
+  getAvailableTraceFields,
+  getLogLevelFieldWithFallback,
+  getLogEventTypeFieldWithFallback,
+  getLogExceptionTypeFieldWithFallback,
   getShouldShowFieldHandler,
   isNestedFieldParent,
   usePager,
@@ -59,6 +65,8 @@ export {
   AppMenuRegistry,
   dismissAllFlyoutsExceptFor,
   dismissFlyouts,
+  prepareDataViewForEditing,
+  getEsqlDataView,
   LogLevelBadge,
   getDefaultSort,
   getSort,
@@ -66,18 +74,26 @@ export {
   getSortForSearchSource,
   getEsQuerySort,
   getTieBreakerFieldName,
+  escapeAndPreserveHighlightTags,
+  getHighlightedFieldValue,
   severityOrder,
 } from './src';
 
-export type {
-  LogsContextService,
-  TracesContextService,
-  ApmErrorsContextService,
-  SortOrder,
-  SortInput,
-  SortPair,
-} from './src';
+export type { LogsContextService, ApmContextService, SortOrder, SortInput, SortPair } from './src';
 
 export * from './src/types';
 
 export * from './src/data_types/logs/constants';
+
+export {
+  ALL_RECOMMENDED_FIELDS_FOR_ESQL,
+  APACHE_ERROR_LOGS_PROFILE,
+  DEFAULT_LOGS_PROFILE,
+  KUBERNETES_CONTAINER_LOGS_PROFILE,
+} from './src/data_types/logs';
+
+export type {
+  ApacheErrorLogsProfile,
+  DefaultLogsProfile,
+  KubernetesContainerLogsProfile,
+} from './src/data_types/logs';

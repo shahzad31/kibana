@@ -11,15 +11,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import type {
   ActionsClientChatOpenAI,
-  ActionsClientSimpleChatModel,
   ActionsClientLlm,
 } from '@kbn/langchain/server/language_models';
 import type { Logger } from '@kbn/logging';
 import { FakeChatModel, FakeLLM } from '@langchain/core/utils/testing';
 import type { ContentReferencesStore } from '@kbn/elastic-assistant-common';
 import { DefendInsightType } from '@kbn/elastic-assistant-common';
-import type { PublicMethodsOf } from '@kbn/utility-types';
-import type { ActionsClient } from '@kbn/actions-plugin/server';
+import { MemorySaver } from '@langchain/langgraph-checkpoint';
 import {
   ATTACK_DISCOVERY_GENERATION_DETAILS_MARKDOWN,
   ATTACK_DISCOVERY_GENERATION_ENTITY_SUMMARY_MARKDOWN,
@@ -49,7 +47,7 @@ interface Drawable {
 
 const mockLlm = new FakeLLM({
   response: JSON.stringify({}, null, 2),
-}) as unknown as ActionsClientChatOpenAI | ActionsClientSimpleChatModel;
+}) as unknown as ActionsClientChatOpenAI;
 
 class FakeChatModelWithBindTools extends FakeChatModel {
   bindTools = () => this;
@@ -62,12 +60,15 @@ const createLlmInstance = () => {
 
 async function getAssistantGraph(logger: Logger): Promise<Drawable> {
   const graph = await getDefaultAssistantGraph({
-    actionsClient: {} as unknown as PublicMethodsOf<ActionsClient>,
+    getInferenceConnectorById: async () => {
+      throw new Error('not implemented');
+    },
     logger,
     createLlmInstance,
     tools: [],
     savedObjectsClient: {} as unknown as SavedObjectsClientContract,
     contentReferencesStore: {} as unknown as ContentReferencesStore,
+    checkpointSaver: new MemorySaver(),
   });
   return graph.getGraphAsync({ xray: true });
 }
@@ -102,10 +103,11 @@ async function getDefendInsightsGraph(logger: Logger): Promise<Drawable> {
   const mockEsClient = {} as unknown as ElasticsearchClient;
 
   const graph = getDefaultDefendInsightsGraph({
-    insightType: DefendInsightType.Enum.incompatible_antivirus,
+    insightType: DefendInsightType.enum.incompatible_antivirus,
     endpointIds: ['mock-endpoint-1'],
     anonymizationFields: [],
     esClient: mockEsClient,
+    kbDataClient: null,
     llm: mockLlm as unknown as ActionsClientLlm,
     logger,
     replacements: {},

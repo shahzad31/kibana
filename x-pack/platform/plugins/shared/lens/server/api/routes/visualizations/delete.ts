@@ -5,30 +5,29 @@
  * 2.0.
  */
 
-import { schema } from '@kbn/config-schema';
-
 import { boomify, isBoom } from '@hapi/boom';
-import { CONTENT_ID, type LensSavedObject } from '../../../../common/content_management';
+import { LENS_CONTENT_TYPE } from '@kbn/lens-common/content_management/constants';
 import {
-  PUBLIC_API_PATH,
-  PUBLIC_API_VERSION,
-  PUBLIC_API_CONTENT_MANAGEMENT_VERSION,
-  PUBLIC_API_ACCESS,
-} from '../../constants';
-import type { RegisterAPIRouteFn } from '../../types';
+  LENS_VIS_API_PATH,
+  LENS_API_VERSION,
+  LENS_API_ACCESS,
+  LENS_API_TAG,
+} from '../../../../common/constants';
+import type { LensSavedObject } from '../../../content_management';
+import type { RegisterAPIRouteFn } from '../../../types';
+import { lensDeleteRequestParamsSchema } from './schema';
 
 export const registerLensVisualizationsDeleteAPIRoute: RegisterAPIRouteFn = (
   router,
   { contentManagement }
 ) => {
   const deleteRoute = router.delete({
-    path: `${PUBLIC_API_PATH}/visualizations/{id}`,
-    access: PUBLIC_API_ACCESS,
-    enableQueryVersion: true,
-    summary: 'Delete Lens visualization',
-    description: 'Delete a Lens visualization by id.',
+    path: `${LENS_VIS_API_PATH}/{id}`,
+    access: LENS_API_ACCESS,
+    summary: 'Delete visualization',
+    description: 'Delete a visualization by id.',
     options: {
-      tags: ['oas-tag:Lens'],
+      tags: [LENS_API_TAG],
       availability: {
         stability: 'experimental',
       },
@@ -43,16 +42,10 @@ export const registerLensVisualizationsDeleteAPIRoute: RegisterAPIRouteFn = (
 
   deleteRoute.addVersion(
     {
-      version: PUBLIC_API_VERSION,
+      version: LENS_API_VERSION,
       validate: {
         request: {
-          params: schema.object({
-            id: schema.string({
-              meta: {
-                description: 'The saved object id of a Lens visualization.',
-              },
-            }),
-          }),
+          params: lensDeleteRequestParamsSchema,
         },
         response: {
           204: {
@@ -79,16 +72,22 @@ export const registerLensVisualizationsDeleteAPIRoute: RegisterAPIRouteFn = (
     async (ctx, req, res) => {
       const client = contentManagement.contentClient
         .getForRequest({ request: req, requestHandlerContext: ctx })
-        .for<LensSavedObject>(CONTENT_ID, PUBLIC_API_CONTENT_MANAGEMENT_VERSION);
+        .for<LensSavedObject>(LENS_CONTENT_TYPE);
 
       try {
-        await client.delete(req.params.id);
+        const { result } = await client.delete(req.params.id);
+
+        if (!result.success) {
+          throw new Error(`Failed to delete Lens visualization with id [${req.params.id}].`);
+        }
+
+        return res.noContent();
       } catch (error) {
         if (isBoom(error)) {
           if (error.output.statusCode === 404) {
             return res.notFound({
               body: {
-                message: `A Lens visualization with saved object id [${req.params.id}] was not found.`,
+                message: `A visualization with id [${req.params.id}] was not found.`,
               },
             });
           }
@@ -99,8 +98,6 @@ export const registerLensVisualizationsDeleteAPIRoute: RegisterAPIRouteFn = (
 
         return boomify(error); // forward unknown error
       }
-
-      return res.noContent();
     }
   );
 };

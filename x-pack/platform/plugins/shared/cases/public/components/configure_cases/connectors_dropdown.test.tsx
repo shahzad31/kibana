@@ -15,6 +15,7 @@ import type { Props } from './connectors_dropdown';
 import { ConnectorsDropdown } from './connectors_dropdown';
 import { TestProviders } from '../../common/mock';
 import { connectors } from './__mock__';
+import { createMockActionConnector } from '@kbn/alerts-ui-shared/src/common/test_utils/connector.mock';
 
 describe('ConnectorsDropdown', () => {
   let wrapper: ReactWrapper;
@@ -54,7 +55,7 @@ describe('ConnectorsDropdown', () => {
               <EuiIcon
                 css="unknown styles"
                 size="m"
-                type="minusInCircle"
+                type="minusCircle"
               />
             </EuiFlexItem>
             <EuiFlexItem>
@@ -254,15 +255,11 @@ describe('ConnectorsDropdown', () => {
         <ConnectorsDropdown
           {...props}
           connectors={[
-            {
+            createMockActionConnector({
               id: 'none',
               actionTypeId: '.none',
               name: 'None',
-              config: {},
-              isPreconfigured: false,
-              isDeprecated: false,
-              isSystemAction: false,
-            },
+            }),
           ]}
         />,
         {

@@ -9,31 +9,38 @@
 
 import { schema } from '@kbn/config-schema';
 
-export const filterSchema = schema.object({
-  language: schema.oneOf([schema.literal('kuery'), schema.literal('lucene')]),
-  /**
-   * Filter query
-   */
-  query: schema.string({
-    meta: {
-      description: 'Filter query',
-    },
-  }),
-});
-
-export const filterWithLabelSchema = schema.object({
-  /**
-   * Filter query
-   */
-  filter: filterSchema,
-  /**
-   * Label for the filter
-   */
-  label: schema.maybe(
-    schema.string({
+export const filterSchema = schema.object(
+  {
+    language: schema.oneOf([schema.literal('kql'), schema.literal('lucene')], {
+      defaultValue: 'kql',
+    }),
+    expression: schema.string({
       meta: {
-        description: 'Label for the filter',
+        description: 'A query expression in KQL or Lucene syntax',
       },
-    })
-  ),
-});
+    }),
+  },
+  { meta: { id: 'filterSimple', title: 'Filter' } }
+);
+
+export const filterWithLabelSchema = schema.object(
+  {
+    /**
+     * Filter query
+     */
+    filter: filterSchema,
+    /**
+     * Label for the filter
+     */
+    label: schema.maybe(
+      schema.string({
+        meta: {
+          description: 'Label for the filter',
+        },
+      })
+    ),
+  },
+  { meta: { id: 'filterWithLabel', title: 'Filter with Label' } }
+);
+
+export type LensApiFilterType = typeof filterSchema.type;

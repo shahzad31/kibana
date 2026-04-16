@@ -6,6 +6,7 @@
  */
 
 import type { StartServicesAccessor } from '@kbn/core/public';
+import type { UsageCollectionSetup } from '@kbn/usage-collection-plugin/public';
 import { i18n } from '@kbn/i18n';
 import { openLazyFlyout } from '@kbn/presentation-util';
 
@@ -21,10 +22,10 @@ import {
   useStateFromPublishingSubject,
 } from '@kbn/presentation-publishing';
 import { BehaviorSubject, Subscription, merge } from 'rxjs';
-import { initializeUnsavedChanges } from '@kbn/presentation-containers';
+import { initializeUnsavedChanges } from '@kbn/presentation-publishing';
 import { ANOMALY_SINGLE_METRIC_VIEWER_EMBEDDABLE_TYPE } from '..';
 import type { MlPluginStart, MlStartDependencies } from '../../plugin';
-import type { SingleMetricViewerEmbeddableApi, SingleMetricViewerEmbeddableState } from '../types';
+import type { SingleMetricViewerEmbeddableApi } from '../types';
 import {
   initializeSingleMetricViewerControls,
   singleMetricViewerComparators,
@@ -34,9 +35,11 @@ import { getServices } from './get_services';
 import { useReactEmbeddableExecutionContext } from '../common/use_embeddable_execution_context';
 import { getSingleMetricViewerComponent } from '../../shared_components/single_metric_viewer';
 import { EmbeddableSingleMetricViewerUserInput } from './single_metric_viewer_setup_flyout';
+import type { SingleMetricViewerEmbeddableState } from './types';
 
 export const getSingleMetricViewerEmbeddableFactory = (
-  getStartServices: StartServicesAccessor<MlStartDependencies, MlPluginStart>
+  getStartServices: StartServicesAccessor<MlStartDependencies, MlPluginStart>,
+  usageCollection?: UsageCollectionSetup
 ) => {
   const factory: EmbeddableFactory<
     SingleMetricViewerEmbeddableState,
@@ -44,13 +47,13 @@ export const getSingleMetricViewerEmbeddableFactory = (
   > = {
     type: ANOMALY_SINGLE_METRIC_VIEWER_EMBEDDABLE_TYPE,
     buildEmbeddable: async ({ initialState, finalizeApi, uuid, parentApi }) => {
-      const services = await getServices(getStartServices);
+      const services = await getServices(getStartServices, usageCollection);
       const subscriptions = new Subscription();
-      const titleManager = initializeTitleManager(initialState.rawState);
-      const timeRangeManager = initializeTimeRangeManager(initialState.rawState);
+      const titleManager = initializeTitleManager(initialState);
+      const timeRangeManager = initializeTimeRangeManager(initialState);
 
       const singleMetricManager = initializeSingleMetricViewerControls(
-        initialState.rawState,
+        initialState,
         titleManager.api
       );
 
@@ -59,12 +62,9 @@ export const getSingleMetricViewerEmbeddableFactory = (
 
       function serializeState() {
         return {
-          rawState: {
-            ...titleManager.getLatestState(),
-            ...timeRangeManager.getLatestState(),
-            ...singleMetricManager.getLatestState(),
-          },
-          references: [],
+          ...titleManager.getLatestState(),
+          ...timeRangeManager.getLatestState(),
+          ...singleMetricManager.getLatestState(),
         };
       }
 
@@ -89,9 +89,9 @@ export const getSingleMetricViewerEmbeddableFactory = (
           };
         },
         onReset: (lastSaved) => {
-          timeRangeManager.reinitializeState(lastSaved?.rawState);
-          titleManager.reinitializeState(lastSaved?.rawState);
-          if (lastSaved) singleMetricManager.reinitializeState(lastSaved?.rawState);
+          timeRangeManager.reinitializeState(lastSaved);
+          titleManager.reinitializeState(lastSaved);
+          if (lastSaved) singleMetricManager.reinitializeState(lastSaved);
         },
       });
 

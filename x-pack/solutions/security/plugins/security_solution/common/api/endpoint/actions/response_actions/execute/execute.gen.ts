@@ -14,22 +14,28 @@
  *   version: 2023-10-31
  */
 
-import { z } from '@kbn/zod';
+import { z } from '@kbn/zod/v4';
 
-import { BaseActionSchema, Command, Timeout } from '../../../model/schema/common.gen';
+import {
+  ResponseActionCreateSuccessResponse,
+  BaseActionSchema,
+} from '../../../model/schema/common.gen';
 
 export type ExecuteRouteRequestBody = z.infer<typeof ExecuteRouteRequestBody>;
 export const ExecuteRouteRequestBody = BaseActionSchema.merge(
   z.object({
     parameters: z.object({
-      command: Command,
-      timeout: Timeout.optional(),
+      /**
+       * The shell command to execute on the endpoint.
+       */
+      command: z.string().min(1),
+      /**
+       * The maximum timeout value in seconds before the command is terminated.
+       */
+      timeout: z.number().int().min(1).optional(),
     }),
   })
 );
-
-export type ExecuteRouteResponse = z.infer<typeof ExecuteRouteResponse>;
-export const ExecuteRouteResponse = z.object({});
 
 export type EndpointExecuteActionRequestBody = z.infer<typeof EndpointExecuteActionRequestBody>;
 export const EndpointExecuteActionRequestBody = ExecuteRouteRequestBody;
@@ -38,4 +44,4 @@ export type EndpointExecuteActionRequestBodyInput = z.input<
 >;
 
 export type EndpointExecuteActionResponse = z.infer<typeof EndpointExecuteActionResponse>;
-export const EndpointExecuteActionResponse = ExecuteRouteResponse;
+export const EndpointExecuteActionResponse = ResponseActionCreateSuccessResponse;

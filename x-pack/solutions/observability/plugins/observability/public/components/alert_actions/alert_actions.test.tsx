@@ -6,7 +6,7 @@
  */
 import type { ComponentProps } from 'react';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@kbn/react-query';
 import { mountWithIntl, nextTick } from '@kbn/test-jest-helpers';
 import { observabilityAIAssistantPluginMock } from '@kbn/observability-ai-assistant-plugin/public/mock';
 import type { AppMountParameters, CoreStart } from '@kbn/core/public';
@@ -20,6 +20,7 @@ import { AlertsQueryContext } from '@kbn/alerts-ui-shared/src/common/contexts/al
 import { licensingMock } from '@kbn/licensing-plugin/public/mocks';
 import { fieldFormatsMock } from '@kbn/field-formats-plugin/common/mocks';
 import { kibanaStartMock } from '../../utils/kibana_react.mock';
+import { createTelemetryClientMock } from '../../services/telemetry/telemetry_client.mock';
 import { AlertActions } from './alert_actions';
 import { inventoryThresholdAlertEs } from '../../rules/fixtures/example_alerts';
 import { RULE_DETAILS_PAGE_ID } from '../../pages/rule_details/constants';
@@ -29,7 +30,11 @@ import { createMemoryHistory } from 'history';
 import type { ObservabilityRuleTypeRegistry } from '../../rules/create_observability_rule_type_registry';
 import type { GetObservabilityAlertsTableProp } from '../..';
 import { AlertsTableContextProvider } from '@kbn/response-ops-alerts-table/contexts/alerts_table_context';
-import type { AdditionalContext, RenderContext } from '@kbn/response-ops-alerts-table/types';
+import type {
+  AdditionalContext,
+  AlertDetailsNavigation,
+  RenderContext,
+} from '@kbn/response-ops-alerts-table/types';
 import { KibanaContextProvider } from '@kbn/kibana-react-plugin/public';
 const refresh = jest.fn();
 const caseHooksReturnedValue = {
@@ -39,7 +44,14 @@ const caseHooksReturnedValue = {
   close: jest.fn(),
 };
 
-const mockKibana = kibanaStartMock.startContract();
+const mockTelemetryClient = createTelemetryClientMock();
+const mockKibana = {
+  ...kibanaStartMock.startContract(),
+  services: {
+    ...kibanaStartMock.startContract().services,
+    telemetryClient: mockTelemetryClient,
+  },
+};
 mockKibana.services.cases.hooks.useCasesAddToNewCaseFlyout.mockReturnValue(caseHooksReturnedValue);
 
 mockKibana.services.cases.hooks.useCasesAddToExistingCaseModal.mockReturnValue(
@@ -54,6 +66,9 @@ const { ObservabilityAIAssistantContextualInsight } =
 
 const prependMock = jest.fn().mockImplementation((args) => args);
 mockKibana.services.http.basePath.prepend = prependMock;
+mockKibana.services.application.getUrlForApp.mockImplementation(
+  (appId: string, { path }: { path?: string } = {}) => `/app/${appId}${path ? `${path}` : ''}`
+);
 
 const config: ConfigSchema = {
   unsafe: {
@@ -61,6 +76,7 @@ const config: ConfigSchema = {
       uptime: { enabled: false },
     },
   },
+  managedOtlpServiceUrl: '',
 };
 
 const getFormatterMock = jest.fn();
@@ -97,6 +113,7 @@ describe('ObservabilityActions component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getFormatterMock.mockReturnValue(jest.fn().mockReturnValue('a reason'));
+    mockTelemetryClient.reportAlertAddedToCase.mockClear();
   });
 
   const setup = async (pageId: string) => {
@@ -113,6 +130,11 @@ describe('ObservabilityActions component', () => {
       },
     });
 
+    const alertDetailsNavigation: AlertDetailsNavigation = {
+      appId: 'observability',
+      getPath: (alertId: string) => `/alerts/${encodeURIComponent(alertId)}`,
+    };
+
     const props: Pick<
       ComponentProps<GetObservabilityAlertsTableProp<'renderActionsCell'>>,
       | 'tableId'
@@ -124,8 +146,8 @@ describe('ObservabilityActions component', () => {
       | 'cveProps'
       | 'clearSelection'
       | 'observabilityRuleTypeRegistry'
-      | 'openAlertInFlyout'
       | 'refresh'
+      | 'alertDetailsNavigation'
     > = {
       tableId: pageId,
       config,
@@ -136,8 +158,8 @@ describe('ObservabilityActions component', () => {
       cveProps: {} as unknown as EuiDataGridCellValueElementProps,
       clearSelection: noop,
       observabilityRuleTypeRegistry: createObservabilityRuleTypeRegistryMock(),
-      openAlertInFlyout: jest.fn(),
       refresh,
+      alertDetailsNavigation,
     };
 
     const services = {
@@ -210,7 +232,7 @@ describe('ObservabilityActions component', () => {
     await waitFor(() => {
       expect(wrapper.find('[data-test-subj~="viewRuleDetails"]').hostNodes().length).toBe(1);
       expect(wrapper.find('[data-test-subj~="viewRuleDetails"]').hostNodes().prop('href')).toBe(
-        '/app/observability/alerts/rules/06f53080-0f91-11ed-9d86-013908b232ef'
+        '/app/rules/rule/06f53080-0f91-11ed-9d86-013908b232ef'
       );
     });
   });
@@ -248,7 +270,7 @@ describe('ObservabilityActions component', () => {
     });
   });
 
-  it('should refresh when when calling onSuccess of useCasesAddToExistingCaseModal', async () => {
+  it('should refresh when calling onSuccess of useCasesAddToExistingCaseModal', async () => {
     await setup('nothing');
 
     // @ts-expect-error: The object will always be defined

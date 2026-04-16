@@ -9,7 +9,6 @@
 
 import React from 'react';
 
-import type { PanelPackage, PresentationContainer } from '@kbn/presentation-containers';
 import type {
   CanAccessViewMode,
   EmbeddableApiContext,
@@ -19,6 +18,8 @@ import type {
   HasTypeDisplayName,
   HasUniqueId,
   PublishesTitle,
+  PanelPackage,
+  PresentationContainer,
 } from '@kbn/presentation-publishing';
 import {
   apiCanAccessViewMode,
@@ -30,7 +31,10 @@ import {
   getTitle,
 } from '@kbn/presentation-publishing';
 import type { OnSaveProps, SaveResult } from '@kbn/saved-objects-plugin/public';
-import { SavedObjectSaveModal, showSaveModal } from '@kbn/saved-objects-plugin/public';
+import {
+  SavedObjectSaveModalWithSaveResult,
+  showSaveModal,
+} from '@kbn/saved-objects-plugin/public';
 import type { Action } from '@kbn/ui-actions-plugin/public';
 import { IncompatibleActionError } from '@kbn/ui-actions-plugin/public';
 
@@ -97,10 +101,10 @@ export class AddToLibraryAction implements Action<EmbeddableApiContext> {
           );
           try {
             const libraryId = await embeddable.saveToLibrary(newTitle);
-            const { rawState, references } = embeddable.getSerializedStateByReference(libraryId);
+            const byReferenceState = embeddable.getSerializedStateByReference(libraryId);
             resolve({
               byRefPackage: {
-                serializedState: { rawState: { ...rawState, title: newTitle }, references },
+                serializedState: { ...byReferenceState, title: newTitle },
                 panelType: embeddable.type,
               },
               libraryTitle: newTitle,
@@ -112,7 +116,7 @@ export class AddToLibraryAction implements Action<EmbeddableApiContext> {
           }
         };
         showSaveModal(
-          <SavedObjectSaveModal
+          <SavedObjectSaveModalWithSaveResult
             onSave={onSave}
             onClose={() => {}}
             title={lastTitle ?? ''}

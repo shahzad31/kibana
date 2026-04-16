@@ -8,10 +8,8 @@
 import { DEFAULT_ASSISTANT_GRAPH_PROMPT_TEMPLATE, chatPromptFactory } from './prompts';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { loggingSystemMock } from '@kbn/core/server/mocks';
-import type { ActionsClient } from '@kbn/actions-plugin/server';
 import type { SavedObjectsClientContract } from '@kbn/core/server';
 import type { AIAssistantKnowledgeBaseDataClient } from '../../../../ai_assistant_data_clients/knowledge_base';
-import type { PublicMethodsOf } from '@kbn/utility-types';
 import { newContentReferencesStore } from '@kbn/elastic-assistant-common';
 import { newContentReferencesStoreMock } from '@kbn/elastic-assistant-common/impl/content_references/content_references_store/__mocks__/content_references_store.mock';
 
@@ -34,11 +32,10 @@ describe('chatPromptFactory', () => {
       },
     ]),
   } as unknown as AIAssistantKnowledgeBaseDataClient;
-  const mockActionsClient = {} as unknown as PublicMethodsOf<ActionsClient>;
   const mockSavedObjectsClient = {} as unknown as SavedObjectsClientContract;
 
   const baseInputs = {
-    prompt: 'system prompt {citations_prompt} {formattedTime} {knowledgeHistory}',
+    prompt: 'system prompt {citations_prompt} {formattedTime}',
     additionalPrompt: 'additional prompt',
     contentReferencesStore: newContentReferencesStoreMock(),
     kbClient: mockKbClient,
@@ -49,7 +46,7 @@ describe('chatPromptFactory', () => {
     ],
     logger: loggingSystemMock.createLogger(),
     formattedTime: '2023-10-01T00:00:00Z',
-    actionsClient: mockActionsClient,
+    getInferenceConnectorById: jest.fn(),
     savedObjectsClient: mockSavedObjectsClient,
     connectorId: 'test-connector-id',
     llmType: 'gemini',
@@ -67,11 +64,13 @@ Annotate your answer with the provided citations. Here are some example response
 
 Only use the citations returned by tools
 
- 2023-10-01T00:00:00Z Knowledge History:
-Citation: {reference(exampleContentReferenceId)}
-test knowledge entry
+ 2023-10-01T00:00:00Z
 
-additional prompt`),
+additional prompt
+
+Knowledge History:
+Citation: {reference(exampleContentReferenceId)}
+test knowledge entry`),
         new HumanMessage('test message'),
         new AIMessage('test response'),
         new HumanMessage('mocked user prompt follow-up question'),
@@ -86,11 +85,13 @@ additional prompt`),
     });
     expect(result.messages).toEqual(
       expect.arrayContaining([
-        new SystemMessage(`system prompt  2023-10-01T00:00:00Z Knowledge History:
+        new SystemMessage(`system prompt  2023-10-01T00:00:00Z
 
-test knowledge entry
+additional prompt
 
-additional prompt`),
+Knowledge History:
+
+test knowledge entry`),
         new HumanMessage('test message'),
         new AIMessage('test response'),
         new HumanMessage('mocked user prompt follow-up question'),
@@ -111,9 +112,11 @@ Annotate your answer with the provided citations. Here are some example response
 
 Only use the citations returned by tools
 
- 2023-10-01T00:00:00Z [No existing knowledge history]
+ 2023-10-01T00:00:00Z
 
-additional prompt`),
+additional prompt
+
+[No existing knowledge history]`),
         new HumanMessage('test message'),
         new AIMessage('test response'),
         new HumanMessage('mocked user prompt follow-up question'),
@@ -137,11 +140,13 @@ Annotate your answer with the provided citations. Here are some example response
 
 Only use the citations returned by tools
 
- 2023-10-01T00:00:00Z Knowledge History:
-Citation: {reference(exampleContentReferenceId)}
-test knowledge entry
+ 2023-10-01T00:00:00Z
 
-additional prompt`),
+additional prompt
+
+Knowledge History:
+Citation: {reference(exampleContentReferenceId)}
+test knowledge entry`),
         new HumanMessage('test message'),
         new AIMessage('test response'),
         new HumanMessage('follow-up question'),

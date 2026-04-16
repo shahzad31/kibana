@@ -19,7 +19,7 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { SerializedStyles } from '@emotion/react';
 import { css } from '@emotion/react';
-import type { UserMessage } from '../../../types';
+import type { UserMessage } from '@kbn/lens-common';
 
 export const MessageList = ({
   messages,
@@ -90,7 +90,7 @@ export const MessageList = ({
             {warningCount > 0 && (
               <>
                 <EuiIcon
-                  type="alert"
+                  type="warning"
                   css={css`
                     margin-left: 4px;
                   `}
@@ -124,7 +124,7 @@ export const MessageList = ({
                     {message.severity === 'error' ? (
                       <EuiIcon type="error" color="danger" />
                     ) : (
-                      <EuiIcon type="alert" color="warning" />
+                      <EuiIcon type="warning" color="warning" />
                     )}
                   </EuiFlexItem>
                 )}

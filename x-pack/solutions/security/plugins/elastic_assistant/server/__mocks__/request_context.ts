@@ -111,8 +111,22 @@ const createElasticAssistantRequestContextMock = (
 ): jest.Mocked<ElasticAssistantApiRequestHandlerContext> => {
   return {
     actions: clients.elasticAssistant.actions as unknown as ActionsPluginStart,
+    rulesClient: {
+      create: jest.fn(),
+      runSoon: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as ElasticAssistantApiRequestHandlerContext['rulesClient'],
+    frameworkAlerts: {
+      enabled: jest.fn(() => true),
+      getContextInitializationPromise: jest.fn(async () => ({ result: true })),
+    } as unknown as ElasticAssistantApiRequestHandlerContext['frameworkAlerts'],
     eventLogger: clients.eventLogger,
     eventLogIndex: '.kibana-event-log-*',
+    userProfile: {
+      suggest: jest.fn(),
+      getCurrent: jest.fn(),
+      bulkGet: jest.fn(),
+    },
     getRegisteredFeatures: jest.fn((pluginName: string) => defaultAssistantFeatures),
     getRegisteredTools: jest.fn(),
     logger: clients.elasticAssistant.logger,
@@ -164,6 +178,7 @@ const createElasticAssistantRequestContextMock = (
       ((
         params?: GetAIAssistantKnowledgeBaseDataClientParams
       ) => Promise<AIAssistantKnowledgeBaseDataClient | null>),
+    getCheckpointSaver: jest.fn().mockReturnValue(null),
     getCurrentUser: jest.fn().mockReturnValue(authenticatedUser),
     getServerBasePath: jest.fn(),
     getSpaceId: jest.fn().mockReturnValue('default'),
@@ -173,6 +188,7 @@ const createElasticAssistantRequestContextMock = (
     savedObjectsClient: clients.elasticAssistant.savedObjectsClient,
     telemetry: clients.elasticAssistant.telemetry,
     checkPrivileges: jest.fn(),
+    updateAnonymizationFields: jest.fn(),
   };
 };
 

@@ -5,61 +5,48 @@
  * 2.0.
  */
 
-import type { Streams } from '@kbn/streams-schema';
+import { emptyAssets, type Streams } from '@kbn/streams-schema';
 import expect from '@kbn/expect';
 import type { StreamsSupertestRepositoryClient } from './repository_client';
 
-type StreamPutItem = Omit<Streams.WiredStream.UpsertRequest, 'dashboards' | 'queries'> & {
+type StreamPutItem = Streams.WiredStream.UpsertRequest & {
   name: string;
 };
 
 const streams: StreamPutItem[] = [
   {
-    name: 'logs',
+    name: 'logs.otel',
     stream: {
+      type: 'wired',
       description: '',
       ingest: {
         lifecycle: { dsl: {} },
-        processing: {
-          steps: [],
-        },
+        processing: { steps: [] },
+        settings: {},
         wired: {
           fields: {
             '@timestamp': {
               type: 'date',
             },
-            'scope.dropped_attributes_count': {
-              type: 'long',
-            },
-            dropped_attributes_count: {
-              type: 'long',
-            },
-            'resource.dropped_attributes_count': {
-              type: 'long',
-            },
-            'resource.schema_url': {
-              type: 'keyword',
-            },
             'scope.name': {
               type: 'keyword',
-            },
-            'scope.schema_url': {
-              type: 'keyword',
-            },
-            'scope.version': {
-              type: 'keyword',
+              ignore_above: 1024,
             },
             trace_id: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             span_id: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             event_name: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             severity_text: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'body.text': {
               type: 'match_only_text',
@@ -69,9 +56,11 @@ const streams: StreamPutItem[] = [
             },
             'resource.attributes.host.name': {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'resource.attributes.service.name': {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'stream.name': {
               type: 'system',
@@ -79,7 +68,7 @@ const streams: StreamPutItem[] = [
           },
           routing: [
             {
-              destination: 'logs.test',
+              destination: 'logs.otel.test',
               where: {
                 and: [
                   {
@@ -88,9 +77,10 @@ const streams: StreamPutItem[] = [
                   },
                 ],
               },
+              status: 'enabled',
             },
             {
-              destination: 'logs.test2',
+              destination: 'logs.otel.test2',
               where: {
                 and: [
                   {
@@ -99,21 +89,26 @@ const streams: StreamPutItem[] = [
                   },
                 ],
               },
+              status: 'enabled',
             },
           ],
         },
+        failure_store: {
+          lifecycle: { enabled: { data_retention: '30d' } },
+        },
       },
     },
+    ...emptyAssets,
   },
   {
-    name: 'logs.test',
+    name: 'logs.otel.test',
     stream: {
+      type: 'wired',
       description: '',
       ingest: {
         lifecycle: { inherit: {} },
-        processing: {
-          steps: [],
-        },
+        processing: { steps: [] },
+        settings: {},
         wired: {
           routing: [],
           fields: {
@@ -122,15 +117,19 @@ const streams: StreamPutItem[] = [
             },
           },
         },
+        failure_store: { inherit: {} },
       },
     },
+    ...emptyAssets,
   },
   {
-    name: 'logs.test2',
+    name: 'logs.otel.test2',
     stream: {
+      type: 'wired',
       description: '',
       ingest: {
         lifecycle: { inherit: {} },
+        settings: {},
         processing: {
           steps: [
             {
@@ -149,18 +148,20 @@ const streams: StreamPutItem[] = [
           },
           routing: [],
         },
+        failure_store: { inherit: {} },
       },
     },
+    ...emptyAssets,
   },
   {
-    name: 'logs.deeply.nested.streamname',
+    name: 'logs.otel.deeply.nested.streamname',
     stream: {
+      type: 'wired',
       description: '',
       ingest: {
         lifecycle: { inherit: {} },
-        processing: {
-          steps: [],
-        },
+        settings: {},
+        processing: { steps: [] },
         wired: {
           fields: {
             'attributes.field2': {
@@ -169,8 +170,10 @@ const streams: StreamPutItem[] = [
           },
           routing: [],
         },
+        failure_store: { inherit: {} },
       },
     },
+    ...emptyAssets,
   },
 ];
 
@@ -179,11 +182,7 @@ export async function createStreams(apiClient: StreamsSupertestRepositoryClient)
     await apiClient
       .fetch('PUT /api/streams/{name} 2023-10-31', {
         params: {
-          body: {
-            ...stream,
-            dashboards: [],
-            queries: [],
-          },
+          body: stream,
           path: { name },
         },
       })

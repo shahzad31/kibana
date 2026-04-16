@@ -9,157 +9,383 @@
 
 import type { TypeOf } from '@kbn/config-schema';
 import { schema } from '@kbn/config-schema';
-
+import { LENS_METRIC_BREAKDOWN_DEFAULT_MAX_COLUMNS } from '@kbn/lens-common';
 import {
-  countMetricOperationSchema,
-  counterRateOperationSchema,
-  cumulativeSumOperationSchema,
-  differencesOperationSchema,
-  formulaOperationDefinitionSchema,
-  lastValueOperationSchema,
+  DEFAULT_PRIMARY_POSITION,
+  DEFAULT_PRIMARY_LABELS_ALIGNMENT,
+  DEFAULT_PRIMARY_VALUE_ALIGNMENT,
+  DEFAULT_PRIMARY_VALUE_SIZING,
+  DEFAULT_PRIMARY_ICON_ALIGNMENT,
+  DEFAULT_SECONDARY_LABEL_VISIBLE,
+  DEFAULT_SECONDARY_LABEL_PLACEMENT,
+  DEFAULT_SECONDARY_VALUE_ALIGNMENT,
+  DEFAULT_SECONDARY_COMPARE_TO_PALETTE,
+} from '../../transforms/charts/metric/defaults';
+import {
   metricOperationDefinitionSchema,
-  metricOperationSchema,
-  movingAverageOperationSchema,
-  percentileOperationSchema,
-  percentileRanksOperationSchema,
-  staticOperationDefinitionSchema,
-  uniqueCountMetricOperationSchema,
+  esqlColumnSchema,
+  esqlColumnWithFormatSchema,
 } from '../metric_ops';
-import { coloringTypeSchema } from '../color';
-import { datasetSchema } from '../dataset';
 import {
-  bucketDateHistogramOperationSchema,
-  bucketTermsOperationSchema,
-  bucketHistogramOperationSchema,
-  bucketRangesOperationSchema,
-  bucketFilterOperationSchema,
-} from '../bucket_ops';
-import { collapseBySchema, layerSettingsSchema, sharedPanelInfoSchema } from '../shared';
+  staticColorSchema,
+  applyColorToSchema,
+  colorByValueSchema,
+  autoColorSchema,
+  AUTO_COLOR,
+  NO_COLOR,
+  noColorSchema,
+} from '../color';
+import { dataSourceSchema, dataSourceEsqlTableSchema } from '../data_source';
+import {
+  collapseBySchema,
+  layerSettingsSchema,
+  sharedPanelInfoSchema,
+  dslOnlyPanelInfoSchema,
+} from '../shared';
+import {
+  mergeAllBucketsWithChartDimensionSchema,
+  mergeAllMetricsWithChartDimensionSchemaWithRefBasedOps,
+} from './shared';
+import {
+  horizontalAlignmentSchema,
+  metricValuePositionSchema,
+  leftRightAlignmentSchema,
+  placementSchema,
+} from '../alignments';
+import { builderEnums } from '../enums';
+import { objectUnion } from './utils/object_union';
 
-export const complementaryVizSchema = schema.oneOf([
-  schema.object({
-    type: schema.literal('bar'),
-    /**
-     * Direction of the bar. Possible values:
-     * - 'vertical': Bar is oriented vertically
-     * - 'horizontal': Bar is oriented horizontally
-     */
-    direction: schema.maybe(
-      schema.oneOf([schema.literal('vertical'), schema.literal('horizontal')])
+const compareToSchemaShared = schema.object(
+  {
+    palette: schema.maybe(
+      schema.string({
+        meta: { description: 'Palette' },
+        defaultValue: DEFAULT_SECONDARY_COMPARE_TO_PALETTE,
+      })
     ),
+    icon: schema.maybe(schema.boolean({ meta: { description: 'Show icon' }, defaultValue: true })),
+    value: schema.maybe(
+      schema.boolean({ meta: { description: 'Show value' }, defaultValue: true })
+    ),
+  },
+  { meta: { id: 'metricChartCompareToShared', title: 'Compare To Shared' } }
+);
+
+const barBackgroundChartSchema = schema.object({
+  type: schema.literal('bar'),
+  /**
+   * Direction of the bar. Possible values:
+   * - 'vertical': Bar is oriented vertically
+   * - 'horizontal': Bar is oriented horizontally
+   */
+  orientation: schema.maybe(builderEnums.simpleOrientation()),
+});
+
+export const complementaryVizSchemaNoESQL = schema.oneOf([
+  barBackgroundChartSchema.extends({
     /**
-     * Goal value
+     * Max value
      */
-    goal_value: metricOperationDefinitionSchema,
+    max_value: metricOperationDefinitionSchema,
   }),
   schema.object({
     type: schema.literal('trend'),
   }),
 ]);
 
-const metricStatePrimaryMetricOptionsSchema = schema.object({
-  /**
-   * Sub label
-   */
-  sub_label: schema.maybe(schema.string({ defaultValue: '', meta: { description: 'Sub label' } })),
-  /**
-   * Alignments of the labels and values for the primary metric.
-   * For example, align the labels to the left and the values to the right.
-   */
-  alignments: schema.maybe(
-    schema.object(
-      {
-        /**
-         * Alignments for labels. Possible values:
-         * - 'left': Align label to the left
-         * - 'center': Align label to the center
-         * - 'right': Align label to the right
-         */
-        labels: schema.maybe(
-          schema.oneOf(
-            [schema.literal('left'), schema.literal('center'), schema.literal('right')],
-            { meta: { description: 'Alignments for labels' }, defaultValue: 'left' }
-          )
-        ),
-        /**
-         * Alignments for value. Possible values:
-         * - 'left': Align value to the left
-         * - 'center': Align value to the center
-         * - 'right': Align value to the right
-         */
-        value: schema.maybe(
-          schema.oneOf(
-            [schema.literal('left'), schema.literal('center'), schema.literal('right')],
-            { meta: { description: 'Alignments for value' }, defaultValue: 'left' }
-          )
-        ),
-      },
-      { defaultValue: { labels: 'left', value: 'left' } }
-    )
-  ),
-  /**
-   * Whether to fit the value
-   */
-  fit: schema.maybe(
-    schema.boolean({ meta: { description: 'Whether to fit the value' }, defaultValue: false })
-  ),
-  /**
-   * Icon configuration
-   */
-  icon: schema.maybe(
-    schema.object({
-      /**
-       * Icon name
-       */
-      name: schema.string({ meta: { description: 'Icon name' } }),
-      /**
-       * Icon alignment. Possible values:
-       * - 'right': Icon is aligned to the right
-       * - 'left': Icon is aligned to the left
-       */
-      align: schema.maybe(
-        schema.oneOf([schema.literal('right'), schema.literal('left')], {
-          meta: { description: 'Icon alignment' },
-          defaultValue: 'right',
-        })
-      ),
-    })
-  ),
-  /**
-   * Color configuration
-   */
-  color: schema.maybe(coloringTypeSchema),
+// Note: 'trend' type is not supported for ES|QL yet
+export const complementaryVizSchemaESQL = barBackgroundChartSchema.extends(
+  {
+    /**
+     * Max value
+     */
+    max_value: esqlColumnSchema,
+  },
+  { meta: { id: 'metricComplementaryBar', title: 'Complementary Bar' } }
+);
+
+const metricStateBackgroundChartSchemaNoESQL = {
   /**
    * Complementary visualization
    */
-  background_chart: schema.maybe(complementaryVizSchema),
-});
+  background_chart: schema.maybe(complementaryVizSchemaNoESQL),
+};
 
-const metricStateSecondaryMetricOptionsSchema = schema.object({
+const metricStateBackgroundChartSchemaESQL = {
   /**
-   * Prefix
+   * Complementary visualization
    */
-  prefix: schema.maybe(schema.string({ meta: { description: 'Prefix' }, defaultValue: '' })),
+  background_chart: schema.maybe(complementaryVizSchemaESQL),
+};
+
+const metricStylingSchema = schema.object(
+  {
+    /**
+     * Icon configuration
+     */
+    icon: schema.maybe(
+      schema.object(
+        {
+          /**
+           * Icon name
+           */
+          name: schema.oneOf(
+            [
+              schema.literal('alert'),
+              schema.literal('asterisk'),
+              schema.literal('bell'),
+              schema.literal('bolt'),
+              schema.literal('bug'),
+              schema.literal('compute'),
+              schema.literal('editor_comment'),
+              schema.literal('flag'),
+              schema.literal('globe'),
+              schema.literal('heart'),
+              schema.literal('map_marker'),
+              schema.literal('pin'),
+              schema.literal('sort_down'),
+              schema.literal('sort_up'),
+              schema.literal('star_empty'),
+              schema.literal('tag'),
+              schema.literal('temperature'),
+            ],
+            { meta: { description: 'Icon name' } }
+          ),
+          /**
+           * Icon alignment. Possible values:
+           * - 'right': Icon is aligned to the right
+           * - 'left': Icon is aligned to the left
+           */
+          alignment: schema.maybe(
+            leftRightAlignmentSchema({
+              meta: { description: 'Icon alignment' },
+              defaultValue: DEFAULT_PRIMARY_ICON_ALIGNMENT,
+            })
+          ),
+        },
+        {
+          meta: {
+            id: 'metricIconConfig',
+            title: 'Icon Configuration',
+            description: 'Icon configuration for the metric chart',
+          },
+        }
+      )
+    ),
+    primary: schema.maybe(
+      schema.object({
+        /**
+         * Position of the primary metric value. Possible values:
+         * - 'top': Value appears above the labels
+         * - 'middle': Value appears between the labels
+         * - 'bottom': Value appears below the labels
+         */
+        position: schema.maybe(
+          metricValuePositionSchema({
+            meta: { description: 'Position of the primary metric value (top, middle, or bottom)' },
+            defaultValue: DEFAULT_PRIMARY_POSITION,
+          })
+        ),
+        /**
+         * Title and subtitle text configuration for the primary metric.
+         */
+        labels: schema.maybe(
+          schema.object(
+            {
+              /**
+               * Horizontal alignment for the title and subtitle text. Possible values:
+               * - 'left': Align to the left
+               * - 'center': Align to the center
+               * - 'right': Align to the right
+               */
+              alignment: schema.maybe(
+                horizontalAlignmentSchema({
+                  meta: {
+                    description:
+                      'Horizontal alignment for the title and subtitle text (left, center or right)',
+                  },
+                  defaultValue: DEFAULT_PRIMARY_LABELS_ALIGNMENT,
+                })
+              ),
+            },
+            {
+              meta: { description: 'Labels (title and subtitle) configuration' },
+            }
+          )
+        ),
+        /**
+         * Values configuration
+         */
+        value: schema.maybe(
+          schema.object(
+            {
+              /**
+               * Alignment for values. Possible values:
+               * - 'left': Align value to the left
+               * - 'center': Align value to the center
+               * - 'right': Align value to the right
+               */
+              alignment: schema.maybe(
+                horizontalAlignmentSchema({
+                  meta: {
+                    description: 'Alignment for the primary metric value (left, center or right)',
+                  },
+                  defaultValue: DEFAULT_PRIMARY_VALUE_ALIGNMENT,
+                })
+              ),
+              /**
+               * Controls how the primary value text is sized within the panel.
+               * - 'auto': selects a font size from predefined breakpoints based on panel height,
+               *   then shrinks if the text overflows horizontally.
+               * - 'fill': scales the text to be as large as possible, filling all available space.
+               */
+              sizing: schema.maybe(
+                schema.oneOf([schema.literal('auto'), schema.literal('fill')], {
+                  defaultValue: DEFAULT_PRIMARY_VALUE_SIZING,
+                  meta: {
+                    description:
+                      "Controls how the primary value text is sized within the panel. 'auto' selects a font size from predefined breakpoints based on panel height, then shrinks if the text overflows horizontally. 'fill' scales the text to be as large as possible, filling all available space.",
+                  },
+                })
+              ),
+            },
+            {
+              meta: { description: 'Primary metric value configuration' },
+            }
+          )
+        ),
+      })
+    ),
+    secondary: schema.maybe(
+      schema.object({
+        /**
+         * Label configuration
+         */
+        label: schema.maybe(
+          schema.object({
+            /**
+             * Whether to display the label
+             */
+            visible: schema.maybe(
+              schema.boolean({
+                meta: { description: 'Whether to display the label' },
+                defaultValue: DEFAULT_SECONDARY_LABEL_VISIBLE,
+              })
+            ),
+            /**
+             * Label placement relative to the secondary metric value. Possible values:
+             * - 'before': Label appears before the value
+             * - 'after': Label appears after the value
+             */
+            placement: schema.maybe(
+              placementSchema({
+                meta: {
+                  description:
+                    'Label placement relative to the secondary metric value (before or after)',
+                },
+                defaultValue: DEFAULT_SECONDARY_LABEL_PLACEMENT,
+              })
+            ),
+          })
+        ),
+        value: schema.maybe(
+          schema.object(
+            {
+              /**
+               * Alignment for secondary values. Possible values:
+               * - 'left': Align value to the left
+               * - 'center': Align value to the center
+               * - 'right': Align value to the right
+               */
+              alignment: schema.maybe(
+                horizontalAlignmentSchema({
+                  meta: { description: 'Alignment for secondary values (left, center or right)' },
+                  defaultValue: DEFAULT_SECONDARY_VALUE_ALIGNMENT,
+                })
+              ),
+            },
+            { meta: { description: 'Secondary metric value configuration' } }
+          )
+        ),
+      })
+    ),
+  },
+  {
+    meta: {
+      id: 'metricStyling',
+      description: 'Visual chart styling options',
+    },
+  }
+);
+
+const metricStatePrimaryMetricOptionsSchema = {
+  // this is used to differentiate primary and secondary metrics
+  // unfortunately given the lack of tuple schema support we need to have some way
+  // to avoid default injection in the wrong type
+  type: schema.literal('primary'),
   /**
-   * Compare to
+   * Subtitle
    */
-  compare_to: schema.maybe(schema.string({ meta: { description: 'Compare to' } })),
+  subtitle: schema.maybe(
+    schema.string({ meta: { description: 'Subtitle below the primary metric value' } })
+  ),
   /**
    * Color configuration
    */
-  color: schema.maybe(coloringTypeSchema),
-});
+  color: schema.maybe(
+    schema.oneOf([colorByValueSchema, staticColorSchema, autoColorSchema], {
+      defaultValue: AUTO_COLOR,
+    })
+  ),
+  /**
+   * Where to apply the color (background or value)
+   */
+  apply_color_to: schema.maybe(applyColorToSchema),
+};
 
-const metricStateBreakdownByOptionsSchema = schema.object({
+const metricStateSecondaryMetricOptionsSchema = {
+  // this is used to differentiate primary and secondary metrics
+  // unfortunately given the lack of tuple schema support we need to have some way
+  // to avoid default injection in the wrong type
+  type: schema.literal('secondary'),
+  /**
+   * Compare to
+   */
+  compare: schema.maybe(
+    schema.oneOf([
+      compareToSchemaShared.extends(
+        {
+          to: schema.literal('baseline'),
+          baseline: schema.number({ meta: { description: 'Baseline value' }, defaultValue: 0 }),
+        },
+        { meta: { id: 'metricCompareToBaseline', title: 'Compare To Baseline' } }
+      ),
+      compareToSchemaShared.extends(
+        {
+          to: schema.literal('primary'),
+        },
+        { meta: { id: 'metricCompareToPrimary', title: 'Compare To Primary' } }
+      ),
+    ])
+  ),
+  /**
+   * Color configuration
+   */
+  color: schema.maybe(
+    schema.oneOf([staticColorSchema, noColorSchema], {
+      defaultValue: NO_COLOR,
+    })
+  ),
+};
+
+const metricStateBreakdownByOptionsSchema = {
   /**
    * Number of columns
    */
-  columns: schema.maybe(
-    schema.number({
-      defaultValue: 5,
-      meta: { description: 'Number of columns' },
-    })
-  ),
+  columns: schema.number({
+    defaultValue: LENS_METRIC_BREAKDOWN_DEFAULT_MAX_COLUMNS,
+    meta: { description: 'Number of columns' },
+  }),
   /**
    * Collapse by function. This parameter is used to collapse the
    * metric chart when the number of columns is bigger than the
@@ -172,63 +398,148 @@ const metricStateBreakdownByOptionsSchema = schema.object({
    * - 'none': Do not collapse
    */
   collapse_by: schema.maybe(collapseBySchema),
-});
+};
 
-export const metricStateSchema = schema.allOf([
-  sharedPanelInfoSchema,
-  layerSettingsSchema,
-  schema.object({
+function isSecondaryMetric(
+  metric: PrimaryMetricType | SecondaryMetricType
+): metric is SecondaryMetricType {
+  return metric.type === 'secondary';
+}
+
+function isPrimaryMetric(
+  metric: PrimaryMetricType | SecondaryMetricType
+): metric is PrimaryMetricType {
+  return metric.type === 'primary';
+}
+
+function validateMetrics(metrics: (PrimaryMetricType | SecondaryMetricType)[]) {
+  const [firstMetric, secondMetric] = metrics;
+  if (secondMetric) {
+    const isFirstSecondary = isSecondaryMetric(firstMetric);
+    const isSecondPrimary = isPrimaryMetric(secondMetric);
+    if (isFirstSecondary || isSecondPrimary) {
+      return 'When two metrics are defined, the primary metric must be the first item and the secondary metric the second item.';
+    }
+  }
+  const isFirstSecondary = isSecondaryMetric(firstMetric);
+  if (isFirstSecondary) {
+    return 'The first metric must be the primary metric.';
+  }
+}
+
+export const primaryMetricSchemaNoESQL = mergeAllMetricsWithChartDimensionSchemaWithRefBasedOps({
+  ...metricStatePrimaryMetricOptionsSchema,
+  ...metricStateBackgroundChartSchemaNoESQL,
+});
+const secondaryMetricSchemaNoESQL = mergeAllMetricsWithChartDimensionSchemaWithRefBasedOps(
+  metricStateSecondaryMetricOptionsSchema
+);
+
+export const metricStateSchemaNoESQL = schema.object(
+  {
     type: schema.literal('metric'),
-    ...datasetSchema,
+    ...sharedPanelInfoSchema,
+    ...dslOnlyPanelInfoSchema,
+    ...layerSettingsSchema,
+    ...dataSourceSchema,
+    styling: schema.maybe(metricStylingSchema),
     /**
      * Primary value configuration, must define operation.
      */
-    metric: schema.oneOf([
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, counterRateOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, countMetricOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, cumulativeSumOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, differencesOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, formulaOperationDefinitionSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, lastValueOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, metricOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, movingAverageOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, percentileOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, percentileRanksOperationSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, staticOperationDefinitionSchema]),
-      schema.allOf([metricStatePrimaryMetricOptionsSchema, uniqueCountMetricOperationSchema]),
-    ]),
-    /**
-     * Secondary value configuration, must define operation.
-     */
-    secondary_metric: schema.maybe(
-      schema.oneOf([
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, counterRateOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, countMetricOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, cumulativeSumOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, differencesOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, formulaOperationDefinitionSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, lastValueOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, metricOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, movingAverageOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, percentileOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, percentileRanksOperationSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, staticOperationDefinitionSchema]),
-        schema.allOf([metricStateSecondaryMetricOptionsSchema, uniqueCountMetricOperationSchema]),
-      ])
+    metrics: schema.arrayOf(
+      schema.oneOf([primaryMetricSchemaNoESQL, secondaryMetricSchemaNoESQL]),
+      {
+        minSize: 1,
+        maxSize: 2,
+        validate: validateMetrics,
+      }
     ),
     /**
      * Configure how to break down the metric (e.g. show one metric per term).
      */
     breakdown_by: schema.maybe(
-      schema.oneOf([
-        schema.allOf([metricStateBreakdownByOptionsSchema, bucketDateHistogramOperationSchema]),
-        schema.allOf([metricStateBreakdownByOptionsSchema, bucketFilterOperationSchema]),
-        schema.allOf([metricStateBreakdownByOptionsSchema, bucketHistogramOperationSchema]),
-        schema.allOf([metricStateBreakdownByOptionsSchema, bucketRangesOperationSchema]),
-        schema.allOf([metricStateBreakdownByOptionsSchema, bucketTermsOperationSchema]),
-      ])
+      mergeAllBucketsWithChartDimensionSchema(metricStateBreakdownByOptionsSchema)
     ),
-  }),
-]);
+  },
+  {
+    meta: {
+      id: 'metricNoESQL',
+      title: 'Metric Chart (DSL)',
+      description: 'Metric chart configuration for standard queries',
+    },
+    validate: ({ metrics, breakdown_by }) => {
+      const primaryMetric = metrics.find((metric) => isPrimaryMetric(metric));
+
+      if (primaryMetric?.color?.type === 'dynamic' && primaryMetric.color.range === 'percentage') {
+        if (!breakdown_by && !(primaryMetric.background_chart?.type === 'bar')) {
+          return 'When using percentage-based dynamic coloring, a breakdown dimension or max must be defined.';
+        }
+      }
+    },
+  }
+);
+
+const primaryMetricESQL = esqlColumnWithFormatSchema
+  .extends(metricStatePrimaryMetricOptionsSchema)
+  .extends(metricStateBackgroundChartSchemaESQL);
+
+const secondaryMetricESQL = esqlColumnWithFormatSchema.extends(
+  metricStateSecondaryMetricOptionsSchema
+);
+
+export const esqlMetricState = schema.object(
+  {
+    type: schema.literal('metric'),
+    ...sharedPanelInfoSchema,
+    ...layerSettingsSchema,
+    ...dataSourceEsqlTableSchema,
+    styling: schema.maybe(metricStylingSchema),
+    /**
+     * Primary value configuration, must define operation.
+     */
+    metrics: schema.arrayOf(schema.oneOf([primaryMetricESQL, secondaryMetricESQL]), {
+      minSize: 1,
+      maxSize: 2,
+      validate: validateMetrics,
+    }),
+    /**
+     * Configure how to break down the metric (e.g. show one metric per term).
+     */
+    breakdown_by: schema.maybe(
+      esqlColumnWithFormatSchema.extends(metricStateBreakdownByOptionsSchema)
+    ),
+  },
+  {
+    meta: {
+      id: 'metricESQL',
+      title: 'Metric Chart (ES|QL)',
+      description: 'Metric chart configuration for ES|QL queries',
+    },
+    validate: ({ metrics, breakdown_by }) => {
+      const primaryMetric = metrics.find((metric) => isPrimaryMetric(metric));
+
+      if (primaryMetric?.color?.type === 'dynamic' && primaryMetric.color.range === 'percentage') {
+        if (!breakdown_by && !(primaryMetric.background_chart?.type === 'bar')) {
+          return 'When using percentage-based dynamic coloring, a breakdown dimension or max must be defined.';
+        }
+      }
+    },
+  }
+);
+
+export const metricStateSchema = objectUnion([metricStateSchemaNoESQL, esqlMetricState], {
+  meta: { id: 'metricChart', title: 'Metric Chart' },
+});
 
 export type MetricState = TypeOf<typeof metricStateSchema>;
+export type MetricStateNoESQL = TypeOf<typeof metricStateSchemaNoESQL>;
+export type MetricStateESQL = TypeOf<typeof esqlMetricState>;
+
+export type MetricStyling = TypeOf<typeof metricStylingSchema>;
+
+export type PrimaryMetricType =
+  | TypeOf<typeof primaryMetricSchemaNoESQL>
+  | TypeOf<typeof primaryMetricESQL>;
+export type SecondaryMetricType =
+  | TypeOf<typeof secondaryMetricSchemaNoESQL>
+  | TypeOf<typeof secondaryMetricESQL>;

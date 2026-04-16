@@ -16,11 +16,8 @@ import type {
 } from '..';
 import { APP } from '..';
 import { SearchSessionsMgmtAPI } from '../lib/api';
-import { AsyncSearchIntroDocumentation } from '../lib/documentation';
 import { renderApp } from './render';
 import type { SearchSessionsConfigSchema } from '../../../../../server/config';
-import { BACKGROUND_SEARCH_FEATURE_FLAG_KEY } from '../../constants';
-
 export class SearchSessionsMgmtApp {
   constructor(
     private coreSetup: CoreSetup<IManagementSectionsPluginsStart>,
@@ -37,18 +34,13 @@ export class SearchSessionsMgmtApp {
     const {
       chrome: { docTitle },
       http,
-      docLinks,
       i18n,
       notifications,
       uiSettings,
       application,
     } = coreStart;
 
-    const hasBackgroundSearchEnabled = coreStart.featureFlags.getBooleanValue(
-      BACKGROUND_SEARCH_FEATURE_FLAG_KEY,
-      false
-    );
-    const pluginName = APP.getI18nName(hasBackgroundSearchEnabled);
+    const pluginName = APP.getI18nName();
     docTitle.change(pluginName);
     this.params.setBreadcrumbs([{ text: pluginName }]);
 
@@ -56,13 +48,11 @@ export class SearchSessionsMgmtApp {
       notifications,
       application,
       usageCollector: setupDeps.searchUsageCollector,
+      featureFlags: coreStart.featureFlags,
     });
-
-    const documentation = new AsyncSearchIntroDocumentation(docLinks);
 
     const dependencies: AppDependencies = {
       config: this.config,
-      documentation,
       core: coreStart,
       api,
       http,
@@ -71,6 +61,7 @@ export class SearchSessionsMgmtApp {
       share: pluginsStart.share,
       kibanaVersion: this.kibanaVersion,
       searchUsageCollector: setupDeps.searchUsageCollector,
+      searchSessionEBTManager: setupDeps.searchSessionEBTManager,
     };
 
     const { element } = params;
