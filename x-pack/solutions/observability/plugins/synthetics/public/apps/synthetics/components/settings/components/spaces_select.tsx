@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { i18n } from '@kbn/i18n';
 import { useKibana } from '@kbn/kibana-react-plugin/public';
 import { EuiComboBox, EuiFormRow } from '@elastic/eui';
@@ -42,10 +42,9 @@ export const SpaceSelector = <T extends FieldValues>({
   });
 
   const prevAgentPolicyId = usePrevious(selectedAgentPolicyId);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    cancelledRef.current = false;
+    let cancelled = false;
 
     if (
       selectedAgentPolicyId !== prevAgentPolicyId &&
@@ -60,7 +59,7 @@ export const SpaceSelector = <T extends FieldValues>({
       }
 
       data.spacesDataPromise.then(({ spacesMap }) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
 
         const policySpaceIds = selectedPolicy.spaceIds || [];
         const spaceOptionBySpaceId: Record<string, { id: string; label: string }> = {};
@@ -99,7 +98,7 @@ export const SpaceSelector = <T extends FieldValues>({
     }
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [
     NAMESPACES_NAME,
