@@ -30,7 +30,17 @@ export class PrivateLocationTestService {
     const res = await this.supertestWithAuth
       .get('/api/fleet/epm/packages/synthetics')
       .set('kbn-xsrf', 'true');
-    return res.body?.item?.version ?? DEFAULT_SYNTHETICS_VERSION;
+    // When a package is installed, Fleet's GET /api/fleet/epm/packages/{name}
+    // returns the *installed* version in `item.version` and exposes the
+    // registry's latest version in `item.latestVersion`. We always want the
+    // latest available version from the registry so that callers of
+    // `installSyntheticsPackage()` (without an explicit version) perform a
+    // real upgrade even when an older version happens to be installed — for
+    // example by the "handles auto upgrading policies" test which first
+    // installs an old version and then expects a subsequent no-arg install
+    // to upgrade it.
+    const item = res.body?.item;
+    return item?.latestVersion ?? item?.version ?? DEFAULT_SYNTHETICS_VERSION;
   }
 
   async installSyntheticsPackage({ version }: { version?: string } = {}) {
@@ -52,8 +62,13 @@ export class PrivateLocationTestService {
         .send({ force: true })
         .expect(200);
       // Verify the version actually took effect — background Fleet tasks
-      // (e.g. deferred upgradePackageInstallVersion) can race and overwrite it
-      const installedVersion = await this.fetchSyntheticsPackageVersion();
+      // (e.g. deferred upgradePackageInstallVersion) can race and overwrite it.
+      // Read the installed version directly (not via fetchSyntheticsPackageVersion,
+      // which returns the registry's latest) to detect such races.
+      const infoRes = await this.supertestWithAuth
+        .get('/api/fleet/epm/packages/synthetics')
+        .set('kbn-xsrf', 'true');
+      const installedVersion = infoRes.body?.item?.version;
       if (installedVersion !== resolvedVersion) {
         throw new Error(
           `Package version mismatch after install: expected ${resolvedVersion} but got ${installedVersion}`
