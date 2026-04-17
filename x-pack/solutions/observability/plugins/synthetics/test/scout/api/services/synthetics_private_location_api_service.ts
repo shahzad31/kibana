@@ -160,11 +160,7 @@ export function createSyntheticsPrivateLocationApi(
 
   const cleanUpPrivateLocationsAndPolicies = async () => {
     await kbnClient.savedObjects.clean({
-      types: [
-        'synthetics-privates-locations',
-        'ingest-agent-policies',
-        'ingest-package-policies',
-      ],
+      types: ['synthetics-privates-locations', 'ingest-agent-policies', 'ingest-package-policies'],
     });
     cachedSharedLocation = null;
   };

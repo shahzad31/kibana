@@ -7,7 +7,6 @@
 
 import type { ApiClientFixture } from '@kbn/scout-oblt';
 import { expect } from '@kbn/scout-oblt/api';
-import { SYNTHETICS_API_URLS } from './constants';
 
 /**
  * Thin wrapper around `POST /api/synthetics/monitors` for Scout API specs.

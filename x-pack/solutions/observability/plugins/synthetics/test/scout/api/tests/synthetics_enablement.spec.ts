@@ -68,7 +68,7 @@ apiTest.describe(
   'SyntheticsEnablement',
   { tag: [...tags.stateful.classic, ...tags.serverless.observability.complete] },
   () => {
-    type ApiKey = {
+    interface ApiKey {
       id: string;
       name: string;
       invalidated: boolean;
@@ -78,7 +78,7 @@ apiTest.describe(
           indices: Array<Record<string, unknown>>;
         };
       };
-    };
+    }
 
     const fetchApiKeys = async (
       apiClient: any,
@@ -109,21 +109,13 @@ apiTest.describe(
       );
     };
 
-    const putEnablement = (
-      apiClient: any,
-      headers: Record<string, string>,
-      spacePrefix = ''
-    ) =>
+    const putEnablement = (apiClient: any, headers: Record<string, string>, spacePrefix = '') =>
       apiClient.put(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers, responseType: 'json' }
       );
 
-    const deleteEnablement = (
-      apiClient: any,
-      headers: Record<string, string>,
-      spacePrefix = ''
-    ) =>
+    const deleteEnablement = (apiClient: any, headers: Record<string, string>, spacePrefix = '') =>
       apiClient.delete(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers }
@@ -299,9 +291,9 @@ apiTest.describe(
           expect(enableInSpace).toHaveStatusCode(200);
           expect(enableInSpace.body).toStrictEqual(ENABLED_RESPONSE_ADMIN);
 
-          expect(
-            await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)
-          ).toHaveStatusCode(200);
+          expect(await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(
+            200
+          );
           expect(await deleteEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
           expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
 

@@ -124,55 +124,52 @@ apiTest.describe(
       expect(body.schedules).toStrictEqual([{ label: '3', count: 2 }]);
     });
 
-    apiTest(
-      'get list of filters with both legacy and modern monitors',
-      async ({ apiClient }) => {
-        await addMonitor(apiClient, editorHeaders, {
-          name: 'Modern Monitor',
-          type: 'http',
-          urls: 'https://modern.elastic.co',
-          tags: ['multi-space', 'synthetics'],
+    apiTest('get list of filters with both legacy and modern monitors', async ({ apiClient }) => {
+      await addMonitor(apiClient, editorHeaders, {
+        name: 'Modern Monitor',
+        type: 'http',
+        urls: 'https://modern.elastic.co',
+        tags: ['multi-space', 'synthetics'],
+        locations: [privateLocation],
+      });
+
+      await addMonitor(
+        apiClient,
+        editorHeaders,
+        {
+          name: 'Legacy Monitor 3',
+          type: 'icmp',
+          host: 'https://legacy2.elastic.co',
+          tags: ['legacy2', 'synthetics'],
           locations: [privateLocation],
-        });
+        },
+        { savedObjectType: LEGACY_SYNTHETICS_MONITOR_TYPE }
+      );
 
-        await addMonitor(
-          apiClient,
-          editorHeaders,
-          {
-            name: 'Legacy Monitor 3',
-            type: 'icmp',
-            host: 'https://legacy2.elastic.co',
-            tags: ['legacy2', 'synthetics'],
-            locations: [privateLocation],
-          },
-          { savedObjectType: LEGACY_SYNTHETICS_MONITOR_TYPE }
-        );
-
-        const res = await apiClient.get('internal/synthetics/monitor/filters', {
-          headers: editorHeaders,
-          responseType: 'json',
-        });
-        expect(res).toHaveStatusCode(200);
-        const body = res.body as {
-          monitorTypes: Array<{ label: string; count: number }>;
-          tags: Array<{ label: string; count: number }>;
-          locations: Array<{ label: string; count: number }>;
-          schedules: Array<{ label: string; count: number }>;
-        };
-        expect(body.monitorTypes).toStrictEqual([
-          { label: 'http', count: 2 },
-          { label: 'icmp', count: 2 },
-        ]);
-        expect(body.tags).toStrictEqual([
-          { label: 'synthetics', count: 4 },
-          { label: 'apm', count: 1 },
-          { label: 'multi-space', count: 1 },
-          { label: 'legacy', count: 1 },
-          { label: 'legacy2', count: 1 },
-        ]);
-        expect(body.locations).toStrictEqual([{ label: privateLocation.id, count: 4 }]);
-        expect(body.schedules).toStrictEqual([{ label: '3', count: 4 }]);
-      }
-    );
+      const res = await apiClient.get('internal/synthetics/monitor/filters', {
+        headers: editorHeaders,
+        responseType: 'json',
+      });
+      expect(res).toHaveStatusCode(200);
+      const body = res.body as {
+        monitorTypes: Array<{ label: string; count: number }>;
+        tags: Array<{ label: string; count: number }>;
+        locations: Array<{ label: string; count: number }>;
+        schedules: Array<{ label: string; count: number }>;
+      };
+      expect(body.monitorTypes).toStrictEqual([
+        { label: 'http', count: 2 },
+        { label: 'icmp', count: 2 },
+      ]);
+      expect(body.tags).toStrictEqual([
+        { label: 'synthetics', count: 4 },
+        { label: 'apm', count: 1 },
+        { label: 'multi-space', count: 1 },
+        { label: 'legacy', count: 1 },
+        { label: 'legacy2', count: 1 },
+      ]);
+      expect(body.locations).toStrictEqual([{ label: privateLocation.id, count: 4 }]);
+      expect(body.schedules).toStrictEqual([{ label: '3', count: 4 }]);
+    });
   }
 );
