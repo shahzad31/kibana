@@ -89,12 +89,18 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       });
     };
 
+    const spacesToDeleteIds: string[] = [];
+
     before(async () => {
       await cleanSyntheticsTestData(kibanaServer);
-      await testPrivateLocations.installSyntheticsPackage();
       editorUser = await samlAuth.createM2mApiKeyWithRoleScope('editor');
 
       _httpMonitorJson = getFixtureJson('http_monitor');
+    });
+
+    after(async () => {
+      await cleanSyntheticsTestData(kibanaServer);
+      await Promise.all(spacesToDeleteIds.map((id) => kibanaServer.spaces.delete(id)));
     });
 
     beforeEach(() => {
@@ -336,6 +342,8 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
     it('handles spaces', async () => {
       const SPACE_ID = `test-space-${uuidv4()}`;
       const SPACE_NAME = `test-space-name ${uuidv4()}`;
+      await kibanaServer.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
+      spacesToDeleteIds.push(SPACE_ID);
       const spaceScopedPrivateLocation = await testPrivateLocations.addTestPrivateLocation(
         SPACE_ID
       );
@@ -347,8 +355,6 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         locations: [spaceScopedPrivateLocation],
         spaces: [SPACE_ID],
       };
-
-      await kibanaServer.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
       const apiResponse = await supertestWithoutAuth
         .post(`/s/${SPACE_ID}${SYNTHETICS_API_URLS.SYNTHETICS_MONITORS}`)
         .set(editorUser.apiKeyHeader)
@@ -688,59 +694,62 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       );
     });
 
-    it('preserves the passed namespace when preserve_namespace is passed', async () => {
-      const SPACE_ID = `test-space-${uuidv4()}`;
-      const SPACE_NAME = `test-space-name ${uuidv4()}`;
-      const privateLocation = await testPrivateLocations.addTestPrivateLocation(SPACE_ID);
-      const monitor = {
-        ...httpMonitorJson,
-        [ConfigKey.NAMESPACE]: 'default',
-        locations: [privateLocation],
-        spaces: [],
-      };
-      let monitorId = '';
-      await kibanaServer.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
+    describe('namespace handling', () => {
+      let nsSpaceId: string;
+      let nsPrivateLocation: PrivateLocation;
 
-      try {
-        const apiResponse = await supertestWithoutAuth
-          .post(`/s/${SPACE_ID}${SYNTHETICS_API_URLS.SYNTHETICS_MONITORS}`)
-          .query({ preserve_namespace: true })
-          .set(editorUser.apiKeyHeader)
-          .set(samlAuth.getInternalRequestHeader())
-          .send(monitor)
-          .expect(200);
-        monitorId = apiResponse.body.id;
-        expect(apiResponse.body[ConfigKey.NAMESPACE]).eql('default');
-      } finally {
-        await deleteMonitor(monitorId, 200, SPACE_ID);
-      }
-    });
+      before(async () => {
+        nsSpaceId = `test-space-${uuidv4()}`;
+        await kibanaServer.spaces.create({ id: nsSpaceId, name: `test-space-name ${uuidv4()}` });
+        spacesToDeleteIds.push(nsSpaceId);
+        nsPrivateLocation = (await testPrivateLocations.addTestPrivateLocation(nsSpaceId)) as any;
+      });
 
-    it('sets namespace to custom namespace when set', async () => {
-      const SPACE_ID = `test-space-${uuidv4()}`;
-      const SPACE_NAME = `test-space-name ${uuidv4()}`;
-      const privateLocation = await testPrivateLocations.addTestPrivateLocation(SPACE_ID);
-      const monitor = {
-        ...httpMonitorJson,
-        locations: [privateLocation],
-        spaces: [],
-      };
-      let monitorId = '';
+      it('preserves the passed namespace when preserve_namespace is passed', async () => {
+        const monitor = {
+          ...httpMonitorJson,
+          [ConfigKey.NAMESPACE]: 'default',
+          locations: [nsPrivateLocation],
+          spaces: [],
+        };
+        let monitorId = '';
 
-      try {
-        await kibanaServer.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
+        try {
+          const apiResponse = await supertestWithoutAuth
+            .post(`/s/${nsSpaceId}${SYNTHETICS_API_URLS.SYNTHETICS_MONITORS}`)
+            .query({ preserve_namespace: true })
+            .set(editorUser.apiKeyHeader)
+            .set(samlAuth.getInternalRequestHeader())
+            .send(monitor)
+            .expect(200);
+          monitorId = apiResponse.body.id;
+          expect(apiResponse.body[ConfigKey.NAMESPACE]).eql('default');
+        } finally {
+          await deleteMonitor(monitorId, 200, nsSpaceId);
+        }
+      });
 
-        const apiResponse = await supertestWithoutAuth
-          .post(`/s/${SPACE_ID}${SYNTHETICS_API_URLS.SYNTHETICS_MONITORS}`)
-          .set(editorUser.apiKeyHeader)
-          .set(samlAuth.getInternalRequestHeader())
-          .send(monitor)
-          .expect(200);
-        monitorId = apiResponse.body.id;
-        expect(apiResponse.body[ConfigKey.NAMESPACE]).eql(monitor[ConfigKey.NAMESPACE]);
-      } finally {
-        await deleteMonitor(monitorId, 200, SPACE_ID);
-      }
+      it('sets namespace to custom namespace when set', async () => {
+        const monitor = {
+          ...httpMonitorJson,
+          locations: [nsPrivateLocation],
+          spaces: [],
+        };
+        let monitorId = '';
+
+        try {
+          const apiResponse = await supertestWithoutAuth
+            .post(`/s/${nsSpaceId}${SYNTHETICS_API_URLS.SYNTHETICS_MONITORS}`)
+            .set(editorUser.apiKeyHeader)
+            .set(samlAuth.getInternalRequestHeader())
+            .send(monitor)
+            .expect(200);
+          monitorId = apiResponse.body.id;
+          expect(apiResponse.body[ConfigKey.NAMESPACE]).eql(monitor[ConfigKey.NAMESPACE]);
+        } finally {
+          await deleteMonitor(monitorId, 200, nsSpaceId);
+        }
+      });
     });
   });
 }
