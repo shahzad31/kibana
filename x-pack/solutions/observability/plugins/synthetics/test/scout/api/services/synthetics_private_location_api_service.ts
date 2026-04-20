@@ -8,6 +8,7 @@
 import type { KbnClient } from '@kbn/scout-oblt';
 
 export const DEFAULT_SYNTHETICS_VERSION = '1.5.0';
+const FLEET_API_VERSION = '2023-10-31';
 
 export interface ScoutPrivateLocation {
   id: string;
@@ -48,10 +49,13 @@ export function createSyntheticsPrivateLocationApi(
   let cachedInstalledVersion: string | null = null;
   let cachedSharedLocation: ScoutPrivateLocation | null = null;
 
+  const fleetHeaders = { 'elastic-api-version': FLEET_API_VERSION };
+
   const fetchSyntheticsPackageVersion = async (): Promise<string> => {
     const { data } = await kbnClient.request<{ item?: { version: string } }>({
       path: '/api/fleet/epm/packages/synthetics',
       method: 'GET',
+      headers: fleetHeaders,
     });
     return data?.item?.version ?? DEFAULT_SYNTHETICS_VERSION;
   };
@@ -63,18 +67,28 @@ export function createSyntheticsPrivateLocationApi(
       return;
     }
 
-    await kbnClient.request({ path: '/api/fleet/setup', method: 'POST' });
+    await kbnClient.request({
+      path: '/api/fleet/setup',
+      method: 'POST',
+      headers: fleetHeaders,
+    });
 
-    await kbnClient.request({ path: '/api/fleet/epm/packages/synthetics', method: 'DELETE' });
+    await kbnClient.request({
+      path: '/api/fleet/epm/packages/synthetics',
+      method: 'DELETE',
+      headers: fleetHeaders,
+    });
     await kbnClient.request({
       path: `/api/fleet/epm/packages/synthetics/${resolvedVersion}`,
       method: 'POST',
       body: { force: true },
+      headers: fleetHeaders,
     });
 
     const { data } = await kbnClient.request<{ item?: { version: string } }>({
       path: '/api/fleet/epm/packages/synthetics',
       method: 'GET',
+      headers: fleetHeaders,
     });
     const installedVersion = data?.item?.version ?? DEFAULT_SYNTHETICS_VERSION;
     if (installedVersion !== resolvedVersion) {
@@ -95,6 +109,7 @@ export function createSyntheticsPrivateLocationApi(
     const { data } = await kbnClient.request<{ item: { id: string } }>({
       path: `${prefix}/api/fleet/agent_policies?sys_monitoring=true`,
       method: 'POST',
+      headers: fleetHeaders,
       body: {
         name,
         description: '',

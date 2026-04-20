@@ -7,6 +7,7 @@
 
 import type { ApiClientFixture } from '@kbn/scout-oblt';
 import { expect } from '@kbn/scout-oblt/api';
+import { PUBLIC_API_VERSION } from './constants';
 
 /**
  * Thin wrapper around `POST /api/synthetics/monitors` for Scout API specs.
@@ -15,6 +16,9 @@ import { expect } from '@kbn/scout-oblt/api';
  * `apis/synthetics/create_monitor.ts` but uses `apiClient` instead of
  * `supertest`. The caller supplies the auth headers (typically API key +
  * internal origin).
+ *
+ * The `elastic-api-version` header is required because this is a versioned
+ * public API route (`router.versioned.post`).
  */
 export async function addMonitor(
   apiClient: ApiClientFixture,
@@ -29,7 +33,7 @@ export async function addMonitor(
   const path = `api/synthetics/monitors${qs.length ? `?${qs.join('&')}` : ''}`;
 
   const res = await apiClient.post(path, {
-    headers,
+    headers: { ...headers, 'elastic-api-version': PUBLIC_API_VERSION },
     body: monitor,
     responseType: 'json',
   });

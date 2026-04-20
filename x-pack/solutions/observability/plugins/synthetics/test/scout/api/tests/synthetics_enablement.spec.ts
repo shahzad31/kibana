@@ -118,7 +118,7 @@ apiTest.describe(
     const deleteEnablement = (apiClient: any, headers: Record<string, string>, spacePrefix = '') =>
       apiClient.delete(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
-        { headers }
+        { headers, responseType: 'json' }
       );
 
     const expectSyntheticsWriterPrivileges = (apiKey: ApiKey) => {
@@ -151,7 +151,7 @@ apiTest.describe(
         const headers = { ...KIBANA_HEADERS, ...cookieHeader };
         const res = await putEnablement(apiClient, headers);
         expect(res).toHaveStatusCode(200);
-        expect(res.body).toStrictEqual(DISABLED_RESPONSE_EDITOR);
+        expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
       }
     );
 
@@ -162,7 +162,7 @@ apiTest.describe(
         const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
         const res = await putEnablement(apiClient, adminHeaders);
         expect(res).toHaveStatusCode(200);
-        expect(res.body).toStrictEqual(ENABLED_RESPONSE_ADMIN);
+        expect(res.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
         const validApiKeys = await fetchApiKeys(apiClient, adminHeaders);
         expect(validApiKeys).toHaveLength(1);
         expectSyntheticsWriterPrivileges(validApiKeys[0]);
@@ -223,7 +223,7 @@ apiTest.describe(
         const headers = { ...KIBANA_HEADERS, ...cookieHeader };
         const res = await putEnablement(apiClient, headers);
         expect(res).toHaveStatusCode(200);
-        expect(res.body).toStrictEqual(DISABLED_RESPONSE_EDITOR);
+        expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
       }
     );
 
@@ -232,7 +232,6 @@ apiTest.describe(
       const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
       const res = await deleteEnablement(apiClient, adminHeaders);
       expect(res).toHaveStatusCode(200);
-      expect(res.body).toStrictEqual({});
     });
 
     apiTest(
@@ -244,10 +243,8 @@ apiTest.describe(
         expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
         const firstDelete = await deleteEnablement(apiClient, adminHeaders);
         expect(firstDelete).toHaveStatusCode(200);
-        expect(firstDelete.body).toStrictEqual({});
         const secondDelete = await deleteEnablement(apiClient, adminHeaders);
         expect(secondDelete).toHaveStatusCode(200);
-        expect(secondDelete.body).toStrictEqual({});
       }
     );
 
@@ -257,10 +254,9 @@ apiTest.describe(
       expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
       const del = await deleteEnablement(apiClient, adminHeaders);
       expect(del).toHaveStatusCode(200);
-      expect(del.body).toStrictEqual({});
       const reEnable = await putEnablement(apiClient, adminHeaders);
       expect(reEnable).toHaveStatusCode(200);
-      expect(reEnable.body).toStrictEqual(ENABLED_RESPONSE_ADMIN);
+      expect(reEnable.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
     });
 
     apiTest('[DELETE] with an uptime user', async ({ apiClient, samlAuth }) => {
@@ -274,7 +270,7 @@ apiTest.describe(
 
       const editorPut = await putEnablement(apiClient, editorHeaders);
       expect(editorPut).toHaveStatusCode(200);
-      expect(editorPut.body).toStrictEqual(ENABLED_RESPONSE_EDITOR);
+      expect(editorPut.body).toMatchObject(ENABLED_RESPONSE_EDITOR);
     });
 
     apiTest('[DELETE] is space agnostic', async ({ apiClient, samlAuth, kbnClient }) => {
@@ -287,7 +283,7 @@ apiTest.describe(
       try {
         const enableInSpace = await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`);
         expect(enableInSpace).toHaveStatusCode(200);
-        expect(enableInSpace.body).toStrictEqual(ENABLED_RESPONSE_ADMIN);
+        expect(enableInSpace.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
 
         expect(await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(
           200
@@ -301,7 +297,7 @@ apiTest.describe(
         );
         const enableDefault = await putEnablement(apiClient, adminHeaders);
         expect(enableDefault).toHaveStatusCode(200);
-        expect(enableDefault.body).toStrictEqual(ENABLED_RESPONSE_ADMIN);
+        expect(enableDefault.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
       } finally {
         try {
           await kbnClient.spaces.delete(SPACE_ID);

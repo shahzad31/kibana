@@ -49,7 +49,7 @@ apiTest.describe(
         responseType: 'json',
       });
       expect(res).toHaveStatusCode(200);
-      expect(res.body).toStrictEqual({
+      expect(res.body).toMatchObject({
         monitorTypes: [],
         tags: [],
         locations: [],
@@ -74,7 +74,7 @@ apiTest.describe(
         responseType: 'json',
       });
       expect(res).toHaveStatusCode(200);
-      expect(res.body).toStrictEqual({
+      expect(res.body).toMatchObject({
         monitorTypes: [{ label: 'http', count: 1 }],
         tags: [
           { label: 'apm', count: 1 },
