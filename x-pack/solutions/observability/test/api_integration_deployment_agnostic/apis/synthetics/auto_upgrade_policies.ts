@@ -66,6 +66,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         ...httpMonitorJson,
         name: `Test monitor ${uuidv4()}`,
         [ConfigKey.NAMESPACE]: 'default',
+        locations: [],
         private_locations: [privateLocation.id],
       };
 
@@ -91,6 +92,13 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         expect(packagePolicy.package.version).eql(lowerVersion);
 
         await testPrivateLocations.installSyntheticsPackage({ force: true });
+
+        // Trigger Fleet setup which runs setupUpgradeManagedPackagePolicies
+        // to upgrade policies for packages with keep_policies_up_to_date.
+        await supertestWithAuth
+          .post('/api/fleet/setup')
+          .set('kbn-xsrf', 'true')
+          .expect(200);
 
         await retry.tryForTime(120 * 1000, async () => {
           const policyResponseAfterUpgrade = await supertestWithAuth.get(
