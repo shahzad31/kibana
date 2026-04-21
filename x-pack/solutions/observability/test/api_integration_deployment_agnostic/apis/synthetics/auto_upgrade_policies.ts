@@ -95,10 +95,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
 
         // Trigger Fleet setup which runs setupUpgradeManagedPackagePolicies
         // to upgrade policies for packages with keep_policies_up_to_date.
-        await supertestWithAuth
-          .post('/api/fleet/setup')
-          .set('kbn-xsrf', 'true')
-          .expect(200);
+        await supertestWithAuth.post('/api/fleet/setup').set('kbn-xsrf', 'true').expect(200);
 
         await retry.tryForTime(120 * 1000, async () => {
           const policyResponseAfterUpgrade = await supertestWithAuth.get(
