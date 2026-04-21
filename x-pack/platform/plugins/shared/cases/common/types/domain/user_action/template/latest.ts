@@ -5,4 +5,4 @@
  * 2.0.
  */
 
-export const DEFAULT_LOG_SOURCES = ['logs*', '-logstash*', 'filebeat-*'];
+export * from './v1';
