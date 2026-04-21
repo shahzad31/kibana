@@ -24,8 +24,11 @@ import { apiTest, KIBANA_HEADERS, SYNTHETICS_API_URLS } from '../fixtures';
  * runs in both targets, sacrificing a small amount of FTR parity (exact
  * cluster-privilege list) for a simpler test surface.
  *
- * `skipMKI` parity (FTR `this.tags(['skipMKI'])`): MKI isn't a current Scout
- * observability target, so there's nothing to translate.
+ * `isServiceAllowed` is deliberately excluded from response assertions:
+ * its value depends on `xpack.uptime.service.manifestUrl` + service
+ * credentials in the Kibana config, which differs between Scout stateful
+ * (no manifestUrl → `true`) and Scout serverless (manifestUrl set but no
+ * credentials → `false`). The FTR suite had `skipMKI` for the same reason.
  */
 
 const COMMON_SYNTHETICS_WRITER_CLUSTER_PRIVS = ['monitor', 'read_pipeline'];
@@ -43,7 +46,6 @@ const ENABLED_RESPONSE_ADMIN = {
   canEnable: true,
   isEnabled: true,
   isValidApiKey: true,
-  isServiceAllowed: true,
 };
 
 const DISABLED_RESPONSE_EDITOR = {
@@ -52,7 +54,6 @@ const DISABLED_RESPONSE_EDITOR = {
   canEnable: false,
   isEnabled: false,
   isValidApiKey: false,
-  isServiceAllowed: true,
 };
 
 const ENABLED_RESPONSE_EDITOR = {
@@ -61,7 +62,6 @@ const ENABLED_RESPONSE_EDITOR = {
   canEnable: false,
   isEnabled: true,
   isValidApiKey: true,
-  isServiceAllowed: true,
 };
 
 apiTest.describe(
@@ -138,10 +138,7 @@ apiTest.describe(
     apiTest.beforeEach(async ({ apiClient, samlAuth }) => {
       const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
       const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
-      const apiKeys = await fetchApiKeys(apiClient, adminHeaders);
-      if (apiKeys.length) {
-        await deleteEnablement(apiClient, adminHeaders);
-      }
+      await deleteEnablement(apiClient, adminHeaders);
     });
 
     apiTest(

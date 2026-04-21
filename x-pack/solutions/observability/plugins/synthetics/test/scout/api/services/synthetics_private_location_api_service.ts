@@ -73,11 +73,15 @@ export function createSyntheticsPrivateLocationApi(
       headers: fleetHeaders,
     });
 
-    await kbnClient.request({
-      path: '/api/fleet/epm/packages/synthetics',
-      method: 'DELETE',
-      headers: fleetHeaders,
-    });
+    try {
+      await kbnClient.request({
+        path: '/api/fleet/epm/packages/synthetics',
+        method: 'DELETE',
+        headers: fleetHeaders,
+      });
+    } catch {
+      // Ignore — package may not be installed yet
+    }
     await kbnClient.request({
       path: `/api/fleet/epm/packages/synthetics/${resolvedVersion}`,
       method: 'POST',
