@@ -5,7 +5,6 @@
  * 2.0.
  */
 import moment from 'moment';
-import semver from 'semver';
 import { v4 as uuidv4 } from 'uuid';
 import type { RoleCredentials } from '@kbn/ftr-common-functional-services';
 import { formatKibanaNamespace } from '@kbn/synthetics-plugin/common/formatters';
@@ -34,8 +33,7 @@ import { SyntheticsMonitorTestService } from '../../services/synthetics_monitor'
 const TRANSIENT_SYNTHETICS_HTTP: ReadonlyArray<number> = [502, 503, 504];
 
 export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
-  // Failing: See https://github.com/elastic/kibana/issues/258046
-  describe.skip('PrivateLocationCreateMonitor', function () {
+  describe('PrivateLocationCreateMonitor', function () {
     const kibanaServer = getService('kibanaServer');
     const supertestWithoutAuth = getService('supertestWithoutAuth');
     // TODO: Replace with roleScopedSupertest for deployment-agnostic compatibility
@@ -490,81 +488,6 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         );
       } finally {
         await deleteMonitor(monitorId);
-      }
-    });
-
-    it('handles auto upgrading policies', async function () {
-      // force a lower version
-      const lowerVersion = '1.1.1';
-
-      // Check if the lower version is available in the package registry.
-      // The package-registry-verify-and-promote pipeline may use a registry
-      // that doesn't include old versions — skip gracefully instead of timing out.
-      const pkgCheck = await supertestWithAuth
-        .get(`/api/fleet/epm/packages/synthetics/${lowerVersion}`)
-        .set('kbn-xsrf', 'true');
-      if (pkgCheck.status === 404) {
-        this.skip();
-      }
-
-      await testPrivateLocations.installSyntheticsPackage({
-        version: lowerVersion,
-        force: true,
-      });
-      let monitorId = '';
-      const privateLocation = await testPrivateLocations.addTestPrivateLocation();
-
-      const monitor = {
-        ...httpMonitorJson,
-        name: `Test monitor ${uuidv4()}`,
-        [ConfigKey.NAMESPACE]: 'default',
-        private_locations: [privateLocation.id],
-      };
-
-      try {
-        const apiResponse = await supertestWithoutAuth
-          .post(SYNTHETICS_API_URLS.SYNTHETICS_MONITORS)
-          .set(editorUser.apiKeyHeader)
-          .set(samlAuth.getInternalRequestHeader())
-          .send(monitor);
-
-        expect(apiResponse.status).eql(200, JSON.stringify(apiResponse.body));
-
-        monitorId = apiResponse.body.id;
-
-        const policyResponse = await supertestWithAuth.get(
-          '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
-        );
-
-        const packagePolicy = policyResponse.body.items.find(
-          (pkgPolicy: PackagePolicy) => pkgPolicy.id === monitorId + '-' + privateLocation.id
-        );
-
-        expect(packagePolicy.package.version).eql(lowerVersion);
-
-        await testPrivateLocations.installSyntheticsPackage({ force: true });
-
-        await retry.tryForTime(120 * 1000, async () => {
-          const policyResponseAfterUpgrade = await supertestWithAuth.get(
-            '/api/fleet/package_policies?page=1&perPage=2000&kuery=ingest-package-policies.package.name%3A%20synthetics'
-          );
-          const packagePolicyAfterUpgrade = policyResponseAfterUpgrade.body.items.find(
-            (pkgPolicy: PackagePolicy) => pkgPolicy.id === monitorId + '-' + privateLocation.id
-          );
-          expect(semver.gt(packagePolicyAfterUpgrade.package.version, lowerVersion)).eql(
-            true,
-            `Expected ${packagePolicyAfterUpgrade.package.version} to be greater than ${lowerVersion}`
-          );
-        });
-      } finally {
-        try {
-          await deleteMonitor(monitorId);
-        } catch (e) {
-          // ignore cleanup errors
-        }
-        // Restore the package to the latest version — this MUST succeed
-        // or subsequent tests will run against the wrong version
-        await testPrivateLocations.installSyntheticsPackage({ force: true });
       }
     });
 

@@ -52,5 +52,6 @@ export default function ({ loadTestFile, getService }: DeploymentAgnosticFtrProv
     loadTestFile(require.resolve('./reset_monitor_bulk'));
     loadTestFile(require.resolve('./clean_up_extra_package_policies'));
     loadTestFile(require.resolve('./migrate_legacy_policies'));
+    loadTestFile(require.resolve('./auto_upgrade_policies'));
   });
 }

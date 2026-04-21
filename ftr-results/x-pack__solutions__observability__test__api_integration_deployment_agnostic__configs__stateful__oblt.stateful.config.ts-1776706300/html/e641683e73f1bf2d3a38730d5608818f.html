@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FTR failure - Stateful Observability - Deployment-agnostic API integration tests SyntheticsAPITests EnableDefaultAlerting "before each" hook for "deletes (and recreates) the default rule when settings are updated"</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        pre {
+            font-size: 0.75em !important;
+        }
+
+        img.screenshot {
+            cursor: pointer;
+            margin: 5px 0;
+        }
+
+        .screenshotContainer:not(.expanded) img.screenshot {
+            height: 200px;
+        }
+
+        .screenshotContainer:not(.fs) img.screenshot.fs,
+        .screenshotContainer:not(.fs) button.toggleFs.off,
+        .screenshotContainer.fs img.screenshot:not(.fs),
+        .screenshotContainer.fs button.toggleFs.on {
+            display: none;
+        }
+
+        .screenshotContainer .toggleFs {
+            background: none;
+            border: none;
+            margin: 0 0 0 5px;
+            vertical-align: top;
+        }
+    </style>
+</head>
+<body>
+<div class="col-lg-10 mx-auto p-3 py-md-5">
+    <main>
+        <h5>Stateful Observability - Deployment-agnostic API Integration Tests.x-pack/solutions/observability/test/api_integration_deployment_agnostic/apis/synthetics/enable_default_alerting·ts</h5>
+        <hr/>
+        <p><strong>Stateful Observability - Deployment-agnostic API integration tests SyntheticsAPITests EnableDefaultAlerting "before each" hook for "deletes (and recreates) the default rule when settings are updated"</strong></p>
+        
+        <h5>Command Line</h5>
+        <pre>node scripts/functional_test_runner.js --config x-pack/solutions/observability/test/api_integration_deployment_agnostic/configs/stateful/oblt.stateful.config.ts --exclude-tag skipCloud --exclude-tag skipMKI --grep SyntheticsAPITests --info</pre>
+        <h5>Owners</h5>
+        <p>
+            
+            <ul>
+                <li>elastic/actionable-obs-team</li>
+            </ul>
+            
+        </p>
+        <h5>Error message</h5>
+        <pre>Error: Timeout of 360000ms exceeded. For async tests and hooks, ensure "done()" is called; if returning a Promise, ensure it resolves. (/Users/shahzad/elastic/kibana/x-pack/solutions/observability/test/api_integration_deployment_agnostic/apis/synthetics/enable_default_alerting.ts)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7) {
+  code: 'ERR_MOCHA_TIMEOUT',
+  timeout: 360000,
+  file: '/Users/shahzad/elastic/kibana/x-pack/solutions/observability/test/api_integration_deployment_agnostic/apis/synthetics/enable_default_alerting.ts'
+}</pre>
+        
+        <h5>System out</h5>
+        <pre>[05:00:00]  
+[05:00:00]   └-: Stateful Observability - Deployment-agnostic API integration tests
+[05:00:00]     └-> "before all" hook: beforeTestSuite.trigger in "Stateful Observability - Deployment-agnostic API integration tests"
+[05:00:00]     └-: SyntheticsAPITests
+[05:00:00]       └-> "before all" hook: beforeTestSuite.trigger in "SyntheticsAPITests"
+[05:00:00]       └-> "before all" hook in "SyntheticsAPITests"
+[08:58:47]           └-: EnableDefaultAlerting
+[08:58:47]             └-> "before all" hook: beforeTestSuite.trigger for "does create the rules when there are no connectors defined"
+[08:58:47]             └-> "before all" hook for "does create the rules when there are no connectors defined"
+[08:58:47]               │ debg Cleaning all saved objects { space: undefined }
+[08:58:47]               │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:58:47]               │ debg Request failed - Status: N/A, Cause: ENOTFOUND, Response: No response body, Attempt: 1/5
+[08:58:48]               │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:58:50]               │ succ deleted 10 objects
+[08:58:50]               │ debg Creating API key for editor with privileges: {"cluster":[],"indices":[{"names":["observability-annotations"],"privileges":["read","view_index_metadata","write"],"allow_restricted_indices":false},{"names":[".items-*",".lists-*",".siem-signals*"],"privileges":["maintenance","read","view_index_metadata","write"],"allow_restricted_indices":false},{"names":["/~(([.]|ilm-history-).*)/"],"privileges":["read","view_index_metadata"],"allow_restricted_indices":false},{"names":[".profiling-*","profiling-*"],"privileges":["read","view_index_metadata"],"allow_restricted_indices":false},{"names":[".alerts*",".internal.alerts*",".internal.preview.alerts*",".preview.alerts*",".internal.adhoc.alerts*",".adhoc.alerts*"],"privileges":["maintenance","read","view_index_metadata","write"],"allow_restricted_indices":false}],"applications":[{"application":"kibana-.kibana","privileges":["all"],"resources":["*"]}],"run_as":[]}
+[08:58:52]               │ debg Created API key for role: [editor]
+[08:58:54]             └-> does create the rules when there are no connectors defined
+[08:58:54]               └-> "before each" hook: global before each for "does create the rules when there are no connectors defined"
+[08:58:54]               └-> "before each" hook for "does create the rules when there are no connectors defined"
+[08:58:54]                 │ debg Cleaning all saved objects { space: undefined }
+[08:58:54]                 │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:58:55]                 │ succ deleted 0 objects
+[08:59:07]               └- ✓ pass  (4.0s)
+[08:59:07]             └-> returns the created alerted when called
+[08:59:07]               └-> "before each" hook: global before each for "returns the created alerted when called"
+[08:59:07]               └-> "before each" hook for "returns the created alerted when called"
+[08:59:07]                 │ debg Cleaning all saved objects { space: undefined }
+[08:59:07]                 │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:59:08]                 │ succ deleted 0 objects
+[08:59:16]               └- ✓ pass  (793ms)
+[08:59:16]             └-> enables alert when new monitor is added
+[08:59:16]               └-> "before each" hook: global before each for "enables alert when new monitor is added"
+[08:59:16]               └-> "before each" hook for "enables alert when new monitor is added"
+[08:59:16]                 │ debg Cleaning all saved objects { space: undefined }
+[08:59:16]                 │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:59:16]                 │ succ deleted 0 objects
+[08:59:28]               └- ✓ pass  (3.8s)
+[08:59:28]             └-> deletes (and recreates) the default rule when settings are updated
+[08:59:28]               └-> "before each" hook: global before each for "deletes (and recreates) the default rule when settings are updated"
+[08:59:28]               └-> "before each" hook for "deletes (and recreates) the default rule when settings are updated"
+[08:59:28]                 │ debg Cleaning all saved objects { space: undefined }
+[08:59:28]                 │ debg Requesting url (redacted): [https://shah-testing-981564.kb.eastus2.azure.qa.cld.elstc.co/internal/ftr/kbn_client_so/_clean]
+[08:59:28]                 │ succ deleted 1 objects
+[09:14:51]                 └- ✖ fail: Stateful Observability - Deployment-agnostic API integration tests SyntheticsAPITests EnableDefaultAlerting "before each" hook for "deletes (and recreates) the default rule when settings are updated"
+[09:14:51]                 │      Error: Timeout of 360000ms exceeded. For async tests and hooks, ensure "done()" is called; if returning a Promise, ensure it resolves. (/Users/shahzad/elastic/kibana/x-pack/solutions/observability/test/api_integration_deployment_agnostic/apis/synthetics/enable_default_alerting.ts)
+[09:14:51]                 │       at listOnTimeout (node:internal/timers:588:17)
+[09:14:51]                 │       at processTimers (node:internal/timers:523:7)
+[09:14:51]                 │ 
+[09:14:51]                 │ 
+</pre>
+        
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+<script type="text/javascript">
+    /**
+     * @param {HTMLElement} el
+     * @param {(el: HTMLElement) => boolean} searchFn
+     */
+    function findParent(el, searchFn) {
+        while (el) {
+            if (searchFn(el)) {
+                return el
+            }
+
+            // stop if we iterate all the way up to the document body
+            if (el.parentElement === document.body) {
+                break
+            }
+
+            el = el.parentElement
+        }
+
+        return null
+    }
+
+    function isContainer(el) {
+        return el.classList.contains('screenshotContainer')
+    }
+
+    function isButtonOrImg(el) {
+        return el instanceof HTMLImageElement || el instanceof HTMLButtonElement
+    }
+
+    document.addEventListener('click', (event) => {
+        const el = findParent(event.target, isButtonOrImg)
+
+        if (el instanceof HTMLImageElement && el.classList.contains('screenshot')) {
+            findParent(el, isContainer)?.classList.toggle('expanded')
+        }
+
+        if (el instanceof HTMLButtonElement && el.classList.contains('toggleFs')) {
+            findParent(el, isContainer)?.classList.toggle('fs')
+        }
+    })
+</script>
+</body>
+</html>
