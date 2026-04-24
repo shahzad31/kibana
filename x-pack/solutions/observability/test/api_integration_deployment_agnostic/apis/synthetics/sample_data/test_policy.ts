@@ -544,6 +544,17 @@ export const omitIds = (policy: PackagePolicy) => {
           delete proc.add_fields?.fields?.kibanaUrl;
         }
       }
+      if (stream.vars?.processors?.value && typeof stream.vars.processors.value === 'string') {
+        try {
+          const procs = JSON.parse(stream.vars.processors.value);
+          for (const proc of procs) {
+            delete proc.add_fields?.fields?.kibanaUrl;
+          }
+          stream.vars.processors.value = JSON.stringify(procs);
+        } catch {
+          // leave value as-is if it isn't valid JSON
+        }
+      }
     });
   });
 
