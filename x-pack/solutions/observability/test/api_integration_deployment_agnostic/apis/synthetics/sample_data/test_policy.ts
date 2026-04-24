@@ -539,6 +539,11 @@ export const omitIds = (policy: PackagePolicy) => {
     input.streams = sortBy(input.streams, 'data_stream.dataset');
     input.streams.forEach((stream) => {
       stream.id = '';
+      if (stream.compiled_stream?.processors) {
+        for (const proc of stream.compiled_stream.processors) {
+          delete proc.add_fields?.fields?.kibanaUrl;
+        }
+      }
     });
   });
 
