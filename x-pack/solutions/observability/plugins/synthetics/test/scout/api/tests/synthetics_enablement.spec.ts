@@ -152,26 +152,20 @@ apiTest.describe(
       }
     });
 
-    apiTest(
-      '[PUT] returns response when user cannot manage api keys',
-      async ({ apiClient }) => {
-        const res = await putEnablement(apiClient, editorHeaders);
-        expect(res).toHaveStatusCode(200);
-        expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
-      }
-    );
+    apiTest('[PUT] returns response when user cannot manage api keys', async ({ apiClient }) => {
+      const res = await putEnablement(apiClient, editorHeaders);
+      expect(res).toHaveStatusCode(200);
+      expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
+    });
 
-    apiTest(
-      '[PUT] returns response for an admin with privilege',
-      async ({ apiClient }) => {
-        const res = await putEnablement(apiClient, adminHeaders);
-        expect(res).toHaveStatusCode(200);
-        expect(res.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
-        const validApiKeys = await getApiKeys(apiClient);
-        expect(validApiKeys).toHaveLength(1);
-        expectSyntheticsWriterPrivileges(validApiKeys[0]);
-      }
-    );
+    apiTest('[PUT] returns response for an admin with privilege', async ({ apiClient }) => {
+      const res = await putEnablement(apiClient, adminHeaders);
+      expect(res).toHaveStatusCode(200);
+      expect(res.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
+      const validApiKeys = await getApiKeys(apiClient);
+      expect(validApiKeys).toHaveLength(1);
+      expectSyntheticsWriterPrivileges(validApiKeys[0]);
+    });
 
     apiTest('[PUT] does not create excess api keys', async ({ apiClient }) => {
       const first = await putEnablement(apiClient, adminHeaders);

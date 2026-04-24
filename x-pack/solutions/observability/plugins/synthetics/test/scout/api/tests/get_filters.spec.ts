@@ -13,7 +13,10 @@ import { addMonitor } from '../fixtures/monitors';
 const SYNTHETICS_MONITOR_TYPE = 'synthetics-monitor';
 const LEGACY_SYNTHETICS_MONITOR_TYPE = 'synthetics-monitor-multi-space';
 
-type LabelCount = { label: string; count: number };
+interface LabelCount {
+  label: string;
+  count: number;
+}
 const byLabel = (a: LabelCount, b: LabelCount) => a.label.localeCompare(b.label);
 
 /**
