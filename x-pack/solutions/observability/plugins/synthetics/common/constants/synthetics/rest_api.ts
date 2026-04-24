@@ -57,6 +57,8 @@ export enum SYNTHETICS_API_URLS {
 
   CERTS = '/internal/synthetics/certs',
 
+  ERROR_GROUPS = '/internal/synthetics/error_groups',
+
   SUGGESTIONS = `/internal/synthetics/suggestions`,
   MAINTENANCE_WINDOWS = `/internal/synthetics/monitors/maintenance_windows`,
 

@@ -10,7 +10,9 @@ import { EuiFlexGroup, EuiFlexItem, EuiSpacer } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { MonitorErrorsCount } from './monitor_errors_count';
 import { ErrorsList } from '../../monitor_details/monitor_errors/errors_list';
+import { ErrorGroupsList } from './error_groups_list';
 import type { PingState } from '../../../../../../common/runtime_types';
+import type { ErrorGroup } from '../../../../../../common/runtime_types';
 import { PanelWithTitle } from '../../common/components/panel_with_title';
 import { FailedTestsCount } from './failed_tests_count';
 import { MonitorFailedTests } from './failed_tests';
@@ -21,11 +23,15 @@ export const ErrorsTabContent = ({
   loading,
   upStates,
   monitorIds,
+  errorGroups,
+  errorGroupsLoading,
 }: {
   errorStates: PingState[];
   upStates: PingState[];
   loading: boolean;
   monitorIds: string[];
+  errorGroups: ErrorGroup[];
+  errorGroupsLoading: boolean;
 }) => {
   const time = useRefreshedRangeFromUrl();
 
@@ -51,6 +57,10 @@ export const ErrorsTabContent = ({
         </EuiFlexItem>
       </EuiFlexGroup>
       <EuiSpacer size="m" />
+      <PanelWithTitle title={ERROR_GROUPS_LABEL}>
+        <ErrorGroupsList groups={errorGroups} loading={errorGroupsLoading} />
+      </PanelWithTitle>
+      <EuiSpacer size="m" />
       <PanelWithTitle title={ERRORS_LABEL}>
         <ErrorsList
           errorStates={errorStates}
@@ -65,6 +75,10 @@ export const ErrorsTabContent = ({
 
 const ERRORS_LABEL = i18n.translate('xpack.synthetics.errors.label', {
   defaultMessage: 'Errors',
+});
+
+const ERROR_GROUPS_LABEL = i18n.translate('xpack.synthetics.errors.errorGroups', {
+  defaultMessage: 'Error groups',
 });
 
 const OVERVIEW_LABEL = i18n.translate('xpack.synthetics.errors.overview', {

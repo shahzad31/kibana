@@ -12,10 +12,12 @@ import { SearchField } from '../common/search_field';
 import { FilterGroup } from '../common/monitor_filters/filter_group';
 import { useMonitorFiltersState } from '../common/monitor_filters/use_filters';
 import { useAllMonitorErrors } from '../hooks/use_all_errors';
+import { useErrorGroups } from '../hooks/use_error_groups';
 import { useErrorsBreadcrumbs } from './use_errors_breadcrumbs';
 
 export const ErrorsTab = () => {
   const { errorStates, upStates, loading, monitorIds } = useAllMonitorErrors();
+  const { groups: errorGroups, loading: errorGroupsLoading } = useErrorGroups();
   const { handleFilterChange } = useMonitorFiltersState();
   useErrorsBreadcrumbs();
 
@@ -37,6 +39,8 @@ export const ErrorsTab = () => {
         upStates={upStates}
         loading={loading}
         monitorIds={monitorIds}
+        errorGroups={errorGroups}
+        errorGroupsLoading={errorGroupsLoading}
       />
     </div>
   );

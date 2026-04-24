@@ -8,3 +8,4 @@
 export type * from './histogram';
 export * from './ping';
 export * from './synthetics';
+export * from './error_groups';
