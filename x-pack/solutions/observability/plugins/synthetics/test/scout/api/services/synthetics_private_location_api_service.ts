@@ -147,7 +147,7 @@ export function createSyntheticsPrivateLocationApi(
       path: `/s/${urlSpaceId}/api/saved_objects/_bulk_create`,
       method: 'POST',
       body: locations.map((location) => ({
-        type: 'synthetics-privates-locations',
+        type: 'synthetics-private-location',
         id: location.id,
         attributes: location,
         initialNamespaces,
@@ -179,7 +179,7 @@ export function createSyntheticsPrivateLocationApi(
 
   const cleanUpPrivateLocationsAndPolicies = async () => {
     await kbnClient.savedObjects.clean({
-      types: ['synthetics-privates-locations', 'ingest-agent-policies', 'ingest-package-policies'],
+      types: ['synthetics-private-location', 'ingest-agent-policies', 'ingest-package-policies'],
     });
     cachedSharedLocation = null;
   };

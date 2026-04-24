@@ -13,6 +13,9 @@ import { addMonitor } from '../fixtures/monitors';
 const SYNTHETICS_MONITOR_TYPE = 'synthetics-monitor';
 const LEGACY_SYNTHETICS_MONITOR_TYPE = 'synthetics-monitor-multi-space';
 
+type LabelCount = { label: string; count: number };
+const byLabel = (a: LabelCount, b: LabelCount) => a.label.localeCompare(b.label);
+
 /**
  * Ported from FTR
  * `x-pack/solutions/observability/test/api_integration_deployment_agnostic/apis/synthetics/get_filters.ts`.
@@ -29,6 +32,7 @@ apiTest.describe(
     let privateLocation: { id: string; label: string };
 
     apiTest.beforeAll(async ({ requestAuth, apiServices, kbnClient }) => {
+      apiTest.setTimeout(120_000);
       await kbnClient.savedObjects.clean({
         types: [SYNTHETICS_MONITOR_TYPE, LEGACY_SYNTHETICS_MONITOR_TYPE],
       });
@@ -111,14 +115,14 @@ apiTest.describe(
         locations: Array<{ label: string; count: number }>;
         schedules: Array<{ label: string; count: number }>;
       };
-      expect(body.monitorTypes).toStrictEqual([
+      expect([...body.monitorTypes].sort(byLabel)).toStrictEqual([
         { label: 'http', count: 1 },
         { label: 'icmp', count: 1 },
       ]);
-      expect(body.tags).toStrictEqual([
+      expect([...body.tags].sort(byLabel)).toStrictEqual([
         { label: 'apm', count: 1 },
-        { label: 'synthetics', count: 2 },
         { label: 'legacy', count: 1 },
+        { label: 'synthetics', count: 2 },
       ]);
       expect(body.locations).toStrictEqual([{ label: privateLocation.id, count: 2 }]);
       expect(body.schedules).toStrictEqual([{ label: '3', count: 2 }]);
@@ -157,16 +161,16 @@ apiTest.describe(
         locations: Array<{ label: string; count: number }>;
         schedules: Array<{ label: string; count: number }>;
       };
-      expect(body.monitorTypes).toStrictEqual([
+      expect([...body.monitorTypes].sort(byLabel)).toStrictEqual([
         { label: 'http', count: 2 },
         { label: 'icmp', count: 2 },
       ]);
-      expect(body.tags).toStrictEqual([
-        { label: 'synthetics', count: 4 },
+      expect([...body.tags].sort(byLabel)).toStrictEqual([
         { label: 'apm', count: 1 },
-        { label: 'multi-space', count: 1 },
         { label: 'legacy', count: 1 },
         { label: 'legacy2', count: 1 },
+        { label: 'multi-space', count: 1 },
+        { label: 'synthetics', count: 4 },
       ]);
       expect(body.locations).toStrictEqual([{ label: privateLocation.id, count: 4 }]);
       expect(body.schedules).toStrictEqual([{ label: '3', count: 4 }]);

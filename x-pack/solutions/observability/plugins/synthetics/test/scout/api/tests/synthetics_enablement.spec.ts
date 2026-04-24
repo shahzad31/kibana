@@ -29,6 +29,10 @@ import { apiTest, KIBANA_HEADERS, SYNTHETICS_API_URLS } from '../fixtures';
  * credentials in the Kibana config, which differs between Scout stateful
  * (no manifestUrl → `true`) and Scout serverless (manifestUrl set but no
  * credentials → `false`). The FTR suite had `skipMKI` for the same reason.
+ *
+ * IMPORTANT: Admin and editor sessions are created ONCE in `beforeAll` and
+ * reused across all tests, matching the FTR pattern. This ensures the same
+ * user identity is used for PUT-enablement and API key queries.
  */
 
 const COMMON_SYNTHETICS_WRITER_CLUSTER_PRIVS = ['monitor', 'read_pipeline'];
@@ -80,12 +84,12 @@ apiTest.describe(
       };
     }
 
-    const fetchApiKeys = async (
-      apiClient: any,
-      headers: Record<string, string>
-    ): Promise<ApiKey[]> => {
+    let adminHeaders: Record<string, string>;
+    let editorHeaders: Record<string, string>;
+
+    const getApiKeys = async (apiClient: any): Promise<ApiKey[]> => {
       const res = await apiClient.post('internal/security/api_key/_query', {
-        headers,
+        headers: adminHeaders,
         body: {
           query: {
             bool: {
@@ -122,9 +126,6 @@ apiTest.describe(
       );
 
     const expectSyntheticsWriterPrivileges = (apiKey: ApiKey) => {
-      // Subset assertion: serverless omits `read_ilm` from cluster privileges.
-      // Scout's API `expect` has no `toEqual`, so assert each expected
-      // cluster privilege is present via `toContain`.
       for (const priv of COMMON_SYNTHETICS_WRITER_CLUSTER_PRIVS) {
         expect(apiKey.role_descriptors.synthetics_writer.cluster).toContain(priv);
       }
@@ -133,20 +134,28 @@ apiTest.describe(
       );
     };
 
-    // Flat suite (no nested `describe`s to satisfy playwright/max-nested-describe);
-    // `[PUT]` / `[DELETE]` prefixes preserve the grouping from the original FTR spec.
-    apiTest.beforeEach(async ({ apiClient, samlAuth }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
-      await deleteEnablement(apiClient, adminHeaders);
+    // Create admin and editor sessions ONCE, matching FTR's `before` that creates
+    // `supertestWithAdminScope` and `supertestWithEditorScope` as reusable instances.
+    // This ensures the same user identity is used for enablement and API key queries.
+    apiTest.beforeAll(async ({ samlAuth }) => {
+      const { cookieHeader: adminCookie } = await samlAuth.asInteractiveUser('admin');
+      adminHeaders = { ...KIBANA_HEADERS, ...adminCookie };
+      const { cookieHeader: editorCookie } = await samlAuth.asInteractiveUser('editor');
+      editorHeaders = { ...KIBANA_HEADERS, ...editorCookie };
+    });
+
+    // Match FTR pattern: only delete enablement when API keys exist.
+    apiTest.beforeEach(async ({ apiClient }) => {
+      const apiKeys = await getApiKeys(apiClient);
+      if (apiKeys.length) {
+        expect(await deleteEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
+      }
     });
 
     apiTest(
       '[PUT] returns response when user cannot manage api keys',
-      async ({ apiClient, samlAuth }) => {
-        const { cookieHeader } = await samlAuth.asInteractiveUser('editor');
-        const headers = { ...KIBANA_HEADERS, ...cookieHeader };
-        const res = await putEnablement(apiClient, headers);
+      async ({ apiClient }) => {
+        const res = await putEnablement(apiClient, editorHeaders);
         expect(res).toHaveStatusCode(200);
         expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
       }
@@ -154,43 +163,35 @@ apiTest.describe(
 
     apiTest(
       '[PUT] returns response for an admin with privilege',
-      async ({ apiClient, samlAuth }) => {
-        const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-        const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
+      async ({ apiClient }) => {
         const res = await putEnablement(apiClient, adminHeaders);
         expect(res).toHaveStatusCode(200);
         expect(res.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
-        const validApiKeys = await fetchApiKeys(apiClient, adminHeaders);
+        const validApiKeys = await getApiKeys(apiClient);
         expect(validApiKeys).toHaveLength(1);
         expectSyntheticsWriterPrivileges(validApiKeys[0]);
       }
     );
 
-    apiTest('[PUT] does not create excess api keys', async ({ apiClient, samlAuth }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
-
+    apiTest('[PUT] does not create excess api keys', async ({ apiClient }) => {
       const first = await putEnablement(apiClient, adminHeaders);
       expect(first).toHaveStatusCode(200);
-      const afterFirst = await fetchApiKeys(apiClient, adminHeaders);
+      const afterFirst = await getApiKeys(apiClient);
       expect(afterFirst).toHaveLength(1);
       expectSyntheticsWriterPrivileges(afterFirst[0]);
 
       const second = await putEnablement(apiClient, adminHeaders);
       expect(second).toHaveStatusCode(200);
-      const afterSecond = await fetchApiKeys(apiClient, adminHeaders);
+      const afterSecond = await getApiKeys(apiClient);
       expect(afterSecond).toHaveLength(1);
       expectSyntheticsWriterPrivileges(afterSecond[0]);
     });
 
-    apiTest('[PUT] auto re-enables api key when invalidated', async ({ apiClient, samlAuth }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
-
+    apiTest('[PUT] auto re-enables api key when invalidated', async ({ apiClient }) => {
       const enable = await putEnablement(apiClient, adminHeaders);
       expect(enable).toHaveStatusCode(200);
 
-      const valid = await fetchApiKeys(apiClient, adminHeaders);
+      const valid = await getApiKeys(apiClient);
       expect(valid).toHaveLength(1);
       expectSyntheticsWriterPrivileges(valid[0]);
 
@@ -203,51 +204,39 @@ apiTest.describe(
         responseType: 'json',
       });
       expect(invalidate).toHaveStatusCode(200);
-      expect(await fetchApiKeys(apiClient, adminHeaders)).toHaveLength(0);
+      expect(await getApiKeys(apiClient)).toHaveLength(0);
 
       const reEnable = await putEnablement(apiClient, adminHeaders);
       expect(reEnable).toHaveStatusCode(200);
 
-      const recreated = await fetchApiKeys(apiClient, adminHeaders);
+      const recreated = await getApiKeys(apiClient);
       expect(recreated).toHaveLength(1);
       expectSyntheticsWriterPrivileges(recreated[0]);
     });
 
     apiTest(
       '[PUT] returns response for an uptime all user without admin privileges',
-      async ({ apiClient, samlAuth }) => {
-        const { cookieHeader } = await samlAuth.asInteractiveUser('editor');
-        const headers = { ...KIBANA_HEADERS, ...cookieHeader };
-        const res = await putEnablement(apiClient, headers);
+      async ({ apiClient }) => {
+        const res = await putEnablement(apiClient, editorHeaders);
         expect(res).toHaveStatusCode(200);
         expect(res.body).toMatchObject(DISABLED_RESPONSE_EDITOR);
       }
     );
 
-    apiTest('[DELETE] is idempotent when already disabled', async ({ apiClient, samlAuth }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
+    apiTest('[DELETE] is idempotent when already disabled', async ({ apiClient }) => {
       const res = await deleteEnablement(apiClient, adminHeaders);
       expect(res).toHaveStatusCode(200);
     });
 
-    apiTest(
-      '[DELETE] is idempotent across consecutive deletes',
-      async ({ apiClient, samlAuth }) => {
-        const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-        const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
+    apiTest('[DELETE] is idempotent across consecutive deletes', async ({ apiClient }) => {
+      expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
+      const firstDelete = await deleteEnablement(apiClient, adminHeaders);
+      expect(firstDelete).toHaveStatusCode(200);
+      const secondDelete = await deleteEnablement(apiClient, adminHeaders);
+      expect(secondDelete).toHaveStatusCode(200);
+    });
 
-        expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
-        const firstDelete = await deleteEnablement(apiClient, adminHeaders);
-        expect(firstDelete).toHaveStatusCode(200);
-        const secondDelete = await deleteEnablement(apiClient, adminHeaders);
-        expect(secondDelete).toHaveStatusCode(200);
-      }
-    );
-
-    apiTest('[DELETE] with an admin', async ({ apiClient, samlAuth }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
+    apiTest('[DELETE] with an admin', async ({ apiClient }) => {
       expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
       const del = await deleteEnablement(apiClient, adminHeaders);
       expect(del).toHaveStatusCode(200);
@@ -256,12 +245,7 @@ apiTest.describe(
       expect(reEnable.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
     });
 
-    apiTest('[DELETE] with an uptime user', async ({ apiClient, samlAuth }) => {
-      const { cookieHeader: adminCookie } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...adminCookie };
-      const { cookieHeader: editorCookie } = await samlAuth.asInteractiveUser('editor');
-      const editorHeaders = { ...KIBANA_HEADERS, ...editorCookie };
-
+    apiTest('[DELETE] with an uptime user', async ({ apiClient }) => {
       expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
       expect(await deleteEnablement(apiClient, editorHeaders)).toHaveStatusCode(403);
 
@@ -270,9 +254,7 @@ apiTest.describe(
       expect(editorPut.body).toMatchObject(ENABLED_RESPONSE_EDITOR);
     });
 
-    apiTest('[DELETE] is space agnostic', async ({ apiClient, samlAuth, kbnClient }) => {
-      const { cookieHeader } = await samlAuth.asInteractiveUser('admin');
-      const adminHeaders = { ...KIBANA_HEADERS, ...cookieHeader };
+    apiTest('[DELETE] is space agnostic', async ({ apiClient, kbnClient }) => {
       const SPACE_ID = `test-space-${uuidv4()}`;
       const SPACE_NAME = `test-space-name-${uuidv4()}`;
       await kbnClient.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
