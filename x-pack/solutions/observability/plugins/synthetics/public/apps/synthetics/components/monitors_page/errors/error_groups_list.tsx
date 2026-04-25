@@ -62,7 +62,12 @@ export const ErrorGroupsList = ({
     for (const group of groups) {
       if (expandedRows[group.name]) {
         map[group.name] = (
-          <ExpandedGroupRow group={group} formatter={formatter} basePath={basePath} onPreview={setPreviewItem} />
+          <ExpandedGroupRow
+            group={group}
+            formatter={formatter}
+            basePath={basePath}
+            onPreview={setPreviewItem}
+          />
         );
       }
     }
@@ -143,7 +148,9 @@ export const ErrorGroupsList = ({
           <EuiToolTip content={formatter(value)}>
             <EuiText size="xs">{moment(value).fromNow()}</EuiText>
           </EuiToolTip>
-        ) : <>{'--'}</>,
+        ) : (
+          <>{'--'}</>
+        ),
     },
     {
       field: 'lastSeen',
@@ -155,7 +162,9 @@ export const ErrorGroupsList = ({
           <EuiToolTip content={formatter(value)}>
             <EuiText size="xs">{moment(value).fromNow()}</EuiText>
           </EuiToolTip>
-        ) : <>{'--'}</>,
+        ) : (
+          <>{'--'}</>
+        ),
     },
   ];
 

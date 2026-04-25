@@ -41,6 +41,7 @@ export function useErrorStats() {
     }
 
     return apiService.get<ErrorStats>(SYNTHETICS_API_URLS.ERROR_STATS, params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRefresh, dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects]);
 
   return {

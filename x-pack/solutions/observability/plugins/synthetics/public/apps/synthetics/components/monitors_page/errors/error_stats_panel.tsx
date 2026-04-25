@@ -48,7 +48,8 @@ export const ErrorStatsPanel = ({
   const errorRatePct = (stats.errorRate * 100).toFixed(1);
   const avgDuration = formatDuration(stats.avgDurationMs);
   const deltaAbs = Math.abs(stats.errorRateDelta * 100).toFixed(1);
-  const trendDirection = stats.errorRateDelta > 0.001 ? 'up' : stats.errorRateDelta < -0.001 ? 'down' : 'flat';
+  const trendDirection =
+    stats.errorRateDelta > 0.001 ? 'up' : stats.errorRateDelta < -0.001 ? 'down' : 'flat';
 
   return (
     <EuiPanel hasBorder hasShadow={false} paddingSize="m">
@@ -56,7 +57,9 @@ export const ErrorStatsPanel = ({
         <EuiFlexItem grow={1} style={{ minWidth: 140 }}>
           <EuiStat
             title={`${errorRatePct}%`}
-            titleColor={stats.errorRate > 0.5 ? 'danger' : stats.errorRate > 0.1 ? 'warning' : 'default'}
+            titleColor={
+              stats.errorRate > 0.5 ? 'danger' : stats.errorRate > 0.1 ? 'warning' : 'default'
+            }
             titleSize="m"
             description={ERROR_RATE_LABEL}
             reverse
@@ -69,7 +72,8 @@ export const ErrorStatsPanel = ({
               <span>
                 {stats.affectedMonitors}
                 <span style={{ fontSize: euiTheme.size.m, color: euiTheme.colors.subduedText }}>
-                  {' / '}{stats.totalMonitors}
+                  {' / '}
+                  {stats.totalMonitors}
                 </span>
               </span>
             }
@@ -81,12 +85,7 @@ export const ErrorStatsPanel = ({
         </EuiFlexItem>
 
         <EuiFlexItem grow={1} style={{ minWidth: 140 }}>
-          <EuiStat
-            title={avgDuration}
-            titleSize="m"
-            description={AVG_DURATION_LABEL}
-            reverse
-          />
+          <EuiStat title={avgDuration} titleSize="m" description={AVG_DURATION_LABEL} reverse />
         </EuiFlexItem>
 
         <EuiFlexItem grow={1} style={{ minWidth: 140 }}>
@@ -115,7 +114,11 @@ export const ErrorStatsPanel = ({
 
 const MAX_VISIBLE_LOCATIONS = 4;
 
-const LocationBadges = ({ locations }: { locations: Array<{ location: string; count: number }> }) => {
+const LocationBadges = ({
+  locations,
+}: {
+  locations: Array<{ location: string; count: number }>;
+}) => {
   const sorted = [...locations].sort((a, b) => b.count - a.count);
   const visible = sorted.slice(0, MAX_VISIBLE_LOCATIONS);
   const overflow = sorted.slice(MAX_VISIBLE_LOCATIONS);
@@ -133,9 +136,7 @@ const LocationBadges = ({ locations }: { locations: Array<{ location: string; co
       ))}
       {overflow.length > 0 && (
         <EuiFlexItem grow={false}>
-          <EuiToolTip
-            content={overflow.map((loc) => `${loc.location}: ${loc.count}`).join(', ')}
-          >
+          <EuiToolTip content={overflow.map((loc) => `${loc.location}: ${loc.count}`).join(', ')}>
             <EuiBadge color="hollow">+{overflow.length} more</EuiBadge>
           </EuiToolTip>
         </EuiFlexItem>
@@ -162,8 +163,9 @@ const TrendIndicator = ({
   const isUp = direction === 'up';
   return (
     <span style={{ color: isUp ? '#BD271E' : '#017D73' }}>
-      <EuiIcon type={isUp ? 'sortUp' : 'sortDown'} color={isUp ? 'danger' : 'success'} />
-      {' '}{isUp ? '+' : '-'}{delta}%
+      <EuiIcon type={isUp ? 'sortUp' : 'sortDown'} color={isUp ? 'danger' : 'success'} />{' '}
+      {isUp ? '+' : '-'}
+      {delta}%
     </span>
   );
 };

@@ -32,11 +32,11 @@ import {
 import { i18n } from '@kbn/i18n';
 import moment from 'moment';
 import { useKibana } from '@kbn/kibana-react-plugin/public';
+import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 import type { ErrorGroup } from '../../../../../../common/runtime_types';
 import type { ClientPluginsStart } from '../../../../../plugin';
 import { useUrlParams } from '../../../hooks';
 import { SyntheticsRefreshContext } from '../../../contexts';
-import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 
 const GROUP_COLORS = [
   '#BD271E',

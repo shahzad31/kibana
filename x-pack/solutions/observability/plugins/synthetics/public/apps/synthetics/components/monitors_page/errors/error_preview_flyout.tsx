@@ -66,9 +66,7 @@ export const ErrorPreviewFlyout = ({
   const descriptionItems = [
     {
       title: MONITOR_LABEL,
-      description: (
-        <a href={monitorUrl}>{error.monitorName}</a>
-      ),
+      description: <a href={monitorUrl}>{error.monitorName}</a>,
     },
     {
       title: TYPE_LABEL,
@@ -114,12 +112,7 @@ export const ErrorPreviewFlyout = ({
       </EuiFlyoutHeader>
 
       <EuiFlyoutBody>
-        <EuiCallOut
-          title={ERROR_MESSAGE_LABEL}
-          color="danger"
-          iconType="warning"
-          size="s"
-        >
+        <EuiCallOut title={ERROR_MESSAGE_LABEL} color="danger" iconType="warning" size="s">
           <EuiFlexGroup alignItems="flexStart" gutterSize="s">
             <EuiFlexItem>
               <EuiText size="s" style={{ wordBreak: 'break-word' }}>
@@ -130,6 +123,7 @@ export const ErrorPreviewFlyout = ({
               <EuiCopy textToCopy={error.errorMessage}>
                 {(copy) => (
                   <EuiButtonIcon
+                    data-test-subj="syntheticsErrorPreviewFlyoutButton"
                     iconType="copyClipboard"
                     onClick={copy}
                     aria-label={COPY_LABEL}
@@ -146,7 +140,9 @@ export const ErrorPreviewFlyout = ({
         {isBrowser && error.checkGroup && (
           <>
             <EuiPanel hasBorder hasShadow={false} paddingSize="s">
-              <EuiText size="xs"><strong>{SCREENSHOT_LABEL}</strong></EuiText>
+              <EuiText size="xs">
+                <strong>{SCREENSHOT_LABEL}</strong>
+              </EuiText>
               <EuiSpacer size="s" />
               <JourneyStepScreenshotContainer
                 checkGroup={error.checkGroup}
@@ -173,10 +169,18 @@ export const ErrorPreviewFlyout = ({
       <EuiFlyoutFooter>
         <EuiFlexGroup justifyContent="spaceBetween">
           <EuiFlexItem grow={false}>
-            <EuiButtonEmpty onClick={onClose}>{CLOSE_LABEL}</EuiButtonEmpty>
+            <EuiButtonEmpty data-test-subj="syntheticsErrorPreviewFlyoutButton" onClick={onClose}>
+              {CLOSE_LABEL}
+            </EuiButtonEmpty>
           </EuiFlexItem>
           <EuiFlexItem grow={false}>
-            <EuiButton fill href={errorDetailsUrl} iconType="popout" iconSide="right">
+            <EuiButton
+              data-test-subj="syntheticsErrorPreviewFlyoutButton"
+              fill
+              href={errorDetailsUrl}
+              iconType="popout"
+              iconSide="right"
+            >
               {VIEW_DETAILS_LABEL}
             </EuiButton>
           </EuiFlexItem>

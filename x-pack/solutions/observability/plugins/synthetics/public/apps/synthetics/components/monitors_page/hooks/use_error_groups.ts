@@ -43,6 +43,7 @@ export function useErrorGroups() {
     }
 
     return apiService.get<ErrorGroupsResponse>(SYNTHETICS_API_URLS.ERROR_GROUPS, params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRefresh, dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects]);
 
   return {

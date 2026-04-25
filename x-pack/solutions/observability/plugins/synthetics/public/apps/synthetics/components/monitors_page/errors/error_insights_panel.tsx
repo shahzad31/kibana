@@ -75,7 +75,9 @@ export const ErrorInsightsPanel = ({
   if (loading && !insights) {
     return (
       <EuiPanel hasBorder hasShadow={false} paddingSize="m">
-        <EuiText size="xs"><h5>{TITLE}</h5></EuiText>
+        <EuiText size="xs">
+          <h5>{TITLE}</h5>
+        </EuiText>
         <EuiSpacer size="s" />
         <EuiFlexGroup gutterSize="m">
           {[1, 2, 3, 4].map((n) => (
@@ -95,7 +97,9 @@ export const ErrorInsightsPanel = ({
 
   return (
     <EuiPanel hasBorder hasShadow={false} paddingSize="m">
-      <EuiText size="xs"><h5>{TITLE}</h5></EuiText>
+      <EuiText size="xs">
+        <h5>{TITLE}</h5>
+      </EuiText>
       <EuiSpacer size="s" />
       <EuiFlexGroup gutterSize="m" wrap>
         {hasEmergingTerms && (
@@ -154,7 +158,12 @@ const MonitorTypeCard = ({
 
   return (
     <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-      <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+      <EuiText
+        size="xs"
+        css={css`
+          font-weight: ${euiTheme.font.weight.semiBold};
+        `}
+      >
         {MONITOR_TYPE_TITLE}
       </EuiText>
       <EuiSpacer size="xs" />
@@ -164,18 +173,26 @@ const MonitorTypeCard = ({
           t.errorRate >= 0.5
             ? euiTheme.colors.danger
             : t.errorRate >= 0.2
-              ? euiTheme.colors.warning
-              : euiTheme.colors.success;
+            ? euiTheme.colors.warning
+            : euiTheme.colors.success;
         return (
           <EuiToolTip key={t.monitorType} content={FILTER_BY_TYPE_HINT}>
             <EuiFlexGroup
               alignItems="center"
               gutterSize="s"
               responsive={false}
-              css={css`${clickableRow}; margin-bottom: 6px;`}
+              css={css`
+                ${clickableRow};
+                margin-bottom: 6px;
+              `}
               onClick={() => onFilter(t.monitorType)}
             >
-              <EuiFlexItem grow={false} css={css`width: 80px;`}>
+              <EuiFlexItem
+                grow={false}
+                css={css`
+                  width: 80px;
+                `}
+              >
                 <EuiFlexGroup alignItems="center" gutterSize="xs" responsive={false}>
                   <EuiFlexItem grow={false}>
                     <EuiIcon type={TYPE_ICONS[t.monitorType] ?? 'dot'} size="s" />
@@ -205,8 +222,20 @@ const MonitorTypeCard = ({
                   />
                 </div>
               </EuiFlexItem>
-              <EuiFlexItem grow={false} css={css`width: 45px; text-align: right;`}>
-                <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold}; color: ${barColor};`}>
+              <EuiFlexItem
+                grow={false}
+                css={css`
+                  width: 45px;
+                  text-align: right;
+                `}
+              >
+                <EuiText
+                  size="xs"
+                  css={css`
+                    font-weight: ${euiTheme.font.weight.semiBold};
+                    color: ${barColor};
+                  `}
+                >
                   {pct}%
                 </EuiText>
               </EuiFlexItem>
@@ -230,18 +259,30 @@ const FailingDomainsCard = ({
   if (!domains.length) {
     return (
       <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-        <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+        <EuiText
+          size="xs"
+          css={css`
+            font-weight: ${euiTheme.font.weight.semiBold};
+          `}
+        >
           {DOMAINS_TITLE}
         </EuiText>
         <EuiSpacer size="s" />
-        <EuiText size="xs" color="subdued">{NO_DATA}</EuiText>
+        <EuiText size="xs" color="subdued">
+          {NO_DATA}
+        </EuiText>
       </EuiPanel>
     );
   }
 
   return (
     <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-      <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+      <EuiText
+        size="xs"
+        css={css`
+          font-weight: ${euiTheme.font.weight.semiBold};
+        `}
+      >
         {DOMAINS_TITLE}
       </EuiText>
       <EuiSpacer size="xs" />
@@ -251,13 +292,18 @@ const FailingDomainsCard = ({
           alignItems="center"
           gutterSize="s"
           responsive={false}
-          css={css`margin-bottom: 6px;`}
+          css={css`
+            margin-bottom: 6px;
+          `}
         >
           <EuiFlexItem>
             <EuiToolTip content={FILTER_BY_DOMAIN_HINT}>
               <EuiLink
+                data-test-subj="syntheticsFailingDomainsCardLink"
                 onClick={() => onFilter(d.domain)}
-                css={css`font-size: 12px;`}
+                css={css`
+                  font-size: 12px;
+                `}
                 className="eui-textTruncate"
                 title={d.domain}
               >
@@ -286,18 +332,30 @@ const TagBreakdownCard = ({
   if (!tags.length) {
     return (
       <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-        <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+        <EuiText
+          size="xs"
+          css={css`
+            font-weight: ${euiTheme.font.weight.semiBold};
+          `}
+        >
           {TAGS_TITLE}
         </EuiText>
         <EuiSpacer size="s" />
-        <EuiText size="xs" color="subdued">{NO_TAGS}</EuiText>
+        <EuiText size="xs" color="subdued">
+          {NO_TAGS}
+        </EuiText>
       </EuiPanel>
     );
   }
 
   return (
     <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-      <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+      <EuiText
+        size="xs"
+        css={css`
+          font-weight: ${euiTheme.font.weight.semiBold};
+        `}
+      >
         {TAGS_TITLE}
       </EuiText>
       <EuiSpacer size="xs" />
@@ -308,12 +366,16 @@ const TagBreakdownCard = ({
             t.errorRate >= 0.5 ? 'danger' : t.errorRate >= 0.2 ? 'warning' : 'hollow';
           return (
             <EuiFlexItem key={t.tag} grow={false}>
-              <EuiToolTip content={`${t.downChecks} errors / ${t.totalChecks} checks (${pct}%) — ${CLICK_TO_FILTER}`}>
+              <EuiToolTip
+                content={`${t.downChecks} errors / ${t.totalChecks} checks (${pct}%) — ${CLICK_TO_FILTER}`}
+              >
                 <EuiBadge
                   color={badgeColor}
                   onClick={() => onFilter(t.tag)}
                   onClickAriaLabel={`${FILTER_BY_TAG_HINT}: ${t.tag}`}
-                  css={css`cursor: pointer;`}
+                  css={css`
+                    cursor: pointer;
+                  `}
                 >
                   {t.tag}: {t.downChecks}
                 </EuiBadge>
@@ -324,7 +386,10 @@ const TagBreakdownCard = ({
         {tags.length > MAX_VISIBLE_TAGS && (
           <EuiFlexItem grow={false}>
             <EuiToolTip
-              content={tags.slice(MAX_VISIBLE_TAGS).map((t) => `${t.tag}: ${t.downChecks}`).join(', ')}
+              content={tags
+                .slice(MAX_VISIBLE_TAGS)
+                .map((t) => `${t.tag}: ${t.downChecks}`)
+                .join(', ')}
             >
               <EuiBadge color="hollow">+{tags.length - MAX_VISIBLE_TAGS} more</EuiBadge>
             </EuiToolTip>
@@ -347,20 +412,29 @@ const StatusCodesCard = ({
 
   return (
     <EuiPanel hasBorder={false} hasShadow={false} paddingSize="s" color="subdued">
-      <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+      <EuiText
+        size="xs"
+        css={css`
+          font-weight: ${euiTheme.font.weight.semiBold};
+        `}
+      >
         {STATUS_CODES_TITLE}
       </EuiText>
       <EuiSpacer size="xs" />
       {codes.slice(0, 5).map((c) => {
         const pct = totalErrors > 0 ? Math.round((c.count / totalErrors) * 100) : 0;
-        const codeColor = c.statusCode >= 500 ? 'danger' : c.statusCode >= 400 ? 'warning' : 'hollow';
+        const codeColor =
+          c.statusCode >= 500 ? 'danger' : c.statusCode >= 400 ? 'warning' : 'hollow';
         return (
           <EuiToolTip key={c.statusCode} content={FILTER_BY_CODE_HINT}>
             <EuiFlexGroup
               alignItems="center"
               gutterSize="s"
               responsive={false}
-              css={css`${clickableRow}; margin-bottom: 6px;`}
+              css={css`
+                ${clickableRow};
+                margin-bottom: 6px;
+              `}
               onClick={() => onFilter(String(c.statusCode))}
             >
               <EuiFlexItem grow={false}>
@@ -379,7 +453,11 @@ const StatusCodesCard = ({
                     css={css`
                       height: 100%;
                       width: ${pct}%;
-                      background: ${codeColor === 'danger' ? euiTheme.colors.danger : codeColor === 'warning' ? euiTheme.colors.warning : euiTheme.colors.mediumShade};
+                      background: ${codeColor === 'danger'
+                        ? euiTheme.colors.danger
+                        : codeColor === 'warning'
+                        ? euiTheme.colors.warning
+                        : euiTheme.colors.mediumShade};
                       border-radius: ${euiTheme.border.radius.small};
                     `}
                   />
@@ -413,7 +491,12 @@ const EmergingTermsCard = ({
           <EuiIcon type="sparkles" size="s" color="accent" />
         </EuiFlexItem>
         <EuiFlexItem>
-          <EuiText size="xs" css={css`font-weight: ${euiTheme.font.weight.semiBold};`}>
+          <EuiText
+            size="xs"
+            css={css`
+              font-weight: ${euiTheme.font.weight.semiBold};
+            `}
+          >
             {EMERGING_TITLE}
           </EuiText>
         </EuiFlexItem>
@@ -423,11 +506,7 @@ const EmergingTermsCard = ({
         {terms.slice(0, 5).map((t) => {
           const truncated = t.term.length > 80 ? t.term.substring(0, 80) + '...' : t.term;
           const intensity = t.foregroundCount / maxCount;
-          const badgeColor = intensity >= 0.7
-            ? 'danger'
-            : intensity >= 0.3
-              ? 'warning'
-              : 'hollow';
+          const badgeColor = intensity >= 0.7 ? 'danger' : intensity >= 0.3 ? 'warning' : 'hollow';
           return (
             <EuiFlexItem key={t.term} grow={false}>
               <EuiToolTip content={`${t.foregroundCount} occurrences — ${CLICK_TO_FILTER}`}>
@@ -437,7 +516,8 @@ const EmergingTermsCard = ({
                   responsive={false}
                   css={clickableRow}
                   onClick={() => {
-                    const firstWord = t.term.split(/\s+/).find((w) => w.length > 3) ?? t.term.split(/\s+/)[0];
+                    const firstWord =
+                      t.term.split(/\s+/).find((w) => w.length > 3) ?? t.term.split(/\s+/)[0];
                     onFilter(firstWord);
                   }}
                 >
@@ -510,4 +590,3 @@ const FILTER_BY_CODE_HINT = i18n.translate('xpack.synthetics.errorInsights.filte
 const EMERGING_TITLE = i18n.translate('xpack.synthetics.errorInsights.emergingSignals', {
   defaultMessage: 'New in this period',
 });
-

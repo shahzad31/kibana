@@ -42,7 +42,11 @@ export const ErrorsTabContent = ({
   return (
     <div style={{ position: 'relative' }}>
       {isAnyLoading && (
-        <EuiProgress size="xs" color="accent" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }} />
+        <EuiProgress
+          size="xs"
+          color="accent"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}
+        />
       )}
       <ErrorStatsPanel stats={errorStats} loading={errorStatsLoading} />
       <EuiSpacer size="m" />
@@ -53,10 +57,7 @@ export const ErrorsTabContent = ({
         loading={errorStatsLoading}
       />
       <EuiSpacer size="m" />
-      <ErrorInsightsPanel
-        insights={errorStats?.insights ?? null}
-        loading={errorStatsLoading}
-      />
+      <ErrorInsightsPanel insights={errorStats?.insights ?? null} loading={errorStatsLoading} />
       <EuiSpacer size="m" />
       <PanelWithTitle title={ERROR_GROUPS_LABEL}>
         <ErrorGroupsList groups={errorGroups} loading={errorGroupsLoading} />

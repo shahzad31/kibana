@@ -72,7 +72,9 @@ export const TopFailingMonitors = ({
   if (loading && !monitors.length) {
     return (
       <EuiPanel hasBorder hasShadow={false} paddingSize="m">
-        <EuiText size="xs"><h5>{TITLE}</h5></EuiText>
+        <EuiText size="xs">
+          <h5>{TITLE}</h5>
+        </EuiText>
         <EuiSpacer size="s" />
         <EuiSkeletonText lines={5} />
       </EuiPanel>
@@ -82,9 +84,13 @@ export const TopFailingMonitors = ({
   if (!monitors.length) {
     return (
       <EuiPanel hasBorder hasShadow={false} paddingSize="m">
-        <EuiText size="xs"><h5>{TITLE}</h5></EuiText>
+        <EuiText size="xs">
+          <h5>{TITLE}</h5>
+        </EuiText>
         <EuiSpacer size="s" />
-        <EuiText size="s" color="subdued">{NO_FAILING_LABEL}</EuiText>
+        <EuiText size="s" color="subdued">
+          {NO_FAILING_LABEL}
+        </EuiText>
       </EuiPanel>
     );
   }
@@ -99,7 +105,9 @@ export const TopFailingMonitors = ({
         <EuiFlexItem grow={false}>
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
             <EuiFlexItem grow={false}>
-              <EuiText size="xs"><h5>{TITLE}</h5></EuiText>
+              <EuiText size="xs">
+                <h5>{TITLE}</h5>
+              </EuiText>
             </EuiFlexItem>
             {monitors.length > 10 && (
               <EuiFlexItem grow={false}>
@@ -137,22 +145,23 @@ export const TopFailingMonitors = ({
             sortMode === 'errorRate'
               ? monitor.errorRate * 100
               : sortMode === 'downtime'
-                ? maxDowntime > 0
-                  ? (monitor.downtimeMs / maxDowntime) * 100
-                  : 0
-                : maxDown > 0
-                  ? (monitor.downChecks / maxDown) * 100
-                  : 0;
+              ? maxDowntime > 0
+                ? (monitor.downtimeMs / maxDowntime) * 100
+                : 0
+              : maxDown > 0
+              ? (monitor.downChecks / maxDown) * 100
+              : 0;
           const barColor =
             monitor.errorRate >= 0.8
               ? euiTheme.colors.danger
               : monitor.errorRate >= 0.4
-                ? euiTheme.colors.warning
-                : euiTheme.colors.vis.euiColorVis0;
+              ? euiTheme.colors.warning
+              : euiTheme.colors.vis.euiColorVis0;
 
           return (
             <React.Fragment key={monitor.configId}>
               <EuiLink
+                data-test-subj="syntheticsTopFailingMonitorsLink"
                 href={`${basePath}/app/synthetics/monitor/${monitor.configId}`}
                 className="eui-textTruncate"
                 title={monitor.monitorName}
@@ -164,7 +173,11 @@ export const TopFailingMonitors = ({
                 {monitor.monitorName}
               </EuiLink>
 
-              <EuiToolTip content={`${monitor.downChecks} errors, ${pct}% failure, ${formatDowntime(monitor.downtimeMs)} downtime`}>
+              <EuiToolTip
+                content={`${monitor.downChecks} errors, ${pct}% failure, ${formatDowntime(
+                  monitor.downtimeMs
+                )} downtime`}
+              >
                 <div
                   css={css`
                     position: relative;
@@ -198,7 +211,9 @@ export const TopFailingMonitors = ({
                       line-height: 1;
                     `}
                   >
-                    {sortMode === 'downtime' ? formatDowntime(monitor.downtimeMs) : monitor.downChecks}
+                    {sortMode === 'downtime'
+                      ? formatDowntime(monitor.downtimeMs)
+                      : monitor.downChecks}
                   </EuiText>
                 </div>
               </EuiToolTip>

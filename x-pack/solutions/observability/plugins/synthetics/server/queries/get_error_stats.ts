@@ -6,10 +6,7 @@
  */
 
 import type { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
-import {
-  EXCLUDE_RUN_ONCE_FILTER,
-  SUMMARY_FILTER,
-} from '../../common/constants/client_defaults';
+import { EXCLUDE_RUN_ONCE_FILTER, SUMMARY_FILTER } from '../../common/constants/client_defaults';
 import type { SyntheticsEsClient } from '../lib';
 import type {
   ErrorStats,
@@ -124,10 +121,7 @@ export async function getErrorStats({
       size: 0,
       query: {
         bool: {
-          filter: [
-            ...baseFilters,
-            { range: { '@timestamp': { gte: prevFrom, lte: to } } },
-          ],
+          filter: [...baseFilters, { range: { '@timestamp': { gte: prevFrom, lte: to } } }],
           ...(must.length ? { must } : {}),
         },
       },
@@ -271,9 +265,7 @@ export async function getErrorStats({
         downChecks: downForMonitor,
         totalChecks: totalForMonitor,
         errorRate:
-          totalForMonitor > 0
-            ? Math.round((downForMonitor / totalForMonitor) * 10000) / 10000
-            : 0,
+          totalForMonitor > 0 ? Math.round((downForMonitor / totalForMonitor) * 10000) / 10000 : 0,
         downtimeMs: bucket.downtime?.total_ms?.value ?? 0,
       };
     });
@@ -351,8 +343,7 @@ export async function getErrorStats({
     errorCount: aggs?.current?.down_checks?.error_states?.value ?? 0,
     avgDurationMs: aggs?.current?.down_checks?.avg_duration?.value ?? 0,
     previousErrorRate: Math.round(previousErrorRate * 10000) / 10000,
-    errorRateDelta:
-      Math.round((currentErrorRate - previousErrorRate) * 10000) / 10000,
+    errorRateDelta: Math.round((currentErrorRate - previousErrorRate) * 10000) / 10000,
     locationStats,
     topFailingMonitors,
     insights,
