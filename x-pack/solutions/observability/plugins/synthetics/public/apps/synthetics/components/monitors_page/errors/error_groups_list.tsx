@@ -22,7 +22,12 @@ import {
 import type { EuiBasicTableColumn } from '@elastic/eui';
 import { Chart, BarSeries, Axis, Settings, ScaleType, Position, Tooltip } from '@elastic/charts';
 import { useKibana } from '@kbn/kibana-react-plugin/public';
-import type { ErrorGroup, ErrorGroupItem, ErrorGroupHistogramBucket, ErrorGroupPattern } from '../../../../../../common/runtime_types';
+import type {
+  ErrorGroup,
+  ErrorGroupItem,
+  ErrorGroupHistogramBucket,
+  ErrorGroupPattern,
+} from '../../../../../../common/runtime_types';
 import { ErrorDetailsLink } from '../../common/links/error_details_link';
 import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useSyntheticsSettingsContext } from '../../../contexts';
@@ -82,7 +87,12 @@ export const ErrorGroupsList = ({
             <strong>{item.name}</strong>
           </EuiText>
           {item.sampleMessage !== item.name && (
-            <EuiText size="xs" color="subdued" className="eui-textTruncate" title={item.sampleMessage}>
+            <EuiText
+              size="xs"
+              color="subdued"
+              className="eui-textTruncate"
+              title={item.sampleMessage}
+            >
               {item.sampleMessage}
             </EuiText>
           )}
@@ -204,11 +214,7 @@ const ErrorGroupHistogram = ({ histogram }: { histogram: ErrorGroupHistogramBuck
           baseTheme={baseTheme}
         />
         <Tooltip type="crosshairs" />
-        <Axis
-          id="bottom"
-          position={Position.Bottom}
-          showGridLines={false}
-        />
+        <Axis id="bottom" position={Position.Bottom} showGridLines={false} />
         <Axis id="left" position={Position.Left} showGridLines={false} ticks={3} />
         <BarSeries
           id="errorOccurrences"
@@ -253,7 +259,12 @@ const ExpandedGroupRow = ({
       field: 'monitorName',
       name: MONITOR_LABEL,
       render: (name: string, item: ErrorGroupItem) => (
-        <EuiLink href={`${basePath}/app/synthetics/monitor/${item.configId}`}>{name}</EuiLink>
+        <EuiLink
+          data-test-subj="syntheticsColumnsLink"
+          href={`${basePath}/app/synthetics/monitor/${item.configId}`}
+        >
+          {name}
+        </EuiLink>
       ),
     },
     {

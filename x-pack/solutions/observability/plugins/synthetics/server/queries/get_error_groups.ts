@@ -6,10 +6,7 @@
  */
 
 import type { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
-import {
-  EXCLUDE_RUN_ONCE_FILTER,
-  SUMMARY_FILTER,
-} from '../../common/constants/client_defaults';
+import { EXCLUDE_RUN_ONCE_FILTER, SUMMARY_FILTER } from '../../common/constants/client_defaults';
 import type { SyntheticsEsClient } from '../lib';
 import type {
   ErrorGroupsResponse,
@@ -142,14 +139,7 @@ export async function getErrorGroups({
                 latest: {
                   top_hits: {
                     size: 1,
-                    _source: [
-                      'error',
-                      'state',
-                      'monitor',
-                      '@timestamp',
-                      'config_id',
-                      'observer',
-                    ],
+                    _source: ['error', 'state', 'monitor', '@timestamp', 'config_id', 'observer'],
                     sort: [{ '@timestamp': { order: 'desc' } }],
                   },
                 },
