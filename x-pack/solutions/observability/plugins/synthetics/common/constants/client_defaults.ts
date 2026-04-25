@@ -124,6 +124,8 @@ export const getQueryFilters = (query: string) => ({
       'urls',
       'hosts',
       'monitor.project.id',
+      'error.message',
+      'url.domain',
     ],
   },
 });

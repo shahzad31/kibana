@@ -6,17 +6,17 @@
  */
 
 import React from 'react';
-import { EuiFlexGroup, EuiFlexItem, EuiSpacer } from '@elastic/eui';
+import { EuiSpacer, EuiProgress } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { MonitorErrorsCount } from './monitor_errors_count';
 import { ErrorsList } from '../../monitor_details/monitor_errors/errors_list';
 import { ErrorGroupsList } from './error_groups_list';
+import { ErrorStatsPanel } from './error_stats_panel';
+import { TopFailingMonitors } from './top_failing_monitors';
+import { ErrorsOverTimeChart } from './errors_over_time_chart';
+import { ErrorInsightsPanel } from './error_insights_panel';
 import type { PingState } from '../../../../../../common/runtime_types';
-import type { ErrorGroup } from '../../../../../../common/runtime_types';
+import type { ErrorGroup, ErrorStats } from '../../../../../../common/runtime_types';
 import { PanelWithTitle } from '../../common/components/panel_with_title';
-import { FailedTestsCount } from './failed_tests_count';
-import { MonitorFailedTests } from './failed_tests';
-import { useRefreshedRangeFromUrl } from '../../../hooks';
 
 export const ErrorsTabContent = ({
   errorStates,
@@ -25,6 +25,8 @@ export const ErrorsTabContent = ({
   monitorIds,
   errorGroups,
   errorGroupsLoading,
+  errorStats,
+  errorStatsLoading,
 }: {
   errorStates: PingState[];
   upStates: PingState[];
@@ -32,30 +34,29 @@ export const ErrorsTabContent = ({
   monitorIds: string[];
   errorGroups: ErrorGroup[];
   errorGroupsLoading: boolean;
+  errorStats: ErrorStats | null;
+  errorStatsLoading: boolean;
 }) => {
-  const time = useRefreshedRangeFromUrl();
+  const isAnyLoading = loading || errorGroupsLoading || errorStatsLoading;
 
   return (
-    <>
-      <EuiFlexGroup gutterSize="m" wrap={true}>
-        <EuiFlexItem grow={1}>
-          <PanelWithTitle title={OVERVIEW_LABEL} titleLeftAlign css={{ minWidth: 260 }}>
-            <EuiFlexGroup wrap={true} responsive={false}>
-              <EuiFlexItem>
-                <MonitorErrorsCount from={time.from} to={time.to} monitorIds={monitorIds} />
-              </EuiFlexItem>
-              <EuiFlexItem>
-                <FailedTestsCount from={time.from} to={time.to} monitorIds={monitorIds} />
-              </EuiFlexItem>
-            </EuiFlexGroup>
-          </PanelWithTitle>
-        </EuiFlexItem>
-        <EuiFlexItem grow={3}>
-          <PanelWithTitle title={FAILED_TESTS_LABEL}>
-            <MonitorFailedTests time={time} monitorIds={monitorIds} />
-          </PanelWithTitle>
-        </EuiFlexItem>
-      </EuiFlexGroup>
+    <div style={{ position: 'relative' }}>
+      {isAnyLoading && (
+        <EuiProgress size="xs" color="accent" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }} />
+      )}
+      <ErrorStatsPanel stats={errorStats} loading={errorStatsLoading} />
+      <EuiSpacer size="m" />
+      <ErrorsOverTimeChart groups={errorGroups} loading={errorGroupsLoading} />
+      <EuiSpacer size="m" />
+      <TopFailingMonitors
+        monitors={errorStats?.topFailingMonitors ?? []}
+        loading={errorStatsLoading}
+      />
+      <EuiSpacer size="m" />
+      <ErrorInsightsPanel
+        insights={errorStats?.insights ?? null}
+        loading={errorStatsLoading}
+      />
       <EuiSpacer size="m" />
       <PanelWithTitle title={ERROR_GROUPS_LABEL}>
         <ErrorGroupsList groups={errorGroups} loading={errorGroupsLoading} />
@@ -69,7 +70,7 @@ export const ErrorsTabContent = ({
           showMonitorName={true}
         />
       </PanelWithTitle>
-    </>
+    </div>
   );
 };
 
@@ -79,12 +80,4 @@ const ERRORS_LABEL = i18n.translate('xpack.synthetics.errors.label', {
 
 const ERROR_GROUPS_LABEL = i18n.translate('xpack.synthetics.errors.errorGroups', {
   defaultMessage: 'Error groups',
-});
-
-const OVERVIEW_LABEL = i18n.translate('xpack.synthetics.errors.overview', {
-  defaultMessage: 'Overview',
-});
-
-const FAILED_TESTS_LABEL = i18n.translate('xpack.synthetics.errors.failedTests', {
-  defaultMessage: 'Failed tests',
 });

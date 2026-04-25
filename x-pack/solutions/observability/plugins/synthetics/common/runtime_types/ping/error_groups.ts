@@ -10,10 +10,13 @@ import * as t from 'io-ts';
 export const ErrorGroupItemType = t.type({
   timestamp: t.string,
   monitorName: t.string,
+  monitorType: t.string,
   configId: t.string,
   stateId: t.string,
+  checkGroup: t.string,
   locationName: t.string,
   durationMs: t.number,
+  errorMessage: t.string,
 });
 
 export type ErrorGroupItem = t.TypeOf<typeof ErrorGroupItemType>;

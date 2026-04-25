@@ -16,9 +16,11 @@ import {
   EuiLink,
   EuiSpacer,
   EuiButtonIcon,
+  EuiToolTip,
   useIsWithinMinBreakpoint,
   useEuiTheme,
 } from '@elastic/eui';
+import moment from 'moment';
 import type { EuiBasicTableColumn } from '@elastic/eui';
 import { Chart, BarSeries, Axis, Settings, ScaleType, Position, Tooltip } from '@elastic/charts';
 import { useKibana } from '@kbn/kibana-react-plugin/public';
@@ -32,6 +34,8 @@ import { ErrorDetailsLink } from '../../common/links/error_details_link';
 import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useSyntheticsSettingsContext } from '../../../contexts';
 import type { ClientPluginsStart } from '../../../../../plugin';
+import { ErrorPreviewFlyout } from './error_preview_flyout';
+import type { ErrorPreviewData } from './error_preview_flyout';
 
 export const ErrorGroupsList = ({
   groups,
@@ -41,6 +45,7 @@ export const ErrorGroupsList = ({
   loading: boolean;
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [previewItem, setPreviewItem] = useState<ErrorPreviewData | null>(null);
   const formatter = useDateFormat();
   const { basePath } = useSyntheticsSettingsContext();
   const isTabletOrGreater = useIsWithinMinBreakpoint('s');
@@ -57,7 +62,7 @@ export const ErrorGroupsList = ({
     for (const group of groups) {
       if (expandedRows[group.name]) {
         map[group.name] = (
-          <ExpandedGroupRow group={group} formatter={formatter} basePath={basePath} />
+          <ExpandedGroupRow group={group} formatter={formatter} basePath={basePath} onPreview={setPreviewItem} />
         );
       }
     }
@@ -132,37 +137,52 @@ export const ErrorGroupsList = ({
       field: 'firstSeen',
       name: FIRST_SEEN_LABEL,
       sortable: true,
+      width: '110px',
       render: (value: string) =>
-        value ? <EuiText size="s">{formatter(value)}</EuiText> : <>{'--'}</>,
+        value ? (
+          <EuiToolTip content={formatter(value)}>
+            <EuiText size="xs">{moment(value).fromNow()}</EuiText>
+          </EuiToolTip>
+        ) : <>{'--'}</>,
     },
     {
       field: 'lastSeen',
       name: LAST_SEEN_LABEL,
       sortable: true,
+      width: '110px',
       render: (value: string) =>
-        value ? <EuiText size="s">{formatter(value)}</EuiText> : <>{'--'}</>,
+        value ? (
+          <EuiToolTip content={formatter(value)}>
+            <EuiText size="xs">{moment(value).fromNow()}</EuiText>
+          </EuiToolTip>
+        ) : <>{'--'}</>,
     },
   ];
 
   return (
-    <EuiInMemoryTable
-      css={{ overflowX: isTabletOrGreater ? 'auto' : undefined }}
-      tableLayout="auto"
-      tableCaption={ERROR_GROUPS_CAPTION}
-      loading={loading}
-      items={groups}
-      itemId="name"
-      columns={columns}
-      itemIdToExpandedRowMap={itemIdToExpandedRowMap}
-      isExpandable={true}
-      pagination={{ pageSizeOptions: [5, 10, 25] }}
-      sorting={{
-        sort: {
-          field: 'count',
-          direction: 'desc',
-        },
-      }}
-    />
+    <>
+      <EuiInMemoryTable
+        css={{ overflowX: isTabletOrGreater ? 'auto' : undefined }}
+        tableLayout="auto"
+        tableCaption={ERROR_GROUPS_CAPTION}
+        loading={loading}
+        items={groups}
+        itemId="name"
+        columns={columns}
+        itemIdToExpandedRowMap={itemIdToExpandedRowMap}
+        isExpandable={true}
+        pagination={{ pageSizeOptions: [5, 10, 25] }}
+        sorting={{
+          sort: {
+            field: 'count',
+            direction: 'desc',
+          },
+        }}
+      />
+      {previewItem && (
+        <ErrorPreviewFlyout error={previewItem} onClose={() => setPreviewItem(null)} />
+      )}
+    </>
   );
 };
 
@@ -236,10 +256,12 @@ const ExpandedGroupRow = ({
   group,
   formatter,
   basePath,
+  onPreview,
 }: {
   group: ErrorGroup;
   formatter: (date: string) => string;
   basePath: string;
+  onPreview: (item: ErrorPreviewData) => void;
 }) => {
   const columns: Array<EuiBasicTableColumn<ErrorGroupItem>> = [
     {
@@ -281,6 +303,19 @@ const ExpandedGroupRow = ({
         if (value < 60000) return <EuiText size="s">{`${Math.round(value / 1000)}s`}</EuiText>;
         return <EuiText size="s">{`${Math.round(value / 60000)}m`}</EuiText>;
       },
+    },
+    {
+      name: ACTIONS_LABEL,
+      width: '40px',
+      render: (item: ErrorGroupItem) => (
+        <EuiButtonIcon
+          data-test-subj={`syntheticsErrorPreview-${item.stateId}`}
+          iconType="eye"
+          aria-label={PREVIEW_LABEL}
+          onClick={() => onPreview(item)}
+          size="xs"
+        />
+      ),
     },
   ];
 
@@ -358,4 +393,12 @@ const LOCATION_LABEL = i18n.translate('xpack.synthetics.errorGroups.location', {
 
 const DURATION_LABEL = i18n.translate('xpack.synthetics.errorGroups.duration', {
   defaultMessage: 'Duration',
+});
+
+const ACTIONS_LABEL = i18n.translate('xpack.synthetics.errorGroups.actions', {
+  defaultMessage: 'Actions',
+});
+
+const PREVIEW_LABEL = i18n.translate('xpack.synthetics.errorGroups.preview', {
+  defaultMessage: 'Quick preview',
 });

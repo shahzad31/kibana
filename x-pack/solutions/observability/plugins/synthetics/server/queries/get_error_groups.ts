@@ -93,6 +93,8 @@ export async function getErrorGroups({
           'urls',
           'hosts',
           'monitor.project.id',
+          'error.message',
+          'url.domain',
         ],
       },
     });
@@ -112,7 +114,7 @@ export async function getErrorGroups({
           // @ts-expect-error categorize_text not yet in ES client types
           categorize_text: {
             field: 'error.message',
-            size: 50,
+            size: 25,
           },
           aggs: {
             affected_monitors: {
@@ -133,23 +135,28 @@ export async function getErrorGroups({
             per_state: {
               terms: {
                 field: 'state.id',
-                size: 50,
+                size: 10,
               },
               aggs: {
                 latest: {
                   top_hits: {
                     size: 1,
-                    _source: ['error', 'state', 'monitor', '@timestamp', 'config_id', 'observer'],
+                    _source: [
+                      'error.message',
+                      'state.id',
+                      'state.duration_ms',
+                      'state.started_at',
+                      'monitor.name',
+                      'monitor.type',
+                      'monitor.check_group',
+                      '@timestamp',
+                      'config_id',
+                      'observer.name',
+                      'observer.geo.name',
+                    ],
                     sort: [{ '@timestamp': { order: 'desc' } }],
                   },
                 },
-              },
-            },
-            sample: {
-              top_hits: {
-                size: 1,
-                _source: ['error.message'],
-                sort: [{ '@timestamp': { order: 'desc' } }],
               },
             },
             over_time: {
@@ -175,16 +182,19 @@ export async function getErrorGroups({
         return {
           timestamp: source['@timestamp'] ?? '',
           monitorName: source.monitor?.name ?? '',
+          monitorType: source.monitor?.type ?? '',
           configId: source.config_id ?? '',
           stateId: source.state?.id ?? '',
+          checkGroup: source.monitor?.check_group ?? '',
           locationName: source.observer?.geo?.name ?? source.observer?.name ?? '',
           durationMs: Number(source.state?.duration_ms) || 0,
+          errorMessage: source.error?.message ?? '',
         } satisfies ErrorGroupItem;
       })
       .filter(Boolean);
 
-    const sampleSource = bucket.sample?.hits?.hits?.[0]?._source;
-    const sampleMessage: string = sampleSource?.error?.message ?? (bucket.key as string);
+    const firstStateSource = bucket.per_state?.buckets?.[0]?.latest?.hits?.hits?.[0]?._source;
+    const sampleMessage: string = firstStateSource?.error?.message ?? (bucket.key as string);
 
     const histogram = (bucket.over_time?.buckets ?? []).map((timeBucket: any) => ({
       timestamp: timeBucket.key as number,

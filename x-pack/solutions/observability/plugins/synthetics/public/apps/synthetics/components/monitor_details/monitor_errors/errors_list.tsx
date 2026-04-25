@@ -7,7 +7,7 @@
 
 import { i18n } from '@kbn/i18n';
 import type { MouseEvent } from 'react';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   EuiSpacer,
   EuiText,
@@ -15,6 +15,7 @@ import {
   EuiFlexGroup,
   EuiFlexItem,
   EuiBadge,
+  EuiButtonIcon,
   useIsWithinMinBreakpoint,
   EuiLink,
 } from '@elastic/eui';
@@ -29,6 +30,8 @@ import { formatTestDuration } from '../../../utils/monitor_test_result/test_time
 import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useMonitorLatestPing } from '../hooks/use_monitor_latest_ping';
 import { useSyntheticsSettingsContext } from '../../../contexts';
+import { ErrorPreviewFlyout } from '../../monitors_page/errors/error_preview_flyout';
+import type { ErrorPreviewData } from '../../monitors_page/errors/error_preview_flyout';
 
 function isErrorActive(lastError: PingState, currentError: PingState, latestPing?: Ping) {
   return (
@@ -57,6 +60,7 @@ export const ErrorsList = ({
   showMonitorName?: boolean;
 }) => {
   const { monitorId: configId } = useParams<{ monitorId: string }>();
+  const [previewItem, setPreviewItem] = useState<ErrorPreviewData | null>(null);
 
   const { basePath } = useSyntheticsSettingsContext();
 
@@ -231,6 +235,32 @@ export const ErrorsList = ({
         return <EuiText size="s">{'--'}</EuiText>;
       },
     },
+    {
+      name: '',
+      width: '40px',
+      render: (item: PingState) => (
+        <EuiButtonIcon
+          data-test-subj={`syntheticsErrorPreview-${item.state?.id}`}
+          iconType="eye"
+          aria-label={PREVIEW_LABEL}
+          onClick={(evt: MouseEvent) => {
+            evt.stopPropagation();
+            setPreviewItem({
+              timestamp: item.state?.started_at ?? item['@timestamp'] ?? '',
+              monitorName: item.monitor?.name ?? '',
+              monitorType: item.monitor?.type ?? '',
+              configId: item.config_id ?? configId ?? '',
+              stateId: item.state?.id ?? '',
+              checkGroup: item.monitor?.check_group ?? '',
+              locationName: item.observer?.geo?.name ?? item.observer?.name ?? '',
+              durationMs: Number(item.state?.duration_ms) || 0,
+              errorMessage: item.error?.message ?? '',
+            });
+          }}
+          size="xs"
+        />
+      ),
+    },
   ];
 
   const getRowProps = (item: PingState) => {
@@ -266,6 +296,9 @@ export const ErrorsList = ({
           },
         }}
       />
+      {previewItem && (
+        <ErrorPreviewFlyout error={previewItem} onClose={() => setPreviewItem(null)} />
+      )}
     </div>
   );
 };
@@ -314,4 +347,8 @@ const RESOLVED_AT_LABEL = i18n.translate('xpack.synthetics.resolvedAt.label', {
 
 const MONITOR_NAME_LABEL = i18n.translate('xpack.synthetics.monitorName.label', {
   defaultMessage: 'Monitor name',
+});
+
+const PREVIEW_LABEL = i18n.translate('xpack.synthetics.errorPreview.quickPreview', {
+  defaultMessage: 'Quick preview',
 });
