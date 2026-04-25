@@ -145,7 +145,6 @@ export async function getErrorStats({
                   terms: { field: 'observer.geo.name', size: 50 },
                 },
                 error_categories: {
-                  // @ts-expect-error categorize_text not yet in ES client types
                   categorize_text: {
                     field: 'error.message',
                     size: 20,
@@ -229,7 +228,6 @@ export async function getErrorStats({
               filter: { term: { 'monitor.status': 'down' } },
               aggs: {
                 error_categories: {
-                  // @ts-expect-error categorize_text not yet in ES client types
                   categorize_text: {
                     field: 'error.message',
                     size: 25,

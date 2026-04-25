@@ -111,7 +111,6 @@ export async function getErrorGroups({
       },
       aggs: {
         error_groups: {
-          // @ts-expect-error categorize_text not yet in ES client types
           categorize_text: {
             field: 'error.message',
             size: 25,

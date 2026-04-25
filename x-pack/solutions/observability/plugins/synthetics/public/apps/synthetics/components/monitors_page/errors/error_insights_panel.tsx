@@ -511,10 +511,3 @@ const EMERGING_TITLE = i18n.translate('xpack.synthetics.errorInsights.emergingSi
   defaultMessage: 'New in this period',
 });
 
-const SCORE_LABEL = i18n.translate('xpack.synthetics.errorInsights.significanceScore', {
-  defaultMessage: 'Significance',
-});
-
-const FILTER_BY_TERM_HINT = i18n.translate('xpack.synthetics.errorInsights.filterByTerm', {
-  defaultMessage: 'Search for this term',
-});

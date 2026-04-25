@@ -170,7 +170,6 @@ export const ErrorGroupsList = ({
         itemId="name"
         columns={columns}
         itemIdToExpandedRowMap={itemIdToExpandedRowMap}
-        isExpandable={true}
         pagination={{ pageSizeOptions: [5, 10, 25] }}
         sorting={{
           sort: {
@@ -229,13 +228,13 @@ const ErrorGroupHistogram = ({ histogram }: { histogram: ErrorGroupHistogramBuck
     <div style={{ height: 120, width: '100%' }}>
       <Chart>
         <Settings
-          xDomain={minInterval ? { minInterval } : undefined}
+          xDomain={minInterval ? { min: NaN, max: NaN, minInterval } : undefined}
           locale={i18n.getLocale()}
           baseTheme={baseTheme}
         />
-        <Tooltip type="crosshairs" />
-        <Axis id="bottom" position={Position.Bottom} showGridLines={false} />
-        <Axis id="left" position={Position.Left} showGridLines={false} ticks={3} />
+        <Tooltip />
+        <Axis id="bottom" position={Position.Bottom} />
+        <Axis id="left" position={Position.Left} ticks={3} />
         <BarSeries
           id="errorOccurrences"
           color={euiTheme.colors.danger}

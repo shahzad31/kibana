@@ -16,7 +16,6 @@ import {
   ScaleType,
   Position,
   Tooltip,
-  StackMode,
   BrushAxis,
 } from '@elastic/charts';
 import {
@@ -207,7 +206,7 @@ export const ErrorsOverTimeChart = ({
       <div style={{ height: 200, width: '100%', cursor: 'crosshair' }}>
         <Chart>
           <Settings
-            xDomain={minInterval ? { minInterval } : undefined}
+            xDomain={minInterval ? { min: NaN, max: NaN, minInterval } : undefined}
             locale={i18n.getLocale()}
             baseTheme={baseTheme}
             showLegend={viewMode === 'grouped'}
@@ -220,12 +219,11 @@ export const ErrorsOverTimeChart = ({
               barSeriesStyle: { displayValue: { fontSize: 0 } },
             }}
           />
-          <Tooltip type="crosshairs" />
-          <Axis id="bottom" position={Position.Bottom} showGridLines={false} />
+          <Tooltip />
+          <Axis id="bottom" position={Position.Bottom} />
           <Axis
             id="left"
             position={Position.Left}
-            showGridLines
             ticks={4}
             style={{
               tickLine: { visible: false },
@@ -263,7 +261,6 @@ export const ErrorsOverTimeChart = ({
                 yAccessors={[1]}
                 yScaleType={ScaleType.Linear}
                 stackAccessors={[0]}
-                stackMode={StackMode.Normal}
               />
             ))
           )}
