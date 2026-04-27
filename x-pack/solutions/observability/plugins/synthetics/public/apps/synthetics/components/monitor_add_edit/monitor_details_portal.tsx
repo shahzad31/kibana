@@ -82,7 +82,7 @@ const buildSearch = ({
 const MonitorLink = ({ href, name }: { href: string; name: string }) => {
   return (
     <EuiLink data-test-subj="syntheticsMonitorDetailsLinkLink" href={href}>
-      <EuiIcon type="arrowLeft" /> {name}
+      <EuiIcon type="chevronSingleLeft" /> {name}
     </EuiLink>
   );
 };

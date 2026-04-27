@@ -91,7 +91,7 @@ export const StepPageNavigation = ({ testRunPage }: { testRunPage?: boolean }) =
           data-test-subj="syntheticsStepPageNavigationButton"
           style={{ height: 20 }}
           onClick={() => setIsPopoverOpen((prev) => !prev)}
-          iconType="arrowDown"
+          iconType="chevronSingleDown"
           iconSide="right"
           flush="left"
         >
@@ -105,7 +105,7 @@ export const StepPageNavigation = ({ testRunPage }: { testRunPage?: boolean }) =
             data-test-subj="syntheticsStepPageNavigationButton"
             href={prevHref}
             disabled={!prevHref}
-            iconType="arrowLeft"
+            iconType="chevronSingleLeft"
             aria-label={PREVIOUS_CHECK_BUTTON_TEXT}
           >
             {PREVIOUS_CHECK_BUTTON_TEXT}
@@ -125,7 +125,7 @@ export const StepPageNavigation = ({ testRunPage }: { testRunPage?: boolean }) =
             data-test-subj="syntheticsStepPageNavigationButton"
             href={nextHref}
             disabled={!nextHref}
-            iconType="arrowRight"
+            iconType="chevronSingleRight"
             iconSide="right"
             aria-label={NEXT_CHECK_BUTTON_TEXT}
           >

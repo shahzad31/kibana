@@ -12,6 +12,11 @@ import type {
   PluginSetupContract as ActionsPluginSetupContract,
   PluginStartContract as ActionsPluginStartContract,
 } from '@kbn/actions-plugin/server';
+import type { HooksServiceSetup } from '@kbn/agent-builder-server';
+import type { BuiltInAgentDefinition } from '@kbn/agent-builder-server/agents';
+import type { AttachmentTypeDefinition } from '@kbn/agent-builder-server/attachments';
+import type { SkillDefinition } from '@kbn/agent-builder-server/skills';
+import type { StaticToolRegistration } from '@kbn/agent-builder-server/tools';
 import type {
   AlertingApiRequestHandlerContext,
   AlertingServerSetup,
@@ -19,7 +24,10 @@ import type {
 import type { CustomRequestHandlerContext, IRouter } from '@kbn/core/server';
 import type { FeaturesPluginSetup } from '@kbn/features-plugin/server';
 
-import type { LicensingApiRequestHandlerContext } from '@kbn/licensing-plugin/server';
+import type {
+  LicensingApiRequestHandlerContext,
+  LicensingPluginStart,
+} from '@kbn/licensing-plugin/server';
 import type { SecurityPluginStart } from '@kbn/security-plugin-types-server';
 import type { ServerlessServerSetup } from '@kbn/serverless/server/types';
 import type { SpacesPluginStart } from '@kbn/spaces-plugin/server';
@@ -32,13 +40,41 @@ import type {
   WorkflowsExtensionsServerPluginSetup,
   WorkflowsExtensionsServerPluginStart,
 } from '@kbn/workflows-extensions/server';
-import type { WorkflowsManagementApi } from './workflows_management/workflows_management_api';
+import type { ZodObject } from '@kbn/zod/v4';
+import type { SmlTypeDefinition } from './agent_builder/sml_types/types';
+import type { WorkflowsManagementApi } from './api/workflows_management_api';
 
 export interface WorkflowsServerPluginSetup {
   management: WorkflowsManagementApi;
 }
 
 export type WorkflowsServerPluginStart = Record<string, never>;
+
+/**
+ * AgentBuilder plugin setup contract interface.
+ * Uses types from @kbn/agent-builder-server (shared package) instead of
+ * importing from the plugin directly, to avoid a circular dependency.
+ */
+export interface AgentBuilderPluginSetupContract {
+  agents: {
+    register: (definition: BuiltInAgentDefinition) => void;
+  };
+  tools: {
+    // x-pack/platform/plugins/shared/agent_builder/server/services/tools/types.ts
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- any is used by the original type
+    register: <RunInput extends ZodObject<any>>(tool: StaticToolRegistration<RunInput>) => void;
+  };
+  attachments: {
+    registerType: (definition: AttachmentTypeDefinition) => void;
+  };
+  hooks: HooksServiceSetup;
+  skills: {
+    register: (definition: SkillDefinition) => void;
+  };
+  sml: {
+    registerType: (definition: SmlTypeDefinition) => void;
+  };
+}
 
 export interface WorkflowsServerPluginSetupDeps {
   features?: FeaturesPluginSetup;
@@ -57,6 +93,7 @@ export interface WorkflowsServerPluginStartDeps {
   security?: SecurityPluginStart;
   spaces?: SpacesPluginStart;
   workflowsExtensions: WorkflowsExtensionsServerPluginStart;
+  licensing: LicensingPluginStart;
 }
 
 export type WorkflowsRequestHandlerContext = CustomRequestHandlerContext<{

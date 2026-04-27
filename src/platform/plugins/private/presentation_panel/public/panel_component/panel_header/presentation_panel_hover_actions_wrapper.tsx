@@ -7,14 +7,15 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import React from 'react';
+import React, { type PropsWithChildren } from 'react';
 
 import {
   canOverrideHoverActions,
-  useBatchedOptionalPublishingSubjects,
+  useBatchedPublishingSubjects,
 } from '@kbn/presentation-publishing';
 import { css } from '@emotion/react';
 import classNames from 'classnames';
+import { BehaviorSubject } from 'rxjs';
 import type { PresentationPanelHoverActionsProps } from './presentation_panel_hover_actions';
 import { PresentationPanelHoverActions } from './presentation_panel_hover_actions';
 import { useHoverActionStyles } from './use_hover_actions_styles';
@@ -31,13 +32,15 @@ const customActionsStyles = css({
   },
 });
 
-export const PresentationPanelHoverActionsWrapper = (props: PresentationPanelHoverActionsProps) => {
+export const PresentationPanelHoverActionsWrapper = (
+  props: PropsWithChildren<PresentationPanelHoverActionsProps>
+) => {
   const [defaultTitle, title, hasLockedHoverActions, overrideHoverActions] =
-    useBatchedOptionalPublishingSubjects(
-      props.api?.defaultTitle$,
-      props.api?.title$,
-      props.api?.hasLockedHoverActions$,
-      props.api?.overrideHoverActions$
+    useBatchedPublishingSubjects(
+      props.api.defaultTitle$ ?? new BehaviorSubject(undefined),
+      props.api.title$ ?? new BehaviorSubject(undefined),
+      props.api.hasLockedHoverActions$ ?? new BehaviorSubject(false),
+      props.api.overrideHoverActions$ ?? new BehaviorSubject(false)
     );
   const containerStyles = useHoverActionStyles(props.viewMode === 'edit', props.showBorder);
 
@@ -60,16 +63,13 @@ export const PresentationPanelHoverActionsWrapper = (props: PresentationPanelHov
       )}`}
       css={containerStyles}
     >
-      {OverriddenHoverActionsComponent ? (
-        <>
-          <div className="embPanel__hoverActions" css={customActionsStyles}>
-            <OverriddenHoverActionsComponent />
-          </div>
-          {props.children}
-        </>
-      ) : (
-        <PresentationPanelHoverActions {...props} />
+      {OverriddenHoverActionsComponent && (
+        <div className="embPanel__hoverActions" css={customActionsStyles}>
+          <OverriddenHoverActionsComponent />
+        </div>
       )}
+      {props.children}
+      {!OverriddenHoverActionsComponent && <PresentationPanelHoverActions {...props} />}
     </div>
   );
 };

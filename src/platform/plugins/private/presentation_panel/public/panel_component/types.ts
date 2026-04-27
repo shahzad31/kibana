@@ -7,7 +7,7 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import type { HasPanelCapabilities } from '@kbn/presentation-containers';
+import type { HasPanelCapabilities, PublishesHideBorder } from '@kbn/presentation-publishing';
 import type {
   CanLockHoverActions,
   HasParentApi,
@@ -21,22 +21,17 @@ import type {
   ViewMode,
 } from '@kbn/presentation-publishing';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
-import type { MaybePromise } from '@kbn/utility-types';
 
 /** ------------------------------------------------------------------------------------------
  * Panel Types
  * ------------------------------------------------------------------------------------------ */
-export type PanelCompatibleComponent<
-  ApiType extends DefaultPresentationPanelApi = DefaultPresentationPanelApi,
-  PropsType extends {} = {}
-> = React.ForwardRefExoticComponent<PropsType & React.RefAttributes<ApiType>>;
-
 export interface PresentationPanelInternalProps<
   ApiType extends DefaultPresentationPanelApi = DefaultPresentationPanelApi,
   PropsType extends {} = {}
 > {
-  Component: PanelCompatibleComponent<ApiType, PropsType>;
-  componentProps?: Omit<React.ComponentProps<PanelCompatibleComponent<ApiType, PropsType>>, 'ref'>;
+  Component: React.FC<PropsType>;
+  componentApi: ApiType;
+  componentProps?: PropsType;
 
   showShadow?: boolean;
   showBorder?: boolean;
@@ -90,14 +85,15 @@ export interface DefaultPresentationPanelApi
         HasParentApi &
         CanLockHoverActions &
         CanOverrideHoverActions &
-        HasPanelCapabilities
+        HasPanelCapabilities &
+        PublishesHideBorder
     > {}
 
 export type PresentationPanelProps<
   ApiType extends DefaultPresentationPanelApi = DefaultPresentationPanelApi,
   PropsType extends {} = {}
-> = Omit<PresentationPanelInternalProps<ApiType, PropsType>, 'Component'> & {
-  Component: MaybePromise<PanelCompatibleComponent<ApiType, PropsType> | null>;
+> = Omit<PresentationPanelInternalProps<ApiType, PropsType>, 'Component' | 'componentApi'> & {
+  getComponent: () => Promise<{ Component: React.FC<PropsType>; componentApi: ApiType }>;
 };
 
 export type QuickActionIds = [
