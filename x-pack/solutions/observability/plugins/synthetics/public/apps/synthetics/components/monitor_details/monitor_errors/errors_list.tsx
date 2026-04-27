@@ -217,7 +217,6 @@ export const ErrorsList = ({
   );
 };
 
-
 const ERRORS_LIST_LABEL = i18n.translate('xpack.synthetics.errorsList.label', {
   defaultMessage: 'Errors list',
 });
