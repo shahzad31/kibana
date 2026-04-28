@@ -12,6 +12,11 @@ export const I18N_RC = '.i18nrc.json';
 /**
  * Fast pre-filter: skip files that can't possibly contain i18n call sites,
  * avoiding expensive ts.transpileModule on the vast majority of source files.
+ *
+ * Must cover all patterns the extractors recognise, including:
+ * - i18n.translate / t.translate / anyAlias.translate  →  \.translate\(
+ * - bare translate() (configured via additionalFunctionNames) → \btranslate\(
+ * - <FormattedMessage />, defineMessages(), intl.formatMessage()
  */
 export const I18N_CALL_PATTERN =
-  /i18n\.translate|FormattedMessage|defineMessages|intl\.formatMessage|i18nTranslate/;
+  /\.translate\(|\btranslate\(|FormattedMessage|defineMessages|\.formatMessage\(/;
