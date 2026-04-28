@@ -8,3 +8,10 @@
  */
 
 export const I18N_RC = '.i18nrc.json';
+
+/**
+ * Fast pre-filter: skip files that can't possibly contain i18n call sites,
+ * avoiding expensive ts.transpileModule on the vast majority of source files.
+ */
+export const I18N_CALL_PATTERN =
+  /i18n\.translate|FormattedMessage|defineMessages|intl\.formatMessage|i18nTranslate/;
