@@ -11,6 +11,7 @@ import type { SyntheticsAppState } from '../root_reducer';
 
 export const selectOverviewState = (state: SyntheticsAppState) => state.overview;
 export const selectOverviewPageState = (state: SyntheticsAppState) => state.overview.pageState;
+export const selectOverviewView = (state: SyntheticsAppState) => state.overview.view;
 export const selectErrorPopoverState = createSelector(
   selectOverviewState,
   (state) => state.isErrorPopoverOpen
