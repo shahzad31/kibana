@@ -8,7 +8,7 @@
  */
 
 import { BuildkiteClient } from '#pipeline-utils';
-import type { Build, Job } from '#pipeline-utils';
+import type { Build } from '#pipeline-utils';
 
 function minutesFromMs(ms: number): string {
   const mins = Math.round(ms / 60000);
@@ -30,8 +30,7 @@ function getRetryOverheadMs(build: Build): { totalMs: number; retriedJobs: Retri
       new Date(retry.finished_at).getTime() - new Date(retry.started_at).getTime();
 
     const isPreemption =
-      original.exit_status === -1 &&
-      original.agent_query_rules?.includes('preemptible=true');
+      original.exit_status === -1 && original.agent_query_rules?.includes('preemptible=true');
 
     retriedJobs.push({
       name: original.name || 'unknown',
@@ -66,17 +65,15 @@ function formatTimingSummary(build: Build): string {
     const parts: string[] = [];
 
     if (preemptionCount > 0) {
-      parts.push(
-        `${preemptionCount} agent preemption${preemptionCount > 1 ? 's' : ''}`
-      );
+      parts.push(`${preemptionCount} agent preemption${preemptionCount > 1 ? 's' : ''}`);
     }
     if (testFailureRetryCount > 0) {
-      parts.push(
-        `${testFailureRetryCount} test failure${testFailureRetryCount > 1 ? 's' : ''}`
-      );
+      parts.push(`${testFailureRetryCount} test failure${testFailureRetryCount > 1 ? 's' : ''}`);
     }
 
-    summary += ` · includes ~${minutesFromMs(retryOverheadMs)} of retry overhead (${parts.join(', ')})`;
+    summary += ` · includes ~${minutesFromMs(retryOverheadMs)} of retry overhead (${parts.join(
+      ', '
+    )})`;
   }
 
   return summary;
