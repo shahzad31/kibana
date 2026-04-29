@@ -467,6 +467,7 @@ export async function pickTestGroupRunOrder() {
                 agents: expandAgentQueue(queue, 105),
                 env: {
                   FTR_CONFIG_GROUP_KEY: key,
+                  FTR_AGENT_QUEUE: queue,
                   ...ftrExtraArgs,
                   ...envFromlabels,
                 },
