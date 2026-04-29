@@ -49,9 +49,9 @@ interface RetriedJob {
   isPreemption: boolean;
 }
 
-function formatTimingSummary(build: Build): string {
+function formatTimingSummary(build: Build, now: Date): string {
   const startedAt = new Date(build.started_at);
-  const finishedAt = new Date(build.finished_at);
+  const finishedAt = build.finished_at ? new Date(build.finished_at) : now;
   const totalDurationMs = finishedAt.getTime() - startedAt.getTime();
 
   const { totalMs: retryOverheadMs, retriedJobs } = getRetryOverheadMs(build);
@@ -84,12 +84,12 @@ function formatTimingSummary(build: Build): string {
     const client = new BuildkiteClient();
     const build = await client.getCurrentBuild(true);
 
-    if (!build.started_at || !build.finished_at) {
-      console.log('Build timing not available (missing timestamps)');
+    if (!build.started_at) {
+      console.log('Build timing not available (missing start timestamp)');
       process.exit(0);
     }
 
-    const summary = formatTimingSummary(build);
+    const summary = formatTimingSummary(build, new Date());
     client.setMetadata('pr_comment:build_timing:body', summary);
     console.log('Build timing summary:', summary);
   } catch (ex: any) {
