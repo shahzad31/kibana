@@ -24,10 +24,10 @@ describe('I18N_CALL_PATTERN', () => {
     expect(I18N_CALL_PATTERN.test(source)).toBe(true);
   });
 
-  it.each([
-    ['const x = 1 + 2;'],
-    ['export function helper() { return true; }'],
-  ])('does not match non-i18n source: %s', (source) => {
-    expect(I18N_CALL_PATTERN.test(source)).toBe(false);
-  });
+  it.each([['const x = 1 + 2;'], ['export function helper() { return true; }']])(
+    'does not match non-i18n source: %s',
+    (source) => {
+      expect(I18N_CALL_PATTERN.test(source)).toBe(false);
+    }
+  );
 });
