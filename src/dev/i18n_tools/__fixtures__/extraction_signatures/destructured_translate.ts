@@ -11,11 +11,11 @@ import { i18n } from '@kbn/i18n';
 
 const { translate } = i18n;
 
-const LABEL = translate('destructured.basic', {
+export const LABEL = translate('destructured.basic', {
   defaultMessage: 'Standalone translate is parsed!',
 });
 
-const LABEL_WITH_VALUE = translate('destructured.with_value', {
+export const LABEL_WITH_VALUE = translate('destructured.with_value', {
   defaultMessage: 'Hello {name}!',
   values: { name: 'world' },
 });
