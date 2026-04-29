@@ -56,20 +56,20 @@ build_agent_yaml() {
   local kind cores addition
   IFS='-' read -r kind cores addition <<< "$queue"
 
-  echo "    provider: gcp"
-  echo "    image: family/kibana-ubuntu-2404"
-  echo "    imageProject: elastic-images-prod"
-  echo "    machineType: ${kind}-standard-${cores}"
-  echo "    diskSizeGb: 105"
+  echo "      provider: gcp"
+  echo "      image: family/kibana-ubuntu-2404"
+  echo "      imageProject: elastic-images-prod"
+  echo "      machineType: ${kind}-standard-${cores}"
+  echo "      diskSizeGb: 105"
 
   case "$addition" in
     spot)
-      echo "    preemptible: true"
-      echo "    zones: southamerica-east1-c,asia-south2-a,us-central1-f"
+      echo "      preemptible: true"
+      echo "      zones: southamerica-east1-c,asia-south2-a,us-central1-f"
       ;;
     virt)
-      echo "    enableNestedVirtualization: true"
-      echo "    spotZones: southamerica-east1-c,asia-south2-a,us-central1-f"
+      echo "      enableNestedVirtualization: true"
+      echo "      spotZones: southamerica-east1-c,asia-south2-a,us-central1-f"
       ;;
   esac
 }
