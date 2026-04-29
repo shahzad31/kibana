@@ -14,6 +14,8 @@ if [[ "${BUILDKITE_RETRY_COUNT:-0}" == "0" ]]; then
   ts-node "$(dirname "${0}")/ci_stats_complete.ts"
 fi
 
+ts-node "$(dirname "${0}")/build_timing.ts" || true
+
 if [[ "${GITHUB_PR_NUMBER:-}" ]]; then
   DOCS_CHANGES_URL="https://kibana_bk_$GITHUB_PR_NUMBER}.docs-preview.app.elstc.co/diff"
   DOCS_CHANGES=$(curl --connect-timeout 10 -m 10 -sf "$DOCS_CHANGES_URL" || echo '')
