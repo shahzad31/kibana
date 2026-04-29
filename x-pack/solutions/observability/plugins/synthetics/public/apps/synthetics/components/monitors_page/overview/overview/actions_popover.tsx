@@ -75,7 +75,6 @@ interface Props {
   iconHasPanel?: boolean;
   iconSize?: 's' | 'xs';
   locationId: string;
-  renderButton?: (onClick: () => void) => NonNullable<React.ReactNode>;
 }
 
 const CustomShadowPanel = styled(EuiPanel)<{ shadow: string }>`
@@ -108,7 +107,6 @@ export function ActionsPopover({
   iconHasPanel = true,
   iconSize = 's',
   locationId,
-  renderButton,
 }: Props) {
   const euiShadow = useEuiShadow('l');
   const dispatch = useDispatch();
@@ -337,22 +335,18 @@ export function ActionsPopover({
       <Container boxShadow={euiShadow} position={position}>
         <EuiPopover
           button={
-            renderButton ? (
-              renderButton(() => setIsPopoverOpen((b: boolean) => !b))
-            ) : (
-              <IconPanel hasPanel={iconHasPanel}>
-                <EuiButtonIcon
-                  data-test-subj="syntheticsActionsPopoverButton"
-                  aria-label={openActionsMenuAria}
-                  iconType="boxesVertical"
-                  color="primary"
-                  size={iconSize}
-                  display="empty"
-                  onClick={() => setIsPopoverOpen((b: boolean) => !b)}
-                  title={openActionsMenuAria}
-                />
-              </IconPanel>
-            )
+            <IconPanel hasPanel={iconHasPanel}>
+              <EuiButtonIcon
+                data-test-subj="syntheticsActionsPopoverButton"
+                aria-label={openActionsMenuAria}
+                iconType="boxesVertical"
+                color="primary"
+                size={iconSize}
+                display="empty"
+                onClick={() => setIsPopoverOpen((b: boolean) => !b)}
+                title={openActionsMenuAria}
+              />
+            </IconPanel>
           }
           color="lightestShade"
           isOpen={isPopoverOpen}
