@@ -156,7 +156,10 @@ const ingestSummaryData = async (monitors: MonitorInfo[]) => {
         (doc as any).state = {
           ...(doc as any).state,
           id: stateId,
-          started_at: ts.clone().subtract(isDown ? stateDurationMs : 1000, 'milliseconds').toISOString(),
+          started_at: ts
+            .clone()
+            .subtract(isDown ? stateDurationMs : 1000, 'milliseconds')
+            .toISOString(),
           duration_ms: stateDurationMs,
         };
         (doc as any).data_stream = {
