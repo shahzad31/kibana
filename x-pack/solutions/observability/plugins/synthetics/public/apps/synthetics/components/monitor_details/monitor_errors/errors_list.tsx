@@ -264,11 +264,7 @@ export const ErrorsList = ({
       field: '@timestamp',
       name: RESOLVED_AT_LABEL,
       sortable: (a: PingState) => {
-        const resolvedState = getNextUpStateForResolvedError(
-          a,
-          upStates,
-          isGlobalView ?? false
-        );
+        const resolvedState = getNextUpStateForResolvedError(a, upStates, isGlobalView ?? false);
         return resolvedState ? moment(resolvedState.state.started_at).valueOf() : 0;
       },
       render: (_value: string, item: PingState) => {
@@ -279,11 +275,7 @@ export const ErrorsList = ({
             </EuiBadge>
           );
         }
-        const resolvedState = getNextUpStateForResolvedError(
-          item,
-          upStates,
-          isGlobalView ?? false
-        );
+        const resolvedState = getNextUpStateForResolvedError(item, upStates, isGlobalView ?? false);
         if (resolvedState) {
           return <EuiText size="s">{formatter(resolvedState.state.started_at)}</EuiText>;
         }

@@ -542,10 +542,7 @@ const ingestErrorData = async (monitors: MonitorInfo[]) => {
             timestamp: ts.toISOString(),
             stateId,
             stateDurationMs,
-            stateStartedAt: ts
-              .clone()
-              .subtract(stateDurationMs, 'milliseconds')
-              .toISOString(),
+            stateStartedAt: ts.clone().subtract(stateDurationMs, 'milliseconds').toISOString(),
             errorMessage: category.getMessage(msgVariant++),
             errorType: category.errorType,
             domain: category.domain,
@@ -579,10 +576,7 @@ const ingestErrorData = async (monitors: MonitorInfo[]) => {
               timestamp: ts.toISOString(),
               stateId,
               stateDurationMs,
-              stateStartedAt: ts
-                .clone()
-                .subtract(stateDurationMs, 'milliseconds')
-                .toISOString(),
+              stateStartedAt: ts.clone().subtract(stateDurationMs, 'milliseconds').toISOString(),
               errorMessage: category.getMessage(msgVariant++),
               errorType: category.errorType,
               domain: category.domain,
@@ -1575,11 +1569,17 @@ step('Fill credentials', async () => {
   // eslint-disable-next-line no-console
   console.log('  15 "down" monitors generating error data');
   // eslint-disable-next-line no-console
-  console.log('  Error groups: DNS, timeout, HTTP 5xx, SSL, connection refused, body mismatch, ...');
+  console.log(
+    '  Error groups: DNS, timeout, HTTP 5xx, SSL, connection refused, body mismatch, ...'
+  );
   // eslint-disable-next-line no-console
-  console.log('  Patterns:    persistent (DNS, 503, conn refused), intermittent (429), new (SSL, 401, JS error)');
+  console.log(
+    '  Patterns:    persistent (DNS, 503, conn refused), intermittent (429), new (SSL, 401, JS error)'
+  );
   // eslint-disable-next-line no-console
-  console.log('  Insights:    domains (8+), tags (15+), status codes (200/401/429/502/503), all 4 monitor types');
+  console.log(
+    '  Insights:    domains (8+), tags (15+), status codes (200/401/429/502/503), all 4 monitor types'
+  );
   // eslint-disable-next-line no-console
   console.log('  Trend:       current + previous period data for delta indicators');
 };
