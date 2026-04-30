@@ -35,7 +35,6 @@ import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useSyntheticsSettingsContext } from '../../../contexts';
 import type { ClientPluginsStart } from '../../../../../plugin';
 import { ErrorPreviewFlyout } from './error_preview_flyout';
-import type { ErrorPreviewData } from './error_preview_flyout';
 
 export const ErrorGroupsList = ({
   groups,
@@ -45,7 +44,7 @@ export const ErrorGroupsList = ({
   loading: boolean;
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const [previewItem, setPreviewItem] = useState<ErrorPreviewData | null>(null);
+  const [previewItem, setPreviewItem] = useState<ErrorGroupItem | null>(null);
   const formatter = useDateFormat();
   const { basePath } = useSyntheticsSettingsContext();
   const isTabletOrGreater = useIsWithinMinBreakpoint('s');
@@ -269,7 +268,7 @@ const ExpandedGroupRow = ({
   group: ErrorGroup;
   formatter: (date: string) => string;
   basePath: string;
-  onPreview: (item: ErrorPreviewData) => void;
+  onPreview: (item: ErrorGroupItem) => void;
 }) => {
   const columns: Array<EuiBasicTableColumn<ErrorGroupItem>> = [
     {

@@ -149,10 +149,15 @@ const ingestSummaryData = async (monitors: MonitorInfo[]) => {
             gte: ts.clone().subtract(5, 'minutes').toISOString(),
           },
         };
+        const stateId = `${monitor.configId}-${location.id}-summary-${i}`;
+        const stateDurationMs = isDown
+          ? randomInt(300000, 7200000) // 5min–2h for realistic down-state durations
+          : 0;
         (doc as any).state = {
           ...(doc as any).state,
-          started_at: ts.clone().subtract(1, 'seconds').toISOString(),
-          duration_ms: Math.round(durationUs / 1000),
+          id: stateId,
+          started_at: ts.clone().subtract(isDown ? stateDurationMs : 1000, 'milliseconds').toISOString(),
+          duration_ms: stateDurationMs,
         };
         (doc as any).data_stream = {
           namespace: 'default',

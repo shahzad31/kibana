@@ -28,27 +28,15 @@ import {
 import { i18n } from '@kbn/i18n';
 import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useSyntheticsSettingsContext } from '../../../contexts';
-import { getErrorDetailsUrl } from '../../monitor_details/monitor_errors/errors_list';
+import { getErrorDetailsUrl } from '../../common/links/error_details_url';
 import { JourneyStepScreenshotContainer } from '../../common/screenshot/journey_step_screenshot_container';
-
-export interface ErrorPreviewData {
-  timestamp: string;
-  monitorName: string;
-  monitorType: string;
-  configId: string;
-  stateId: string;
-  checkGroup: string;
-  locationName: string;
-  locationId: string;
-  durationMs: number;
-  errorMessage: string;
-}
+import type { ErrorGroupItem } from '../../../../../../common/runtime_types';
 
 export const ErrorPreviewFlyout = ({
   error,
   onClose,
 }: {
-  error: ErrorPreviewData;
+  error: ErrorGroupItem;
   onClose: () => void;
 }) => {
   const formatter = useDateFormat();

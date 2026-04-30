@@ -8,7 +8,8 @@
 export const safeJsonParse = (value: string | undefined): string[] | undefined => {
   if (!value) return undefined;
   try {
-    return JSON.parse(value);
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : undefined;
   } catch {
     return undefined;
   }

@@ -11,35 +11,16 @@ import type { ErrorStats } from '../../../../../../common/runtime_types';
 import { apiService } from '../../../../../utils/api_service/api_service';
 import { useSyntheticsRefreshContext } from '../../../contexts';
 import { useGetUrlParams } from '../../../hooks';
+import { buildErrorFilterParams } from './use_error_filter_params';
 
 export function useErrorStats() {
   const { lastRefresh } = useSyntheticsRefreshContext();
+  const urlParams = useGetUrlParams();
   const { dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects } =
-    useGetUrlParams();
+    urlParams;
 
   const { data, loading } = useFetcher(async () => {
-    const params: Record<string, string> = {
-      from: dateRangeStart,
-      to: dateRangeEnd,
-    };
-    if (monitorTypes) {
-      params.monitorTypes = JSON.stringify(
-        Array.isArray(monitorTypes) ? monitorTypes : [monitorTypes]
-      );
-    }
-    if (locations) {
-      params.locations = JSON.stringify(Array.isArray(locations) ? locations : [locations]);
-    }
-    if (tags) {
-      params.tags = JSON.stringify(Array.isArray(tags) ? tags : [tags]);
-    }
-    if (projects) {
-      params.projects = JSON.stringify(Array.isArray(projects) ? projects : [projects]);
-    }
-    if (query) {
-      params.query = query;
-    }
-
+    const params = buildErrorFilterParams(urlParams);
     return apiService.get<ErrorStats>(SYNTHETICS_API_URLS.ERROR_STATS, params);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRefresh, dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects]);

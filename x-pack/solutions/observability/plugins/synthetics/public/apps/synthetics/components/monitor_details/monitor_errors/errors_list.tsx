@@ -31,7 +31,7 @@ import { useDateFormat } from '../../../../../hooks/use_date_format';
 import { useMonitorLatestPing } from '../hooks/use_monitor_latest_ping';
 import { useSyntheticsSettingsContext } from '../../../contexts';
 import { ErrorPreviewFlyout } from '../../monitors_page/errors/error_preview_flyout';
-import type { ErrorPreviewData } from '../../monitors_page/errors/error_preview_flyout';
+import type { ErrorGroupItem } from '../../../../../../common/runtime_types';
 
 function getNextUpStateForResolvedError(
   errorState: PingState,
@@ -57,7 +57,7 @@ export const ErrorsList = ({
   showMonitorName?: boolean;
 }) => {
   const { monitorId: configId } = useParams<{ monitorId: string }>();
-  const [previewItem, setPreviewItem] = useState<ErrorPreviewData | null>(null);
+  const [previewItem, setPreviewItem] = useState<ErrorGroupItem | null>(null);
 
   const { basePath } = useSyntheticsSettingsContext();
 
@@ -351,19 +351,7 @@ export const ErrorsList = ({
   );
 };
 
-export const getErrorDetailsUrl = ({
-  basePath,
-  configId,
-  stateId,
-  locationId,
-}: {
-  stateId: string;
-  basePath: string;
-  configId: string;
-  locationId?: string;
-}) => {
-  return `${basePath}/app/synthetics/monitor/${configId}/errors/${stateId}?locationId=${locationId}`;
-};
+export { getErrorDetailsUrl } from '../../common/links/error_details_url';
 
 const ERRORS_LIST_LABEL = i18n.translate('xpack.synthetics.errorsList.label', {
   defaultMessage: 'Errors list',

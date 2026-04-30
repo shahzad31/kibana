@@ -6,6 +6,7 @@
  */
 
 import type { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
+import DateMath from '@kbn/datemath';
 import {
   EXCLUDE_RUN_ONCE_FILTER,
   SUMMARY_FILTER,
@@ -40,8 +41,8 @@ interface GetErrorStatsParams {
  * E.g. "now-24h" to "now" → previous period is "now-48h" to "now-24h".
  */
 function getPreviousPeriod(from: string, to: string): { prevFrom: string; prevTo: string } {
-  const toMs = to === 'now' ? Date.now() : new Date(to).getTime();
-  const fromMs = from.startsWith('now-') ? toMs - parseDuration(from) : new Date(from).getTime();
+  const toMs = DateMath.parse(to)?.valueOf() ?? Date.now();
+  const fromMs = DateMath.parse(from)?.valueOf() ?? toMs - 24 * 60 * 60 * 1000;
   const durationMs = toMs - fromMs;
 
   const prevToMs = fromMs;
@@ -51,23 +52,6 @@ function getPreviousPeriod(from: string, to: string): { prevFrom: string; prevTo
     prevFrom: new Date(prevFromMs).toISOString(),
     prevTo: new Date(prevToMs).toISOString(),
   };
-}
-
-function parseDuration(nowMinus: string): number {
-  const match = nowMinus.match(/^now-(\d+)([smhdwMy])$/);
-  if (!match) return 24 * 60 * 60 * 1000;
-  const [, value, unit] = match;
-  const n = parseInt(value, 10);
-  const multipliers: Record<string, number> = {
-    s: 1000,
-    m: 60 * 1000,
-    h: 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-    w: 7 * 24 * 60 * 60 * 1000,
-    M: 30 * 24 * 60 * 60 * 1000,
-    y: 365 * 24 * 60 * 60 * 1000,
-  };
-  return n * (multipliers[unit] ?? 24 * 60 * 60 * 1000);
 }
 
 export async function getErrorStats({
@@ -157,7 +141,7 @@ export async function getErrorStats({
                   filter: { term: { 'monitor.status': 'down' } },
                   aggs: {
                     per_state: {
-                      terms: { field: 'state.id', size: 100 },
+                      terms: { field: 'state.id', size: 25 },
                       aggs: {
                         duration: { max: { field: 'state.duration_ms' } },
                       },
