@@ -15,6 +15,7 @@ export const ErrorGroupItemType = t.type({
   stateId: t.string,
   checkGroup: t.string,
   locationName: t.string,
+  locationId: t.string,
   durationMs: t.number,
   errorMessage: t.string,
 });

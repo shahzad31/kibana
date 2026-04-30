@@ -64,8 +64,6 @@ export const ErrorsList = ({
 
   const { basePath } = useSyntheticsSettingsContext();
 
-  const isGlobalView = !configId && showMonitorName;
-
   const checkGroups = useMemo(() => {
     return errorStates.map((error) => error.monitor.check_group!);
   }, [errorStates]);
@@ -98,7 +96,7 @@ export const ErrorsList = ({
       render: (_value: string, item: PingState) => {
         const link = (
           <ErrorDetailsLink
-            configId={item.config_id}
+            configId={item.config_id ?? configId}
             stateId={item.state?.id!}
             label={formatter(item.state!.started_at)}
             locationId={item.observer?.name}
@@ -253,6 +251,7 @@ export const ErrorsList = ({
               stateId: item.state?.id ?? '',
               checkGroup: item.monitor?.check_group ?? '',
               locationName: item.observer?.geo?.name ?? item.observer?.name ?? '',
+              locationId: item.observer?.name ?? '',
               durationMs: Number(item.state?.duration_ms) || 0,
               errorMessage: item.error?.message ?? '',
             });
@@ -267,7 +266,7 @@ export const ErrorsList = ({
     const { state } = item;
     if (state?.id) {
       const itemConfigId = item.config_id ?? configId;
-      const locationId = isGlobalView ? item.observer?.name : selectedLocation?.id;
+      const locationId = item.observer?.name ?? selectedLocation?.id;
       return {
         'data-test-subj': `row-${state.id}`,
         onClick: (evt: MouseEvent) => {

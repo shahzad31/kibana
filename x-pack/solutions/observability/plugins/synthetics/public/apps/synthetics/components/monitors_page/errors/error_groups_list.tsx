@@ -281,7 +281,7 @@ const ExpandedGroupRow = ({
           configId={item.configId}
           stateId={item.stateId}
           label={formatter(item.timestamp)}
-          locationId={item.locationName}
+          locationId={item.locationId}
         />
       ),
     },

@@ -171,7 +171,7 @@ const TrendIndicator = ({
 };
 
 function formatDuration(ms: number): string {
-  if (!ms || isNaN(ms)) return '--';
+  if (ms == null || isNaN(ms)) return '--';
   if (ms < 1000) return `${Math.round(ms)}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   if (ms < 3600000) return `${Math.round(ms / 60000)}m`;

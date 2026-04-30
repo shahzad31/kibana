@@ -6,7 +6,11 @@
  */
 
 import type { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/types';
-import { EXCLUDE_RUN_ONCE_FILTER, SUMMARY_FILTER } from '../../common/constants/client_defaults';
+import {
+  EXCLUDE_RUN_ONCE_FILTER,
+  SUMMARY_FILTER,
+  getQueryFilters,
+} from '../../common/constants/client_defaults';
 import type { SyntheticsEsClient } from '../lib';
 import type {
   ErrorStats,
@@ -98,22 +102,7 @@ export async function getErrorStats({
 
   const must: QueryDslQueryContainer[] = [];
   if (query) {
-    must.push({
-      query_string: {
-        query: `*${query}*`,
-        fields: [
-          'monitor.name.text',
-          'tags',
-          'observer.geo.name',
-          'observer.name',
-          'urls',
-          'hosts',
-          'monitor.project.id',
-          'error.message',
-          'url.domain',
-        ],
-      },
-    });
+    must.push(getQueryFilters(query) as QueryDslQueryContainer);
   }
 
   const result = await syntheticsEsClient.search(

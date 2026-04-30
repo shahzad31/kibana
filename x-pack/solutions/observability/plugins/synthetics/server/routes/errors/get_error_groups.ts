@@ -9,6 +9,7 @@ import { schema } from '@kbn/config-schema';
 import type { SyntheticsRestApiRouteFactory } from '../types';
 import { SYNTHETICS_API_URLS } from '../../../common/constants';
 import { getErrorGroups } from '../../queries/get_error_groups';
+import { safeJsonParse } from './safe_json_parse';
 
 export const getErrorGroupsRoute: SyntheticsRestApiRouteFactory = () => ({
   method: 'GET',
@@ -31,10 +32,10 @@ export const getErrorGroupsRoute: SyntheticsRestApiRouteFactory = () => ({
       syntheticsEsClient,
       from,
       to,
-      monitorTypes: monitorTypes ? JSON.parse(monitorTypes) : undefined,
-      locations: locations ? JSON.parse(locations) : undefined,
-      tags: tags ? JSON.parse(tags) : undefined,
-      projects: projects ? JSON.parse(projects) : undefined,
+      monitorTypes: safeJsonParse(monitorTypes),
+      locations: safeJsonParse(locations),
+      tags: safeJsonParse(tags),
+      projects: safeJsonParse(projects),
       query: query || undefined,
     });
   },

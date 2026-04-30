@@ -39,6 +39,7 @@ export interface ErrorPreviewData {
   stateId: string;
   checkGroup: string;
   locationName: string;
+  locationId: string;
   durationMs: number;
   errorMessage: string;
 }
@@ -58,7 +59,7 @@ export const ErrorPreviewFlyout = ({
     basePath,
     configId: error.configId,
     stateId: error.stateId,
-    locationId: error.locationName,
+    locationId: error.locationId,
   });
 
   const monitorUrl = `${basePath}/app/synthetics/monitor/${error.configId}`;
@@ -191,7 +192,7 @@ export const ErrorPreviewFlyout = ({
 };
 
 function formatDuration(ms: number): string {
-  if (!ms || isNaN(ms)) return '--';
+  if (ms == null || isNaN(ms)) return '--';
   if (ms < 1000) return `${Math.round(ms)}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   if (ms < 3600000) return `${Math.round(ms / 60000)}m`;
