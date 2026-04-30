@@ -7,6 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { tags } from '@kbn/scout-oblt';
+import type { ApiClientFixture } from '@kbn/scout-oblt';
 import { expect } from '@kbn/scout-oblt/api';
 import { apiTest, KIBANA_HEADERS, SYNTHETICS_API_URLS } from '../fixtures';
 
@@ -87,7 +88,7 @@ apiTest.describe(
     let adminHeaders: Record<string, string>;
     let editorHeaders: Record<string, string>;
 
-    const getApiKeys = async (apiClient: any): Promise<ApiKey[]> => {
+    const getApiKeys = async (apiClient: ApiClientFixture): Promise<ApiKey[]> => {
       const res = await apiClient.post('internal/security/api_key/_query', {
         headers: adminHeaders,
         body: {
@@ -113,13 +114,13 @@ apiTest.describe(
       );
     };
 
-    const putEnablement = (apiClient: any, headers: Record<string, string>, spacePrefix = '') =>
+    const putEnablement = (apiClient: ApiClientFixture, headers: Record<string, string>, spacePrefix = '') =>
       apiClient.put(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers, responseType: 'json' }
       );
 
-    const deleteEnablement = (apiClient: any, headers: Record<string, string>, spacePrefix = '') =>
+    const deleteEnablement = (apiClient: ApiClientFixture, headers: Record<string, string>, spacePrefix = '') =>
       apiClient.delete(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers, responseType: 'json' }
@@ -248,36 +249,36 @@ apiTest.describe(
       expect(editorPut.body).toMatchObject(ENABLED_RESPONSE_EDITOR);
     });
 
+    let spaceToCleanUp: string | null = null;
+
+    apiTest.afterAll(async ({ kbnClient }) => {
+      if (spaceToCleanUp) {
+        await kbnClient.spaces.delete(spaceToCleanUp).catch(() => {});
+        spaceToCleanUp = null;
+      }
+    });
+
     apiTest('[DELETE] is space agnostic', async ({ apiClient, kbnClient }) => {
       const SPACE_ID = `test-space-${uuidv4()}`;
       const SPACE_NAME = `test-space-name-${uuidv4()}`;
+      spaceToCleanUp = SPACE_ID;
       await kbnClient.spaces.create({ id: SPACE_ID, name: SPACE_NAME });
 
-      try {
-        const enableInSpace = await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`);
-        expect(enableInSpace).toHaveStatusCode(200);
-        expect(enableInSpace.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
+      const enableInSpace = await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`);
+      expect(enableInSpace).toHaveStatusCode(200);
+      expect(enableInSpace.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
 
-        expect(await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(
-          200
-        );
-        expect(await deleteEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
-        expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
+      expect(await putEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(200);
+      expect(await deleteEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
+      expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
 
-        expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
-        expect(await deleteEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(
-          200
-        );
-        const enableDefault = await putEnablement(apiClient, adminHeaders);
-        expect(enableDefault).toHaveStatusCode(200);
-        expect(enableDefault.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
-      } finally {
-        try {
-          await kbnClient.spaces.delete(SPACE_ID);
-        } catch {
-          // best-effort; ignore if already deleted
-        }
-      }
+      expect(await putEnablement(apiClient, adminHeaders)).toHaveStatusCode(200);
+      expect(await deleteEnablement(apiClient, adminHeaders, `/s/${SPACE_ID}`)).toHaveStatusCode(
+        200
+      );
+      const enableDefault = await putEnablement(apiClient, adminHeaders);
+      expect(enableDefault).toHaveStatusCode(200);
+      expect(enableDefault.body).toMatchObject(ENABLED_RESPONSE_ADMIN);
     });
   }
 );
