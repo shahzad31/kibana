@@ -114,13 +114,21 @@ apiTest.describe(
       );
     };
 
-    const putEnablement = (apiClient: ApiClientFixture, headers: Record<string, string>, spacePrefix = '') =>
+    const putEnablement = (
+      apiClient: ApiClientFixture,
+      headers: Record<string, string>,
+      spacePrefix = ''
+    ) =>
       apiClient.put(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers, responseType: 'json' }
       );
 
-    const deleteEnablement = (apiClient: ApiClientFixture, headers: Record<string, string>, spacePrefix = '') =>
+    const deleteEnablement = (
+      apiClient: ApiClientFixture,
+      headers: Record<string, string>,
+      spacePrefix = ''
+    ) =>
       apiClient.delete(
         `${spacePrefix}${SYNTHETICS_API_URLS.SYNTHETICS_ENABLEMENT}`.replace(/^\//, ''),
         { headers, responseType: 'json' }
