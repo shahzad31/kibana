@@ -161,6 +161,15 @@ apiTest.describe(
       }
     });
 
+    let spaceToCleanUp: string | null = null;
+
+    apiTest.afterAll(async ({ kbnClient }) => {
+      if (spaceToCleanUp) {
+        await kbnClient.spaces.delete(spaceToCleanUp).catch(() => {});
+        spaceToCleanUp = null;
+      }
+    });
+
     apiTest('[PUT] returns response when user cannot manage api keys', async ({ apiClient }) => {
       const res = await putEnablement(apiClient, editorHeaders);
       expect(res).toHaveStatusCode(200);
@@ -255,15 +264,6 @@ apiTest.describe(
       const editorPut = await putEnablement(apiClient, editorHeaders);
       expect(editorPut).toHaveStatusCode(200);
       expect(editorPut.body).toMatchObject(ENABLED_RESPONSE_EDITOR);
-    });
-
-    let spaceToCleanUp: string | null = null;
-
-    apiTest.afterAll(async ({ kbnClient }) => {
-      if (spaceToCleanUp) {
-        await kbnClient.spaces.delete(spaceToCleanUp).catch(() => {});
-        spaceToCleanUp = null;
-      }
     });
 
     apiTest('[DELETE] is space agnostic', async ({ apiClient, kbnClient }) => {
