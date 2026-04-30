@@ -17,6 +17,12 @@ test -z "$EXTRA_ARGS" || buildkite-agent meta-data set "ftr-extra-args" "$EXTRA_
 export JOB="$FTR_CONFIG_GROUP_KEY"
 
 FAILED_CONFIGS_KEY="${BUILDKITE_STEP_ID}${FTR_CONFIG_GROUP_KEY}"
+STARTED_AT_KEY="${BUILDKITE_STEP_ID}_started_at"
+
+# Record the job start time on the first attempt so retries can compute how long the original ran
+if [[ "${BUILDKITE_RETRY_COUNT:-0}" == "0" ]]; then
+  buildkite-agent meta-data set "$STARTED_AT_KEY" "$(date +%s)"
+fi
 
 # a FTR failure will result in the script returning an exit code of 10
 exitCode=0
@@ -42,6 +48,31 @@ fi
 if [ "$configs" == "" ]; then
   echo "unable to determine configs to run"
   exit 1
+fi
+
+# On the first automatic retry, check whether we should fan out remaining configs
+# into parallel jobs instead of running them sequentially on this single agent.
+PREEMPTION_SPLIT_THRESHOLD_MIN=${PREEMPTION_SPLIT_THRESHOLD_MIN:-10}
+
+if [[ "${BUILDKITE_RETRY_COUNT:-0}" == "1" ]]; then
+  remaining_configs=()
+  while read -r cfg; do
+    [[ -z "$cfg" ]] && continue
+    executed=$(buildkite-agent meta-data get "${cfg}_executed" --default "false" --log-level error)
+    if [[ "$executed" != "true" ]]; then
+      remaining_configs+=("$cfg")
+    fi
+  done <<< "$configs"
+
+  original_started_at=$(buildkite-agent meta-data get "$STARTED_AT_KEY" --default "0")
+  now=$(date +%s)
+  elapsed_min=$(( (now - original_started_at) / 60 ))
+
+  if [[ ${#remaining_configs[@]} -ge 2 && $elapsed_min -ge $PREEMPTION_SPLIT_THRESHOLD_MIN ]]; then
+    echo "--- Preemption detected after ${elapsed_min}m with ${#remaining_configs[@]} configs remaining — fanning out to parallel jobs"
+    .buildkite/scripts/steps/test/ftr_fan_out_remaining.sh "${remaining_configs[@]}"
+    exit 0
+  fi
 fi
 
 failedConfigs=""
