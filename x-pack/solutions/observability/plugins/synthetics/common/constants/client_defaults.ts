@@ -6,6 +6,7 @@
  */
 
 import moment from 'moment';
+import { escapeQuotes } from '@kbn/es-query';
 
 export const CLIENT_DEFAULTS = {
   ABSOLUTE_DATE_RANGE_START: 0,
@@ -115,7 +116,7 @@ export const getTimeSpanFilter = () => ({
 
 export const getQueryFilters = (query: string) => ({
   query_string: {
-    query: `${query}`,
+    query: `"${escapeQuotes(query)}"`,
     fields: [
       'monitor.name.text',
       'tags',
