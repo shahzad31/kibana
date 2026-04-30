@@ -73,6 +73,7 @@ import { getMonitorsHealthRoute } from './monitor_health/get_monitor_health';
 import { getMonitorHealthRoute } from './monitor_health/get_monitor_health_single';
 import { getErrorGroupsRoute } from './errors/get_error_groups';
 import { getErrorStatsRoute } from './errors/get_error_stats';
+import { getMonitorSummaryStatsRoute } from './monitor_cruds/get_monitor_summary_stats';
 
 export const syntheticsAppRestApiRoutes: SyntheticsRestApiRouteFactory[] = [
   addSyntheticsProjectMonitorRoute,
@@ -122,6 +123,7 @@ export const syntheticsAppRestApiRoutes: SyntheticsRestApiRouteFactory[] = [
   getMonitorHealthRoute,
   getErrorGroupsRoute,
   getErrorStatsRoute,
+  getMonitorSummaryStatsRoute,
 ];
 
 export const syntheticsAppPublicRestApiRoutes: SyntheticsRestApiRouteFactory[] = [
