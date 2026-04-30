@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import { useGetUrlParams } from '../../../hooks';
+import type { useGetUrlParams } from '../../../hooks';
 
 export function buildErrorFilterParams(urlParams: ReturnType<typeof useGetUrlParams>) {
   const { dateRangeStart, dateRangeEnd, query, monitorTypes, locations, tags, projects } =
