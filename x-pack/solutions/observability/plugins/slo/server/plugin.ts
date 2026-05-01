@@ -17,7 +17,12 @@ import type {
 import { DEFAULT_APP_CATEGORIES, SavedObjectsClient } from '@kbn/core/server';
 import { i18n } from '@kbn/i18n';
 import { LockAcquisitionError, LockManagerService } from '@kbn/lock-manager';
-import { AlertsLocatorDefinition, sloFeatureId } from '@kbn/observability-plugin/common';
+import {
+  AlertsLocatorDefinition,
+  sloFeatureId,
+  enableInspectEsQueries,
+} from '@kbn/observability-plugin/common';
+import { createInspectableScopedClusterClient } from './lib/inspect/create_inspectable_scoped_cluster_client';
 import { DEPRECATED_ALERTING_CONSUMERS, SLO_BURN_RATE_RULE_TYPE_ID } from '@kbn/rule-data-utils';
 import { mapValues } from 'lodash';
 import { LOCK_ID_RESOURCE_INSTALLER } from '../common/constants';
@@ -208,7 +213,20 @@ export class SLOPlugin
               ...(isCompositeSloEnabled ? [SO_SLO_COMPOSITE_TYPE] : []),
             ],
           });
-          const scopedClusterClient = coreStart.elasticsearch.client.asScoped(request);
+          const rawScopedClusterClient = coreStart.elasticsearch.client.asScoped(request);
+
+          const uiSettingsClient = coreStart.uiSettings.asScopedToClient(soClient);
+          let isInspectorEnabled = false;
+          try {
+            isInspectorEnabled =
+              (await uiSettingsClient.get<boolean>(enableInspectEsQueries)) || this.isDev;
+          } catch {
+            // ignore errors reading ui settings
+          }
+
+          const scopedClusterClient = isInspectorEnabled
+            ? createInspectableScopedClusterClient(rawScopedClusterClient, request)
+            : rawScopedClusterClient;
 
           const [dataViewsService, rulesClient, { id: spaceId }, racClient] = await Promise.all([
             pluginsStart.dataViews.dataViewsServiceFactory(
