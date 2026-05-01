@@ -22,9 +22,9 @@ import {
   sloFeatureId,
   enableInspectEsQueries,
 } from '@kbn/observability-plugin/common';
-import { createInspectableScopedClusterClient } from './lib/inspect/create_inspectable_scoped_cluster_client';
 import { DEPRECATED_ALERTING_CONSUMERS, SLO_BURN_RATE_RULE_TYPE_ID } from '@kbn/rule-data-utils';
 import { mapValues } from 'lodash';
+import { createInspectableScopedClusterClient } from './lib/inspect/create_inspectable_scoped_cluster_client';
 import { LOCK_ID_RESOURCE_INSTALLER } from '../common/constants';
 import { registerOverviewEmbeddable } from './lib/embeddables/register_overview_embeddable';
 import { registerErrorBudgetEmbeddable } from './lib/embeddables/register_error_budget_embeddable';
