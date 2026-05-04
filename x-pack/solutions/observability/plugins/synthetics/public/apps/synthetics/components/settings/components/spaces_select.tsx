@@ -85,13 +85,7 @@ export const SpaceSelector = <T extends FieldValues>({
           spaceOptions = policySpaceIds
             .map((spaceId) => spaceOptionBySpaceId[spaceId])
             .filter(Boolean);
-          setSpacesList([
-            ...spaceOptions,
-            {
-              id: ALL_SPACES_ID,
-              label: ALL_SPACES_LABEL,
-            },
-          ]);
+          setSpacesList(spaceOptions);
         }
         setValue(NAMESPACES_NAME, spaceOptions.map((space) => space.id) as PathValue<T, Path<T>>);
       });
