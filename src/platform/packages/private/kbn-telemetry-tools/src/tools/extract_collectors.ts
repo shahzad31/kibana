@@ -10,7 +10,7 @@
 import { readFileSync } from 'fs';
 import globby from 'globby';
 import * as path from 'path';
-import ts from 'typescript';
+import type ts from 'typescript';
 import { parseUsageCollection } from './ts_parser';
 import type { TelemetryRC } from './config';
 import { createKibanaProgram, getAllSourceFiles } from './ts_program';
