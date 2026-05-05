@@ -50,6 +50,7 @@ fi
 # the retry provisions and bootstraps in parallel — saving 5-8 min of sequential wait
 # that the standard Buildkite retry.automatic mechanism would incur.
 EAGER_RETRY_ENABLED="${FTR_EAGER_RETRY_ENABLED:-true}"
+FTR_PARALLEL_RETRY_ENABLED="${FTR_PARALLEL_RETRY_ENABLED:-true}"
 
 build_agent_yaml() {
   local queue="${FTR_AGENT_QUEUE:-n2-4-spot}"
@@ -110,6 +111,66 @@ can_eager_retry() {
     && "${BUILDKITE_RETRY_COUNT:-0}" == "0" \
     && -z "${KIBANA_FLAKY_TEST_RUNNER_CONFIG:-}" ]]
 }
+
+can_parallel_retry() {
+  [[ "$FTR_PARALLEL_RETRY_ENABLED" == "true" \
+    && "${BUILDKITE_RETRY_COUNT:-0}" != "0" \
+    && -z "${KIBANA_FLAKY_TEST_RUNNER_CONFIG:-}" \
+    && -z "${FTR_CONFIG:-}" ]]
+}
+
+upload_parallel_retry_steps() {
+  local config_list="$1"
+  local count=0
+
+  echo "--- Fanning out $(echo "$config_list" | wc -l | tr -d ' ') configs to parallel retry steps"
+
+  local agent_yaml
+  agent_yaml="$(build_agent_yaml)"
+
+  while read -r config; do
+    if [[ ! "$config" ]]; then
+      continue
+    fi
+
+    local retry_label="${BUILDKITE_LABEL} [parallel-retry: $(basename "$config")]"
+    local retry_key="parallel_retry_${FTR_CONFIG_GROUP_KEY}_${count}"
+
+    cat << PIPELINE | buildkite-agent pipeline upload
+steps:
+  - label: "${retry_label}"
+    command: ".buildkite/scripts/steps/test/ftr_configs.sh"
+    timeout_in_minutes: 50
+    key: "${retry_key}"
+    agents:
+${agent_yaml}
+    env:
+      FTR_CONFIG_GROUP_KEY: "${FTR_CONFIG_GROUP_KEY}"
+      FTR_CONFIG: "${config}"
+      FTR_EAGER_RETRY_ENABLED: "false"
+      FTR_PARALLEL_RETRY_ENABLED: "false"
+    retry:
+      automatic:
+        - exit_status: "-1"
+          limit: 3
+PIPELINE
+
+    count=$((count + 1))
+  done <<< "$config_list"
+
+  echo "Uploaded $count parallel retry steps"
+}
+
+# When this is a retry (e.g. after preemption) and we have multiple configs,
+# fan them out to individual parallel steps instead of running sequentially.
+# This turns a ~28 min sequential retry into a ~7 min parallel retry.
+if can_parallel_retry; then
+  config_count=$(echo "$configs" | grep -c . || true)
+  if [[ "$config_count" -gt 1 ]]; then
+    upload_parallel_retry_steps "$configs"
+    exit 0
+  fi
+fi
 
 failedConfigs=""
 results=()
