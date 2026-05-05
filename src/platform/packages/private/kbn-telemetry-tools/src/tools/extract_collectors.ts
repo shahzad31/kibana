@@ -74,10 +74,7 @@ export function* extractCollectors(fullPaths: string[], tsConfig: any) {
   }
 }
 
-export function* extractCollectorsWithProgram(
-  collectorPaths: string[],
-  program: ts.Program
-) {
+export function* extractCollectorsWithProgram(collectorPaths: string[], program: ts.Program) {
   if (collectorPaths.length === 0) {
     return;
   }

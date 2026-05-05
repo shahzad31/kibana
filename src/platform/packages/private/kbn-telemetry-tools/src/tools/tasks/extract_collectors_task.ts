@@ -65,9 +65,7 @@ export function extractCollectorsTask(
         const program = createKibanaProgram(allCollectorPaths, tsConfig);
 
         for (const [idx, collectorPaths] of rootCollectorMap) {
-          roots[idx].parsedCollections = [
-            ...extractCollectorsWithProgram(collectorPaths, program),
-          ];
+          roots[idx].parsedCollections = [...extractCollectorsWithProgram(collectorPaths, program)];
         }
       },
       title: 'Extracting collectors across all roots',
