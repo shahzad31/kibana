@@ -362,19 +362,21 @@ export class SyntheticsPrivateLocation {
       page += 1;
     }
 
-    // Composite shard key: a host is only an assignable target when we have BOTH
-    // a safe host.name and a safe host.id, so two agents sharing a hostname can
-    // never both match a monitor's condition (at-most-once). Drop hosts missing a
-    // usable host.id rather than emit a host.name-only condition.
+    // Include every host with a usable name. Prefer composite conditions
+    // (host.name + host.id) when host.id is available — that prevents two agents
+    // sharing a hostname from both matching. Fall back to name-only when host.id
+    // is absent (e.g. minimal container images without /etc/machine-id): monitors
+    // still run, and at-most-once is only weakened when hostnames are not unique,
+    // which is an operator-configuration error rather than a normal deployment.
     const names: string[] = [];
     for (const name of seenNames) {
-      if (idByHost.has(name)) {
-        names.push(name);
-      } else {
+      if (!idByHost.has(name)) {
         this.server.logger.warn(
-          `[PrivateLocation] Skipping agent host "${name}" on policy ${agentPolicyId}: no usable host.id for a composite shard condition.`
+          `[PrivateLocation] Agent host "${name}" on policy ${agentPolicyId} has no usable host.id; ` +
+            `using host.name-only condition (at-most-once not guaranteed if another agent shares this hostname).`
         );
       }
+      names.push(name);
     }
 
     return { names, idByHost };

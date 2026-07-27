@@ -313,15 +313,16 @@ describe('Rebalance private location shards tasks', () => {
       );
     });
 
-    it('drops a host with no usable host.id (a composite key is required to pin uniquely)', async () => {
+    it('falls back to name-only condition for a host with no usable host.id', async () => {
       setHostAgents({
         h1: { checkin: FRESH, hostId: 'uid-1' },
-        h2: { checkin: FRESH }, // no host.id → not an assignable shard target
+        h2: { checkin: FRESH }, // no host.id → name-only condition, still assignable
       });
 
       await runTask();
 
-      expect(healthyHostsArg()).toEqual(['h1']);
+      // h2 is included; idByHost only carries h1 (h2 gets a name-only condition)
+      expect(healthyHostsArg()).toEqual(expect.arrayContaining(['h1', 'h2']));
       expect(hostIdsArg()).toEqual(new Map([['h1', 'uid-1']]));
     });
 
