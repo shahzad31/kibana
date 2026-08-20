@@ -157,22 +157,21 @@ export const MONITOR_TYPE_CONFIG = {
       defaultMessage: 'API Journey',
     }),
     description: i18n.translate('xpack.synthetics.monitorConfig.monitorType.api.description', {
-      defaultMessage:
-        'Run a multistep API check via Playwright APIRequestContext without launching a browser.',
+      defaultMessage: 'Run a sequence of HTTP requests without launching a browser.',
     }),
     link: 'https://www.elastic.co/guide/en/observability/current/synthetics-journeys.html',
-    icon: 'apmTrace',
+    icon: 'inputOutput',
     beta: true,
   },
   [FormMonitorType.MULTISTEP]: {
     id: 'syntheticsMonitorTypeMultistep',
     'data-test-subj': 'syntheticsMonitorTypeMultistep',
     label: i18n.translate('xpack.synthetics.monitorConfig.monitorType.multiStep.label', {
-      defaultMessage: 'Multistep',
+      defaultMessage: 'Browser Journey',
     }),
     value: FormMonitorType.MULTISTEP,
     descriptionTitle: i18n.translate('xpack.synthetics.monitorConfig.monitorType.multiStep.title', {
-      defaultMessage: 'Multistep Browser Journey',
+      defaultMessage: 'Browser Journey',
     }),
     description: i18n.translate(
       'xpack.synthetics.monitorConfig.monitorType.multiStep.description',
@@ -220,8 +219,7 @@ export const MONITOR_TYPE_CONFIG = {
       defaultMessage: 'HTTP Ping',
     }),
     description: i18n.translate('xpack.synthetics.monitorConfig.monitorType.http.description', {
-      defaultMessage:
-        'A lightweight API check to validate the availability of a web service or endpoint.',
+      defaultMessage: 'A lightweight check of a URL without a browser or script.',
     }),
     link: 'https://elastic.co/guide/en/observability/current/synthetics-lightweight.html',
     icon: 'wifi',
@@ -238,8 +236,7 @@ export const MONITOR_TYPE_CONFIG = {
       defaultMessage: 'TCP Ping',
     }),
     description: i18n.translate('xpack.synthetics.monitorConfig.monitorType.tcp.description', {
-      defaultMessage:
-        'A lightweight API check to validate the availability of a web service or endpoint.',
+      defaultMessage: 'Check that a host and port accept TCP connections.',
     }),
     link: 'https://www.elastic.co/guide/en/observability/current/synthetics-lightweight.html',
     icon: 'wifi',
@@ -256,8 +253,7 @@ export const MONITOR_TYPE_CONFIG = {
       defaultMessage: 'ICMP Ping',
     }),
     description: i18n.translate('xpack.synthetics.monitorConfig.monitorType.icmp.description', {
-      defaultMessage:
-        'A lightweight API check to validate the availability of a web service or endpoint.',
+      defaultMessage: 'Check that a host responds to ICMP ping.',
     }),
     link: 'https://www.elastic.co/guide/en/observability/current/synthetics-lightweight.html',
     icon: 'wifi',

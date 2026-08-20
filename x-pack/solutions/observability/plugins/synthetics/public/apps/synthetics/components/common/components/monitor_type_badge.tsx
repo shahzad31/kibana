@@ -75,18 +75,19 @@ function getMonitorTypeBadgeTitle(monitorType: string) {
     case FormMonitorType.ICMP:
       return monitorType.toUpperCase();
     case FormMonitorType.SINGLE:
-      return 'Page';
+      return i18n.translate('xpack.synthetics.monitorTypeBadge.page', {
+        defaultMessage: 'Page',
+      });
     case FormMonitorType.MULTISTEP:
-      return 'Journey';
-    case FormMonitorType.API:
-      return 'API Journey';
-  }
-
-  switch (monitorType) {
     case MonitorTypeEnum.BROWSER:
-      return 'Journey';
+      return i18n.translate('xpack.synthetics.monitorTypeBadge.browser', {
+        defaultMessage: 'Browser',
+      });
+    case FormMonitorType.API:
     case MonitorTypeEnum.API:
-      return 'API Journey';
+      return i18n.translate('xpack.synthetics.monitorTypeBadge.apiJourney', {
+        defaultMessage: 'API Journey',
+      });
     default:
       return monitorType.toUpperCase();
   }
@@ -97,7 +98,7 @@ function getMonitorTypeBadgeIcon(monitorType: string) {
     return 'videoPlayer';
   }
   if (monitorType === MonitorTypeEnum.API || monitorType === FormMonitorType.API) {
-    return 'apmTrace';
+    return 'inputOutput';
   }
   return 'wifi';
 }

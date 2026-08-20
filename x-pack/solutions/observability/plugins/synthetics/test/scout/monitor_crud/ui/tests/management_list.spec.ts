@@ -51,7 +51,7 @@ test.describe('ManagementList', { tag: tags.stateful.classic }, () => {
 
     await test.step('filter by type and search', async () => {
       await expect(page.getByText('Showing 1-3 of 3 Configurations')).toBeVisible();
-      await pageObjects.syntheticsApp.selectFilterOption('Type', 'Journey / Page');
+      await pageObjects.syntheticsApp.selectFilterOption('Type', 'Browser / Page');
       await pageObjects.syntheticsApp.waitForMonitorManagementLoadingToFinish();
       await expect(page.getByText('Showing 1-1 of 1 Configuration')).toBeVisible();
 
@@ -62,7 +62,7 @@ test.describe('ManagementList', { tag: tags.stateful.classic }, () => {
       await expect(page.getByText('Showing 1-1 of 1 Configuration')).toBeVisible();
 
       await searchInput.clear();
-      await pageObjects.syntheticsApp.selectFilterOption('Type', 'Journey / Page');
+      await pageObjects.syntheticsApp.selectFilterOption('Type', 'Browser / Page');
       await pageObjects.syntheticsApp.waitForMonitorManagementLoadingToFinish();
       await expect(page.getByText('Showing 1-3 of 3 Configurations')).toBeVisible();
     });

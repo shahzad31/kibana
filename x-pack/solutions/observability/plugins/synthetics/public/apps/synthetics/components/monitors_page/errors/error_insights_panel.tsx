@@ -149,6 +149,7 @@ const TYPE_ICONS: Record<string, string> = {
   browser: 'videoPlayer',
   tcp: 'link',
   icmp: 'heart',
+  api: 'inputOutput',
 };
 
 function toStringArray(value: string | string[] | undefined): string[] {
