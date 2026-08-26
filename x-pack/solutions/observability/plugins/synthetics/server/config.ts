@@ -26,8 +26,13 @@ const uptimeConfig = schema.object({
   service: schema.maybe(serviceConfig),
   enabled: schema.boolean({ defaultValue: true }),
   // Operational kill-switch for the scalable private locations rebalance task.
-  // Defaults off; set to false to stop the task from scheduling/running (e.g.
-  // during the feature-flagged rollout) without un-sharding any location.
+  // Defaults off. A per-agent `condition` pin only stays correct as long as
+  // the task is running to fix it up (failover off a departed agent, resolve
+  // the unassigned sentinel once one enrolls, load-balance onto agents that
+  // join later); with the task disabled, package-policy create/edit falls
+  // back to the classic (unconditioned) payload instead of minting a pin
+  // nothing will maintain — see generateNewPolicy. Existing pins already
+  // stamped in Fleet are left alone until that monitor is next touched.
   rebalancePrivateLocationShardsTaskEnabled: schema.boolean({ defaultValue: false }),
 });
 

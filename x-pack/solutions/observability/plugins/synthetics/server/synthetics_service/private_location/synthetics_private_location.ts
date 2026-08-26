@@ -72,6 +72,20 @@ export class SyntheticsPrivateLocation {
     this.packagePolicyService = new PackagePolicyService(_server);
   }
 
+  /**
+   * Whether a location's monitors should be pinned to a specific agent via
+   * `condition`. Requires both the location's own opt-in and the rebalance
+   * task running — a pin only stays correct as long as something keeps
+   * reassigning it (departed agents, newly joined agents, the unassigned
+   * sentinel), and only the task does that.
+   */
+  private isConditionSharding(location: { isAgentSharding?: boolean }): boolean {
+    return (
+      isConditionShardedLocation(location) &&
+      this.server.config.rebalancePrivateLocationShardsTaskEnabled
+    );
+  }
+
   async buildNewPolicy(spaceId: string): Promise<NewPackagePolicy> {
     const newPolicy = await this.packagePolicyService.buildPackagePolicyFromPackage({ spaceId });
 
@@ -222,7 +236,15 @@ export class SyntheticsPrivateLocation {
       newPolicy.is_managed = true;
       newPolicy.policy_id = privateLocation.agentPolicyId;
       newPolicy.policy_ids = [privateLocation.agentPolicyId];
-      if (isConditionShardedLocation(privateLocation)) {
+      if (this.isConditionSharding(privateLocation)) {
+        // Every branch below mints or keeps a pin to one specific agent, which
+        // only stays correct over time if the rebalance task is running to
+        // fix it up: reassign when the pinned agent leaves, replace the
+        // unassigned sentinel once an agent enrolls, and load-balance onto
+        // agents that join later. With the task disabled none of that upkeep
+        // happens, so a freshly-minted pin would silently go stale (an agent
+        // that later drops out, or new agents that never get used) — fall
+        // through to the classic (unconditioned) payload instead.
         const agentIds = conditionHosts?.agentIds ?? [];
         const existingAgentId = agentIdFromCondition(existingCondition);
 
@@ -333,7 +355,7 @@ export class SyntheticsPrivateLocation {
     const conditionLocations = [
       ...new Map(
         locations
-          .filter((location) => isConditionShardedLocation(location))
+          .filter((location) => this.isConditionSharding(location))
           .map((location) => [location.id, location])
       ).values(),
     ];
@@ -473,7 +495,7 @@ export class SyntheticsPrivateLocation {
       const privateLocation = locations.find((loc) => !loc.isServiceManaged);
 
       const location = allPrivateLocations?.find((loc) => loc.id === privateLocation?.id)!;
-      const conditionHosts = isConditionShardedLocation(location)
+      const conditionHosts = this.isConditionSharding(location)
         ? await this.getEnrolledAgents(location.agentPolicyId)
         : undefined;
 

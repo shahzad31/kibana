@@ -67,6 +67,7 @@ describe('SyntheticsPrivateLocation', () => {
         password: '12345',
         manifestUrl: 'http://localhost:8080/api/manifest',
       },
+      rebalancePrivateLocationShardsTaskEnabled: true,
     },
     fleet: {
       packagePolicyService: {
@@ -557,6 +558,95 @@ describe('SyntheticsPrivateLocation', () => {
       );
 
       expect(policy?.condition).toBe(UNASSIGNED_CONDITION);
+    });
+
+    it('omits the unassigned sentinel on create when the rebalance task is disabled', async () => {
+      const syntheticsPrivateLocation = new SyntheticsPrivateLocation({
+        ...serverMock,
+        config: { ...serverMock.config, rebalancePrivateLocationShardsTaskEnabled: false },
+      } as unknown as SyntheticsServerSetup);
+
+      const policy = await syntheticsPrivateLocation.generateNewPolicy(
+        testConfig,
+        conditionLocation,
+        testMonitorPolicy,
+        'default',
+        {},
+        [],
+        undefined,
+        undefined,
+        { agentIds: [] }
+      );
+
+      expect(policy?.condition).toBeUndefined();
+    });
+
+    it('clears a stale pin instead of the unassigned sentinel when the rebalance task is disabled', async () => {
+      const syntheticsPrivateLocation = new SyntheticsPrivateLocation({
+        ...serverMock,
+        config: { ...serverMock.config, rebalancePrivateLocationShardsTaskEnabled: false },
+      } as unknown as SyntheticsServerSetup);
+
+      const policy = await syntheticsPrivateLocation.generateNewPolicy(
+        testConfig,
+        conditionLocation,
+        testMonitorPolicy,
+        'default',
+        {},
+        [],
+        undefined,
+        undefined,
+        { agentIds: [] },
+        agentIdCondition('departed-agent')
+      );
+
+      expect(policy?.condition).toBeNull();
+    });
+
+    it('does not pin a new monitor to an agent on create when the rebalance task is disabled, even with agents enrolled', async () => {
+      // Without the task running, a fresh pin would never get load-balanced
+      // onto agents that join later, nor reassigned if this one drops out —
+      // so don't mint one just because agents happen to be enrolled right now.
+      const syntheticsPrivateLocation = new SyntheticsPrivateLocation({
+        ...serverMock,
+        config: { ...serverMock.config, rebalancePrivateLocationShardsTaskEnabled: false },
+      } as unknown as SyntheticsServerSetup);
+
+      const policy = await syntheticsPrivateLocation.generateNewPolicy(
+        testConfig,
+        conditionLocation,
+        testMonitorPolicy,
+        'default',
+        {},
+        [],
+        undefined,
+        undefined,
+        { agentIds: ['agent-a', 'agent-b', 'agent-c'] }
+      );
+
+      expect(policy?.condition).toBeUndefined();
+    });
+
+    it('clears an existing agent pin on edit when the rebalance task is disabled, even with agents enrolled', async () => {
+      const syntheticsPrivateLocation = new SyntheticsPrivateLocation({
+        ...serverMock,
+        config: { ...serverMock.config, rebalancePrivateLocationShardsTaskEnabled: false },
+      } as unknown as SyntheticsServerSetup);
+
+      const policy = await syntheticsPrivateLocation.generateNewPolicy(
+        testConfig,
+        conditionLocation,
+        testMonitorPolicy,
+        'default',
+        {},
+        [],
+        undefined,
+        undefined,
+        { agentIds: ['agent-a', 'agent-b', 'agent-c'] },
+        agentIdCondition('agent-a')
+      );
+
+      expect(policy?.condition).toBeNull();
     });
 
     it('preserves the classic payload when no scalable-location condition exists', async () => {
