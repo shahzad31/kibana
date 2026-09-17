@@ -15,7 +15,7 @@ import { InvalidMaintenanceWindowError } from '../maintenance_windows/resolve_ma
 import type { SyntheticsServerSetup } from '../../types';
 import type { RouteContext } from '../../routes/types';
 import { getAllLocations } from '../get_all_locations';
-import { getAllowedMonitorTypes } from '../../services/allowed_monitor_types';
+import { getMonitorCreationPolicy } from '../../services/allowed_monitor_types';
 import { syncNewMonitorBulk } from '../../routes/monitor_cruds/bulk_cruds/add_monitor_bulk';
 import type { SyntheticsMonitorClient } from '../synthetics_monitor/synthetics_monitor_client';
 import type { MonitorConfigUpdate } from '../../routes/monitor_cruds/bulk_cruds/edit_monitor_bulk';
@@ -45,6 +45,7 @@ export interface ExistingMonitor {
   [ConfigKey.CONFIG_ID]: string;
   [ConfigKey.REVISION]: number;
   [ConfigKey.MONITOR_TYPE]: string;
+  [ConfigKey.SCHEDULE]?: SyntheticsMonitor['schedule'];
 }
 
 export interface PreviousMonitorForUpdate extends ExistingMonitor {
@@ -72,6 +73,7 @@ export class ProjectMonitorFormatter {
   private privateLocations: SyntheticsPrivateLocations;
   private maintenanceWindows: MaintenanceWindow[];
   private allowedMonitorTypes?: string[];
+  private minimumMonitorFrequency?: string;
   private savedObjectsClient: SavedObjectsClientContract;
   private monitors: ProjectMonitor[] = [];
   public createdMonitors: string[] = [];
@@ -113,7 +115,7 @@ export class ProjectMonitorFormatter {
       savedObjectsClient: this.savedObjectsClient,
       excludeAgentPolicies: true,
     });
-    const allowedMonitorTypesPromise = getAllowedMonitorTypes(
+    const allowedMonitorTypesPromise = getMonitorCreationPolicy(
       this.server,
       this.routeContext.request
     );
@@ -127,7 +129,7 @@ export class ProjectMonitorFormatter {
       ? this.syntheticsMonitorClient.syntheticsService.getMaintenanceWindows(this.spaceId)
       : Promise.resolve([]);
 
-    const [locations, existingMonitors, maintenanceWindows, allowedMonitorTypes] =
+    const [locations, existingMonitors, maintenanceWindows, monitorCreationPolicy] =
       await Promise.all([
         locationsPromise,
         existingMonitorsPromise,
@@ -140,7 +142,8 @@ export class ProjectMonitorFormatter {
     this.publicLocations = publicLocations;
     this.privateLocations = privateLocations;
     this.maintenanceWindows = maintenanceWindows ?? [];
-    this.allowedMonitorTypes = allowedMonitorTypes;
+    this.allowedMonitorTypes = monitorCreationPolicy.allowedMonitorTypes;
+    this.minimumMonitorFrequency = monitorCreationPolicy.minimumMonitorFrequency;
 
     return existingMonitors;
   };
@@ -164,6 +167,7 @@ export class ProjectMonitorFormatter {
         publicLocations: this.publicLocations,
         privateLocations: this.privateLocations,
         isNewMonitor: !previousMonitor,
+        previousSchedule: previousMonitor?.[ConfigKey.SCHEDULE],
       });
       if (normM) {
         if (
@@ -206,11 +210,13 @@ export class ProjectMonitorFormatter {
     publicLocations,
     privateLocations,
     isNewMonitor,
+    previousSchedule,
   }: {
     monitor: ProjectMonitor;
     publicLocations: Locations;
     privateLocations: SyntheticsPrivateLocations;
     isNewMonitor: boolean;
+    previousSchedule?: SyntheticsMonitor['schedule'];
   }) => {
     try {
       const { normalizedFields: normalizedMonitor, errors } = normalizeProjectMonitor({
@@ -260,7 +266,9 @@ export class ProjectMonitorFormatter {
           normalizedMonitor as MonitorFields,
           this.spaceId,
           isServerless,
-          isNewMonitor ? this.allowedMonitorTypes : undefined
+          isNewMonitor ? this.allowedMonitorTypes : undefined,
+          this.minimumMonitorFrequency,
+          previousSchedule
         ),
         monitorId: monitor.id,
       });
@@ -305,6 +313,7 @@ export class ProjectMonitorFormatter {
         ConfigKey.CONFIG_ID,
         ConfigKey.REVISION,
         ConfigKey.MONITOR_TYPE,
+        ConfigKey.SCHEDULE,
       ],
     });
 

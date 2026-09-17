@@ -14,7 +14,8 @@
     {
       "useAllRemoteClusters": "boolean?",
       "selectedRemoteClusters": "array?",
-      "allowedMonitorTypes": "array?"
+      "allowedMonitorTypes": "array?",
+      "minimumMonitorFrequency": "string?"
     }
   ]
 }

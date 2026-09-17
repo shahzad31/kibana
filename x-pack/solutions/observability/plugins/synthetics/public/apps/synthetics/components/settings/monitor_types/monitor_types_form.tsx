@@ -25,6 +25,7 @@ import { KbnInfoCallout } from '@kbn/ui-callout';
 import { ALL_SPACES_ID } from '@kbn/security-plugin/public';
 import { isEqual } from 'lodash';
 import { MonitorTypeEnum } from '../../../../../../common/runtime_types';
+import { ALLOWED_FREQUENCY_POLICY_VALUES } from '../../../../../../common/constants/monitor_defaults';
 import type { ClientPluginsStart } from '../../../../../plugin';
 import { useCanManageMonitorPolicy } from '../../../../../hooks/use_capabilities';
 import type { MonitorTypesPolicy } from '../../../state/settings/api';
@@ -58,6 +59,7 @@ export const MonitorTypesForm = () => {
   const [savedPolicy, setSavedPolicy] = useState<MonitorTypesPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedFrequency, setSelectedFrequency] = useState<string>('');
   const [selectedSpaces, setSelectedSpaces] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -67,6 +69,7 @@ export const MonitorTypesForm = () => {
       const policy = await getAllowedMonitorTypesPolicy();
       setSavedPolicy(policy);
       setSelectedTypes(policy.allowedMonitorTypes);
+      setSelectedFrequency(policy.minimumMonitorFrequency ?? '');
       setSelectedSpaces(policy.spaces);
     } finally {
       setLoading(false);
@@ -103,11 +106,13 @@ export const MonitorTypesForm = () => {
   const isFormDirty =
     !!savedPolicy &&
     (!isEqual(sorted(selectedTypes), sorted(savedPolicy.allowedMonitorTypes)) ||
+      selectedFrequency !== (savedPolicy.minimumMonitorFrequency ?? '') ||
       !isEqual(sorted(selectedSpaces), sorted(savedPolicy.spaces)));
 
   const handleDiscard = useCallback(() => {
     if (savedPolicy) {
       setSelectedTypes(savedPolicy.allowedMonitorTypes);
+      setSelectedFrequency(savedPolicy.minimumMonitorFrequency ?? '');
       setSelectedSpaces(savedPolicy.spaces);
     }
   }, [savedPolicy]);
@@ -116,7 +121,7 @@ export const MonitorTypesForm = () => {
     try {
       setIsSaving(true);
       const spacesToShare = selectedSpaces.length ? selectedSpaces : undefined;
-      await setAllowedMonitorTypes(selectedTypes, spacesToShare);
+      await setAllowedMonitorTypes(selectedTypes, spacesToShare, selectedFrequency);
       notifications?.toasts.addSuccess(SAVED_TOAST);
       await loadPolicy();
     } catch (e) {
@@ -124,7 +129,7 @@ export const MonitorTypesForm = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [selectedTypes, selectedSpaces, notifications, loadPolicy]);
+  }, [selectedTypes, selectedFrequency, selectedSpaces, notifications, loadPolicy]);
 
   const typeOptions: Array<EuiComboBoxOptionOption<string>> = useMemo(
     () => ALL_MONITOR_TYPES.map((type) => ({ label: MONITOR_TYPE_LABELS[type], value: type })),
@@ -133,6 +138,19 @@ export const MonitorTypesForm = () => {
   const selectedTypeOptions = useMemo(
     () => typeOptions.filter((opt) => selectedTypes.includes(opt.value as string)),
     [typeOptions, selectedTypes]
+  );
+
+  const frequencyOptions: Array<EuiComboBoxOptionOption<string>> = useMemo(
+    () =>
+      ALLOWED_FREQUENCY_POLICY_VALUES.map((value) => ({
+        label: frequencyPolicyLabel(value),
+        value,
+      })),
+    []
+  );
+  const selectedFrequencyOptions = useMemo(
+    () => frequencyOptions.filter((opt) => opt.value === selectedFrequency),
+    [frequencyOptions, selectedFrequency]
   );
 
   const spaceOptions: Array<EuiComboBoxOptionOption<string>> = useMemo(
@@ -208,6 +226,48 @@ export const MonitorTypesForm = () => {
         title={
           <h4>
             <FormattedMessage
+              id="xpack.synthetics.settings.minFrequency.title"
+              defaultMessage="Minimum monitor frequency"
+            />
+          </h4>
+        }
+        description={
+          <FormattedMessage
+            id="xpack.synthetics.settings.minFrequency.description"
+            defaultMessage="Prevent new monitors from running more often than this interval. Leave empty for no extra restriction."
+          />
+        }
+      >
+        <EuiFormRow
+          label={i18n.translate('xpack.synthetics.settings.minFrequency.label', {
+            defaultMessage: 'Minimum frequency',
+          })}
+          helpText={i18n.translate('xpack.synthetics.settings.minFrequency.helpText', {
+            defaultMessage: 'No selection means every allowed frequency can be used.',
+          })}
+        >
+          <EuiComboBox
+            data-test-subj="syntheticsMinimumMonitorFrequencyComboBox"
+            aria-label={i18n.translate('xpack.synthetics.settings.minFrequency.ariaLabel', {
+              defaultMessage: 'Select minimum monitor frequency',
+            })}
+            placeholder={i18n.translate('xpack.synthetics.settings.minFrequency.placeholder', {
+              defaultMessage: 'No minimum',
+            })}
+            options={frequencyOptions}
+            selectedOptions={selectedFrequencyOptions}
+            singleSelection={{ asPlainText: true }}
+            isClearable={true}
+            isDisabled={!canEdit}
+            isLoading={loading}
+            onChange={(selected) => setSelectedFrequency((selected[0]?.value as string) ?? '')}
+          />
+        </EuiFormRow>
+      </EuiDescribedFormGroup>
+      <EuiDescribedFormGroup
+        title={
+          <h4>
+            <FormattedMessage
               id="xpack.synthetics.settings.monitorTypes.spacesTitle"
               defaultMessage="Spaces with this policy"
             />
@@ -216,7 +276,7 @@ export const MonitorTypesForm = () => {
         description={
           <FormattedMessage
             id="xpack.synthetics.settings.monitorTypes.spacesDescription"
-            defaultMessage="Choose which spaces this policy applies to. Select {allSpaces} to apply it to every space in your deployment. Leave empty to keep the current selection."
+            defaultMessage="Choose which spaces this policy applies to. This list is independent of Remote Clusters. Select {allSpaces} to apply it to every space in your deployment. Leave empty to keep the current selection."
             values={{ allSpaces: <strong>{ALL_SPACES_LABEL}</strong> }}
           />
         }
@@ -283,13 +343,34 @@ const APPLY_CHANGES = i18n.translate('xpack.synthetics.settings.monitorTypes.app
 });
 
 const SAVED_TOAST = i18n.translate('xpack.synthetics.settings.monitorTypes.saved', {
-  defaultMessage: 'Allowed monitor types updated.',
+  defaultMessage: 'Monitor creation policy updated.',
 });
 
 const SAVE_ERROR_TOAST = i18n.translate('xpack.synthetics.settings.monitorTypes.saveError', {
-  defaultMessage: 'Failed to update allowed monitor types.',
+  defaultMessage: 'Failed to update the monitor creation policy.',
 });
 
 const ALL_SPACES_LABEL = i18n.translate('xpack.synthetics.settings.monitorTypes.allSpaces', {
   defaultMessage: 'All spaces',
 });
+
+const frequencyPolicyLabel = (value: string): string => {
+  if (value.endsWith('s')) {
+    const seconds = parseInt(value, 10);
+    return i18n.translate('xpack.synthetics.settings.minFrequency.seconds', {
+      defaultMessage: 'Every {value, number} {value, plural, one {second} other {seconds}}',
+      values: { value: seconds },
+    });
+  }
+  const minutes = parseInt(value, 10);
+  if (minutes > 60) {
+    return i18n.translate('xpack.synthetics.settings.minFrequency.hours', {
+      defaultMessage: 'Every {value, number} {value, plural, one {hour} other {hours}}',
+      values: { value: minutes / 60 },
+    });
+  }
+  return i18n.translate('xpack.synthetics.settings.minFrequency.minutes', {
+    defaultMessage: 'Every {value, number} {value, plural, one {minute} other {minutes}}',
+    values: { value: minutes },
+  });
+};

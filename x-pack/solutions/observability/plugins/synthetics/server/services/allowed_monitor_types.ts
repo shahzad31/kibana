@@ -7,20 +7,35 @@
 import type { KibanaRequest } from '@kbn/core/server';
 import { SECURITY_EXTENSION_ID } from '@kbn/core-saved-objects-server';
 import type { SyntheticsServerSetup } from '../types';
-import { DefaultSyntheticsMultiSpaceSettingsRepository } from './synthetics_multi_space_settings_repository';
+import { DefaultSyntheticsMonitorCreationPolicyRepository } from './synthetics_monitor_creation_policy_repository';
 
-// The monitor-type allow-list lives on the shared `synthetics-settings-multi-space` SO.
-// Use a space-aware client with the security extension excluded so monitor writers can read
-// the policy during creation without needing saved-object privileges on that type, and so the
-// dedicated (already privilege-gated) policy route can share the SO across spaces.
-export const buildMultiSpaceSettingsRepository = (
+export interface MonitorCreationPolicy {
+  allowedMonitorTypes?: string[];
+  minimumMonitorFrequency?: string;
+}
+
+// Policy is a separate document on `synthetics-settings-multi-space` so Remote
+// Clusters space sharing cannot move or hide it. Unsecured scoped client so
+// monitor writers can read it and the privilege-gated route can share it across spaces.
+export const buildMonitorCreationPolicyRepository = (
   server: SyntheticsServerSetup,
   request: KibanaRequest
 ) => {
   const soClient = server.coreStart.savedObjects.getScopedClient(request, {
     excludedExtensions: [SECURITY_EXTENSION_ID],
   });
-  return new DefaultSyntheticsMultiSpaceSettingsRepository(soClient);
+  return new DefaultSyntheticsMonitorCreationPolicyRepository(soClient);
+};
+
+export const getMonitorCreationPolicy = async (
+  server: SyntheticsServerSetup,
+  request: KibanaRequest
+): Promise<MonitorCreationPolicy> => {
+  const settings = await buildMonitorCreationPolicyRepository(server, request).get();
+  return {
+    allowedMonitorTypes: settings.allowedMonitorTypes,
+    minimumMonitorFrequency: settings.minimumMonitorFrequency || undefined,
+  };
 };
 
 // Per-space allow-list of creatable monitor types. `undefined`/empty means no restriction.
@@ -28,6 +43,5 @@ export const getAllowedMonitorTypes = async (
   server: SyntheticsServerSetup,
   request: KibanaRequest
 ): Promise<string[] | undefined> => {
-  const settings = await buildMultiSpaceSettingsRepository(server, request).get();
-  return settings.allowedMonitorTypes;
+  return (await getMonitorCreationPolicy(server, request)).allowedMonitorTypes;
 };

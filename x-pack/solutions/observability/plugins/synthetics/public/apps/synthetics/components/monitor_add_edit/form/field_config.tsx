@@ -69,6 +69,7 @@ import {
   MaintenanceWindowsFieldWrapper,
   KibanaSpacesWrapper,
 } from './field_wrappers';
+import { FrequencySelect } from './frequency_select';
 import { useMonitorName } from '../../../hooks/use_monitor_name';
 import type {
   MonitorFields,
@@ -458,7 +459,7 @@ export const FIELD = (readOnly?: boolean): FieldMap => ({
   ['schedule.number']: {
     fieldKey: `schedule.number`,
     required: true,
-    component: Select,
+    component: FrequencySelect,
     label: i18n.translate('xpack.synthetics.monitorConfig.frequency.label', {
       defaultMessage: 'Frequency',
     }),

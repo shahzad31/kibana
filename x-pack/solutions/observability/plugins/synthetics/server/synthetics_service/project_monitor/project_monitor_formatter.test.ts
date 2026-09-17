@@ -32,6 +32,10 @@ jest.mock('@kbn/fleet-plugin/server/services/package_policy', () => ({
 // this suite isn't exercising the policy, so resolve to "no restriction".
 jest.mock('../../services/allowed_monitor_types', () => ({
   getAllowedMonitorTypes: jest.fn().mockResolvedValue(undefined),
+  getMonitorCreationPolicy: jest.fn().mockResolvedValue({
+    allowedMonitorTypes: undefined,
+    minimumMonitorFrequency: undefined,
+  }),
 }));
 
 const testMonitors = [

@@ -36,6 +36,7 @@ import type {
 import { ConfigKey } from '../../../common/runtime_types';
 import { SYNTHETICS_API_URLS } from '../../../common/constants';
 import { MonitorValidationError, normalizeAPIConfig, validateMonitor } from './monitor_validation';
+import { getMonitorCreationPolicy } from '../../services/allowed_monitor_types';
 import { getMonitorNotFoundResponse } from '../synthetics_service/service_errors';
 import {
   sendTelemetryEvents,
@@ -138,7 +139,16 @@ export const editSyntheticsMonitorRoute: SyntheticsRestApiRouteFactory = () => (
         maintenanceWindows
       );
 
-      const validationResult = validateMonitor(editedMonitor as MonitorFields, spaceId);
+      const { minimumMonitorFrequency } = await getMonitorCreationPolicy(server, request);
+
+      const validationResult = validateMonitor(
+        editedMonitor as MonitorFields,
+        spaceId,
+        false,
+        undefined,
+        minimumMonitorFrequency,
+        normalizedPreviousMonitor[ConfigKey.SCHEDULE]
+      );
 
       if (!validationResult.valid || !validationResult.decodedMonitor) {
         const { reason: message, details, payload } = validationResult;

@@ -17,6 +17,7 @@ export * from './monitor_management/synthetics_private_locations';
 export * from './monitor_health';
 export * from './ccs_settings';
 export * from './multi_space_settings';
+export * from './monitor_creation_policy';
 export * from './remote';
 export * from './remote_monitor';
 export * from './heartbeat_monitor';

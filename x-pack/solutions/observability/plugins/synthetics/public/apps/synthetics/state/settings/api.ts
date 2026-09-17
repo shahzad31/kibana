@@ -60,6 +60,7 @@ export const setDynamicSettings = async ({
 
 export interface MonitorTypesPolicy {
   allowedMonitorTypes: string[];
+  minimumMonitorFrequency: string;
   spaces: string[];
 }
 
@@ -69,10 +70,21 @@ export const getAllowedMonitorTypesPolicy = async (): Promise<MonitorTypesPolicy
 
 export const setAllowedMonitorTypes = async (
   allowedMonitorTypes: string[],
-  spaces?: string[]
+  spaces?: string[],
+  minimumMonitorFrequency?: string
 ): Promise<MonitorTypesPolicy> => {
   // Only forward `spaces` when at least one is selected; an empty list means "keep current".
-  const body = spaces?.length ? { allowedMonitorTypes, spaces } : { allowedMonitorTypes };
+  const body: {
+    allowedMonitorTypes: string[];
+    spaces?: string[];
+    minimumMonitorFrequency?: string;
+  } = { allowedMonitorTypes };
+  if (spaces?.length) {
+    body.spaces = spaces;
+  }
+  if (minimumMonitorFrequency !== undefined) {
+    body.minimumMonitorFrequency = minimumMonitorFrequency;
+  }
   return await apiService.put(SYNTHETICS_API_URLS.MONITOR_TYPES_POLICY, body);
 };
 

@@ -17,6 +17,11 @@ export const syntheticsMultiSpaceSettingsSchema = z.looseObject({
   selectedRemoteClusters: z.array(z.string()).optional(),
 });
 
+export const syntheticsMonitorCreationPolicySchema = z.looseObject({
+  allowedMonitorTypes: z.array(z.string()).optional(),
+  minimumMonitorFrequency: z.string().optional(),
+});
+
 export const APIKeyCodec = z.looseObject({
   spaces: z.array(z.string()),
 });

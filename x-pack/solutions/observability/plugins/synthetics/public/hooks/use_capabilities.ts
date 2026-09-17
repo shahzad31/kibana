@@ -36,8 +36,9 @@ export const useCanManageRules = () => {
 
 /**
  * Whether the current user can edit the per-space monitor creation policy (allowed
- * monitor types today). Requires the dedicated `canManageMonitorPolicy` sub-feature —
- * deliberately NOT granted by `save`, so monitor writers cannot widen the policy that limits them.
+ * monitor types and minimum frequency). Requires the dedicated `canManageMonitorPolicy`
+ * sub-feature — deliberately NOT granted by `save`, so monitor writers cannot widen
+ * the policy that limits them.
  */
 export const useCanManageMonitorPolicy = () => {
   const capabilities = useKibana().services?.application?.capabilities.uptime;

@@ -13,6 +13,7 @@ import { SyntheticsNetworkEventsApiResponseType } from './network_events';
 import { SnapshotType } from './snapshot';
 import { syntheticsCCSSettingsSchema } from './ccs_settings';
 import { syntheticsMultiSpaceSettingsSchema } from './multi_space_settings';
+import { syntheticsMonitorCreationPolicySchema } from './monitor_creation_policy';
 import { APIKeyCodec } from './settings/api_key';
 import {
   SyntheticsServiceApiKeySaveType,
@@ -294,6 +295,14 @@ describeCodecParity({
   zod: zodSettings.syntheticsMultiSpaceSettingsSchema,
   valid: [{}, { useAllRemoteClusters: true, selectedRemoteClusters: ['ccs-1'] }],
   invalid: [{ useAllRemoteClusters: 'yes' }, { selectedRemoteClusters: 'ccs-1' }],
+});
+
+describeCodecParity({
+  label: 'syntheticsMonitorCreationPolicySchema',
+  ioTs: syntheticsMonitorCreationPolicySchema,
+  zod: zodSettings.syntheticsMonitorCreationPolicySchema,
+  valid: [{}, { allowedMonitorTypes: ['http'], minimumMonitorFrequency: '3' }],
+  invalid: [{ allowedMonitorTypes: 'http' }, { minimumMonitorFrequency: 3 }],
 });
 
 describeCodecParity({

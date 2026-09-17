@@ -135,6 +135,11 @@ export const ALLOWED_SCHEDULES_IN_MINUTES = [
   '240',
 ];
 
+export const ALLOWED_FREQUENCY_POLICY_VALUES = [
+  ...ALLOWED_SCHEDULES_IN_SECONDS,
+  ...ALLOWED_SCHEDULES_IN_MINUTES,
+] as const;
+
 export const DEFAULT_COMMON_FIELDS: CommonFields = {
   [ConfigKey.MONITOR_TYPE]: MonitorTypeEnum.HTTP,
   [ConfigKey.FORM_MONITOR_TYPE]: FormMonitorType.MULTISTEP,

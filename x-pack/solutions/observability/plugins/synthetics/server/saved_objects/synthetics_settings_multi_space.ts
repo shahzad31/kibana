@@ -11,6 +11,11 @@ import type { SavedObjectsType } from '@kbn/core-saved-objects-server';
 
 export const SYNTHETICS_SETTINGS_MULTI_SPACE_SO_TYPE = 'synthetics-settings-multi-space';
 
+// Same type, independent documents (and therefore independent namespace lists).
+export const SYNTHETICS_SETTINGS_MULTI_SPACE_CCS_ID = 'synthetics-settings-multi-space-ccs';
+export const SYNTHETICS_SETTINGS_MULTI_SPACE_POLICY_ID =
+  'synthetics-settings-multi-space-monitor-policy';
+
 const syntheticsSettingsMultiSpaceSchemaV1 = schema.object(
   {
     useAllRemoteClusters: schema.maybe(schema.boolean()),
@@ -19,13 +24,14 @@ const syntheticsSettingsMultiSpaceSchemaV1 = schema.object(
   { unknowns: 'ignore' }
 );
 
-// v2 adds the per-space allow-list of creatable monitor types. Empty/undefined
-// means no restriction. Shared across spaces via the SO `namespaces`.
+// v2 adds monitor-creation-policy fields. CCS and policy are separate documents
+// of this type (different ids); each repository only reads/writes its own fields.
 const syntheticsSettingsMultiSpaceSchemaV2 = schema.object(
   {
     useAllRemoteClusters: schema.maybe(schema.boolean()),
     selectedRemoteClusters: schema.maybe(schema.arrayOf(schema.string(), { maxSize: 100 })),
     allowedMonitorTypes: schema.maybe(schema.arrayOf(schema.string(), { maxSize: 10 })),
+    minimumMonitorFrequency: schema.maybe(schema.string({ maxLength: 8 })),
   },
   { unknowns: 'ignore' }
 );

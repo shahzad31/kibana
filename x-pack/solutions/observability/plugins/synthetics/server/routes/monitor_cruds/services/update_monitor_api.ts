@@ -37,6 +37,10 @@ import {
   type SyntheticsPrivateLocations,
 } from '../../../../common/runtime_types';
 import { formatSecrets, normalizeSecrets } from '../../../synthetics_service/utils/secrets';
+import {
+  getMonitorCreationPolicy,
+  type MonitorCreationPolicy,
+} from '../../../services/allowed_monitor_types';
 
 export type UpdateMonitorErrorCode =
   | 'not_found'
@@ -69,6 +73,7 @@ export class UpdateMonitorAPI {
   routeContext: RouteContext;
   result: UpdateMonitorPreprocessResult = { survivors: [], perIdErrors: {} };
   private namePatchErrors = new Map<string, string>();
+  private monitorCreationPolicy?: MonitorCreationPolicy;
 
   /*
    * Request-scoped permission caches. A new instance is created per request,
@@ -95,6 +100,10 @@ export class UpdateMonitorAPI {
     const decryptedMonitors = await this.findDecryptedMonitors(ids);
     this.markNotFound(ids, decryptedMonitors);
     const maintenanceWindows = await this.getMaintenanceWindows(decryptedMonitors, patchById);
+    this.monitorCreationPolicy = await getMonitorCreationPolicy(
+      this.routeContext.server,
+      this.routeContext.request
+    );
 
     for (const decryptedMonitor of decryptedMonitors) {
       const patch = patchById.get(decryptedMonitor.id) ?? {};
@@ -213,7 +222,14 @@ export class UpdateMonitorAPI {
       return;
     }
 
-    const validation = validateMonitor(normalizedMonitor, this.routeContext.spaceId);
+    const validation = validateMonitor(
+      normalizedMonitor,
+      this.routeContext.spaceId,
+      false,
+      undefined,
+      this.monitorCreationPolicy?.minimumMonitorFrequency,
+      prevAttrs[ConfigKey.SCHEDULE]
+    );
     if (!validation.valid || !validation.decodedMonitor) {
       this.result.perIdErrors[monitorId] = {
         code: 'validation_failed',

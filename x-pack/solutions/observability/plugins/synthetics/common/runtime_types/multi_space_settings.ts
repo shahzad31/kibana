@@ -7,14 +7,12 @@
 
 import * as t from 'io-ts';
 
-// Multi-space Synthetics settings stored in the `synthetics-settings-multi-space`
-// saved object. Today it carries only CCS-related fields; future space-scoped
-// settings should be added here.
+// CCS remote-cluster settings stored in `synthetics-settings-multi-space`
+// (id `synthetics-settings-multi-space-ccs`). Monitor creation policy is a
+// separate document of the same type so the two can be shared independently.
 export const syntheticsMultiSpaceSettingsSchema = t.partial({
   useAllRemoteClusters: t.boolean,
   selectedRemoteClusters: t.array(t.string),
-  // Per-space allow-list of creatable monitor types. Empty/undefined = all allowed.
-  allowedMonitorTypes: t.array(t.string),
 });
 
 export type SyntheticsMultiSpaceSettings = t.TypeOf<typeof syntheticsMultiSpaceSettingsSchema>;

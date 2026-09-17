@@ -35,6 +35,7 @@ import type { SyntheticsNetworkEventsApiResponseType } from '../network_events';
 import type { SnapshotType } from '../snapshot';
 import type { syntheticsCCSSettingsSchema } from '../ccs_settings';
 import type { syntheticsMultiSpaceSettingsSchema } from '../multi_space_settings';
+import type { syntheticsMonitorCreationPolicySchema } from '../monitor_creation_policy';
 import type { APIKeyCodec } from '../settings/api_key';
 import type {
   SyntheticsServiceApiKeySaveType,
@@ -153,6 +154,10 @@ interface Parity {
   MultiSpace: Pair<
     typeof syntheticsMultiSpaceSettingsSchema,
     typeof zodSettings.syntheticsMultiSpaceSettingsSchema
+  >;
+  MonitorCreationPolicy: Pair<
+    typeof syntheticsMonitorCreationPolicySchema,
+    typeof zodSettings.syntheticsMonitorCreationPolicySchema
   >;
   APIKey: Pair<typeof APIKeyCodec, typeof zodSettings.APIKeyCodec>;
   ServiceApiKey: Pair<

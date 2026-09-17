@@ -30,6 +30,13 @@ jest.mock('../../../../state', () => ({
   fetchBulkUpdateMonitors: jest.fn(),
 }));
 
+jest.mock('../../../../../../hooks/use_monitor_creation_policy', () => ({
+  useMonitorCreationPolicy: () => ({
+    minimumMonitorFrequency: undefined,
+    loading: false,
+  }),
+}));
+
 const useGetUrlParamsMock = useGetUrlParams as jest.MockedFunction<typeof useGetUrlParams>;
 const fetchBulkUpdateMonitorsMock = fetchBulkUpdateMonitors as jest.MockedFunction<
   typeof fetchBulkUpdateMonitors

@@ -53,6 +53,13 @@ jest.mock('../../common', () => ({
   getSavedObjectKqlFilter: jest.fn(() => 'mock-filter'),
 }));
 
+jest.mock('../../../services/allowed_monitor_types', () => ({
+  getMonitorCreationPolicy: jest.fn().mockResolvedValue({
+    allowedMonitorTypes: undefined,
+    minimumMonitorFrequency: undefined,
+  }),
+}));
+
 /**
  * Build the `{ updates: [{ id, attributes }] }` shape from an id list and a
  * single shared patch — keeps these tests (which mostly apply a uniform patch)
@@ -307,7 +314,11 @@ describe('UpdateMonitorAPI', () => {
       expect(result.survivors).toHaveLength(1);
       expect(validateMonitor).toHaveBeenCalledWith(
         expect.objectContaining({ [ConfigKey.URLS]: 'https://new.example.com' }),
-        'default'
+        'default',
+        false,
+        undefined,
+        undefined,
+        { number: '5', unit: 'm' }
       );
       const persisted = result.survivors[0].monitorWithRevision as Record<string, unknown>;
       expect(persisted[ConfigKey.URLS]).toBe('https://new.example.com');

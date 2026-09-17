@@ -42,6 +42,8 @@ import { splitMonitorsForBulkEdit } from './bulk_edit_eligibility';
 import { useGetUrlParams } from '../../../../hooks';
 import { fetchBulkUpdateMonitors } from '../../../../state';
 import { kibanaService } from '../../../../../../utils/kibana_service';
+import { useMonitorCreationPolicy } from '../../../../../../hooks/use_monitor_creation_policy';
+import { filterFrequencyOptions } from '../../../../../../../common/lib/schedule_to_time';
 
 // UI value carries the unit inline ('10s' for seconds, '3' for minutes) so a
 // single EuiSelect can express both; converted to `{ number, unit }` on save,
@@ -87,6 +89,7 @@ export const BulkScheduleFlyout = ({
   const { spaceId } = useGetUrlParams();
   const flyoutTitleId = useGeneratedHtmlId();
   const skippedAccordionId = useGeneratedHtmlId();
+  const { minimumMonitorFrequency } = useMonitorCreationPolicy();
 
   const { eligibleMonitors, skippedMonitors } = useMemo(
     () => splitMonitorsForBulkEdit(monitors),
@@ -116,7 +119,7 @@ export const BulkScheduleFlyout = ({
       text: scheduleContent(parseInt(value, 10)),
     }));
     if (!allowSeconds) {
-      return minutes;
+      return filterFrequencyOptions(minutes, minimumMonitorFrequency);
     }
     const seconds = ALLOWED_SCHEDULES_IN_SECONDS.map((value) => {
       const numeric = parseInt(value, 10);
@@ -125,8 +128,8 @@ export const BulkScheduleFlyout = ({
       // ever changes to bare numbers (e.g. '10' instead of '10s').
       return { value: `${numeric}s`, text: scheduleContent(numeric, true) };
     });
-    return [...seconds, ...minutes];
-  }, [allowSeconds]);
+    return filterFrequencyOptions([...seconds, ...minutes], minimumMonitorFrequency);
+  }, [allowSeconds, minimumMonitorFrequency]);
 
   const monitorIdsToUpdate = useMemo(() => {
     if (!selectedValue) {

@@ -695,6 +695,60 @@ describe('validateMonitor', () => {
     });
   });
 
+  describe('minimum monitor frequency policy', () => {
+    it('validates when the schedule is at the minimum', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '3', unit: ScheduleUnit.MINUTES };
+      expect(validateMonitor(testMonitor, 'default', false, undefined, '3').valid).toBe(true);
+    });
+
+    it('invalidates when the schedule is below the minimum', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '1', unit: ScheduleUnit.MINUTES };
+      const result = validateMonitor(testMonitor, 'default', false, undefined, '3');
+      expect(result).toMatchObject({
+        valid: false,
+        reason: 'Monitor frequency is below the minimum allowed in this space',
+      });
+      expect(result.details).toContain('3');
+    });
+
+    it('rejects 10s when the minimum is 1 minute', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '10', unit: ScheduleUnit.SECONDS };
+      testMonitor.timeout = '5';
+      const result = validateMonitor(testMonitor, 'default', false, undefined, '1');
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('Monitor frequency is below the minimum allowed in this space');
+    });
+
+    it('grandfathers an unchanged below-minimum schedule', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '1', unit: ScheduleUnit.MINUTES };
+      const result = validateMonitor(testMonitor, 'default', false, undefined, '3', {
+        number: '1',
+        unit: ScheduleUnit.MINUTES,
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects changing to a different below-minimum schedule', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '2', unit: ScheduleUnit.MINUTES };
+      const result = validateMonitor(testMonitor, 'default', false, undefined, '3', {
+        number: '1',
+        unit: ScheduleUnit.MINUTES,
+      });
+      expect(result.valid).toBe(false);
+    });
+
+    it('treats an empty minimum as no restriction', () => {
+      const testMonitor = getJsonPayload() as MonitorFields;
+      testMonitor.schedule = { number: '1', unit: ScheduleUnit.MINUTES };
+      expect(validateMonitor(testMonitor, 'default', false, undefined, '').valid).toBe(true);
+    });
+  });
+
   describe('Project Monitor', () => {
     it(`when schedule is not valid`, () => {
       const result = validateProjectMonitor(

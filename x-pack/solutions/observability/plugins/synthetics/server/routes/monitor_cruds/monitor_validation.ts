@@ -16,6 +16,7 @@ import type {
   MonitorFields,
   ProjectMonitor,
   SyntheticsMonitor,
+  SyntheticsMonitorSchedule,
 } from '../../../common/runtime_types';
 import {
   CodeEditorMode,
@@ -36,6 +37,7 @@ import {
   monitorTypeRequiresPrivateLocations,
 } from '../../../common/utils/monitor_location_support';
 import { privateLocationCoversAllMonitorSpaces } from './monitor_locations_utils';
+import { isScheduleBelowMinimum, scheduleToMilli } from '../../../common/lib/schedule_to_time';
 
 export interface ValidationResult {
   valid: boolean;
@@ -79,7 +81,9 @@ export function validateMonitor(
   monitorFields: MonitorFields,
   spaceId: string,
   isServerless = false,
-  allowedMonitorTypes?: string[]
+  allowedMonitorTypes?: string[],
+  minimumMonitorFrequency?: string,
+  previousSchedule?: SyntheticsMonitorSchedule
 ): ValidationResult {
   const { MonitorTypeCodec, formatZodErrors, monitorTypeToCodecMap, ICMPFieldsCodec } =
     getZodMonitorCodecs();
@@ -167,6 +171,19 @@ export function validateMonitor(
       valid: false,
       reason: INVALID_SCHEDULE_ERROR,
       details: INVALID_SCHEDULE_DETAILS(monitorFields[ConfigKey.SCHEDULE].number),
+      payload: monitorFields,
+    };
+  }
+
+  const schedule = monitorFields[ConfigKey.SCHEDULE];
+  const scheduleUnchanged =
+    previousSchedule !== undefined &&
+    scheduleToMilli(previousSchedule) === scheduleToMilli(schedule);
+  if (!scheduleUnchanged && isScheduleBelowMinimum(schedule, minimumMonitorFrequency)) {
+    return {
+      valid: false,
+      reason: SCHEDULE_BELOW_MINIMUM_ERROR,
+      details: SCHEDULE_BELOW_MINIMUM_DETAILS(minimumMonitorFrequency ?? ''),
       payload: monitorFields,
     };
   }
@@ -620,6 +637,20 @@ const INVALID_SCHEDULE_DETAILS = (schedule: string) =>
       schedule,
       allowedSchedulesInMinutes: ALLOWED_SCHEDULES_IN_MINUTES.join(', '),
     },
+  });
+
+const SCHEDULE_BELOW_MINIMUM_ERROR = i18n.translate(
+  'xpack.synthetics.server.monitors.scheduleBelowMinimumError',
+  {
+    defaultMessage: 'Monitor frequency is below the minimum allowed in this space',
+  }
+);
+
+const SCHEDULE_BELOW_MINIMUM_DETAILS = (minimumMonitorFrequency: string) =>
+  i18n.translate('xpack.synthetics.server.monitors.scheduleBelowMinimumDetails', {
+    defaultMessage:
+      'Monitor frequency must be at least {minimumMonitorFrequency}. Choose a slower frequency or ask an administrator to change the minimum.',
+    values: { minimumMonitorFrequency },
   });
 
 const INVALID_SCHEMA_ERROR = (type: string) =>

@@ -160,9 +160,9 @@ const canManageMonitorPolicyPrivilege: SubFeaturePrivilegeGroupConfig = {
       }),
       // `includeIn: 'none'` — never granted implicitly, not even to base `all`.
       // Base `all` (monitor writers) can create monitors but must NOT be able to
-      // widen the creation policy that constrains them (allowed monitor types
-      // today; e.g. allowed locations in future). Only a role that explicitly adds
-      // this privilege can edit the policy via the dedicated route.
+      // widen the creation policy that constrains them (allowed monitor types and
+      // minimum frequency today; e.g. allowed locations in future). Only a role
+      // that explicitly adds this privilege can edit the policy via the dedicated route.
       includeIn: 'none',
       api: [MANAGE_MONITOR_POLICY_API],
       savedObject: {
@@ -307,7 +307,7 @@ export const syntheticsFeature = {
       }),
       description: i18n.translate('xpack.synthetics.features.app.monitorPolicy.description', {
         defaultMessage:
-          'Configure the monitor creation policy for a space, such as which monitor types (e.g. HTTP, TCP, ICMP, browser) may be created. This does not grant permission to create or edit monitors.',
+          'Configure the monitor creation policy for a space, such as which monitor types (e.g. HTTP, TCP, ICMP, browser) may be created and the minimum frequency. This does not grant permission to create or edit monitors.',
       }),
       privilegeGroups: [canManageMonitorPolicyPrivilege],
     },
