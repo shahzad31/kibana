@@ -5,43 +5,32 @@ on:
     branches: [clone-timing]
 
 jobs:
-  clone:
+  blobless:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: full
-            args: ''
-          - name: blob-none
-            args: '--filter=blob:none'
-          - name: depth-1
-            args: '--depth=1'
-          - name: blob-none-depth-1
-            args: '--filter=blob:none --depth=1'
+        run: [1, 2, 3, 4, 5]
     steps:
-      - name: Time clone and backport-style work
-        env:
-          NAME: ${{ matrix.name }}
-          ARGS: ${{ matrix.args }}
+      - name: Time blobless clone and backport-style work
         run: |
           set -x
           SECONDS=0
-          git clone $ARGS https://github.com/elastic/kibana.git "$RUNNER_TEMP/kibana"
+          git clone --filter=blob:none https://github.com/elastic/kibana.git "$RUNNER_TEMP/kibana"
           clone_s=$SECONDS
           cd "$RUNNER_TEMP/kibana"
           du -sh .git
 
-          SECONDS=0
           git config user.email t@example.com && git config user.name t
+          SECONDS=0
           git fetch origin 9.5
           git checkout -q -b bp origin/9.5
           fetch_s=$SECONDS
 
           SECONDS=0
-          # PR #199098 squash commit on main; fails on shallow clones (commit not in history)
-          if git cherry-pick -x 27fab004d71d4c07d6c8ef5ef34ae76f4f4c5ff0 2>/dev/null || git cherry-pick -x 27fab004d71d; then pick=ok; else pick=failed; fi
+          git cherry-pick -x f5258057cfe3f909cc720136e3153e88574ca73e
+          git cherry-pick -x 45dcbbee172aa183e74d3b40497f8096e446ce0b
           pick_s=$SECONDS
 
-          echo "| $NAME | clone ${clone_s}s | fetch+checkout ${fetch_s}s | cherry-pick ${pick_s}s ($pick) |" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "| run ${{ matrix.run }} | clone ${clone_s}s | fetch+checkout ${fetch_s}s | cherry-pick x2 ${pick_s}s | total $((clone_s+fetch_s+pick_s))s |" | tee -a "$GITHUB_STEP_SUMMARY"
