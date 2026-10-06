@@ -1,0 +1,47 @@
+name: clone-timing
+
+on:
+  push:
+    branches: [clone-timing]
+
+jobs:
+  clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: full
+            args: ''
+          - name: blob-none
+            args: '--filter=blob:none'
+          - name: depth-1
+            args: '--depth=1'
+          - name: blob-none-depth-1
+            args: '--filter=blob:none --depth=1'
+    steps:
+      - name: Time clone and backport-style work
+        env:
+          NAME: ${{ matrix.name }}
+          ARGS: ${{ matrix.args }}
+        run: |
+          set -x
+          SECONDS=0
+          git clone $ARGS https://github.com/elastic/kibana.git "$RUNNER_TEMP/kibana"
+          clone_s=$SECONDS
+          cd "$RUNNER_TEMP/kibana"
+          du -sh .git
+
+          SECONDS=0
+          git config user.email t@example.com && git config user.name t
+          git fetch origin 9.5
+          git checkout -q -b bp origin/9.5
+          fetch_s=$SECONDS
+
+          SECONDS=0
+          # PR #199098 squash commit on main; fails on shallow clones (commit not in history)
+          if git cherry-pick -x 27fab004d71d4c07d6c8ef5ef34ae76f4f4c5ff0 2>/dev/null || git cherry-pick -x 27fab004d71d; then pick=ok; else pick=failed; fi
+          pick_s=$SECONDS
+
+          echo "| $NAME | clone ${clone_s}s | fetch+checkout ${fetch_s}s | cherry-pick ${pick_s}s ($pick) |" | tee -a "$GITHUB_STEP_SUMMARY"
