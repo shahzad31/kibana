@@ -5,32 +5,40 @@ on:
     branches: [clone-timing]
 
 jobs:
-  blobless:
+  backport-tool:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        run: [1, 2, 3, 4, 5]
+        run: [1, 2, 3]
     steps:
-      - name: Time blobless clone and backport-style work
+      - uses: actions/checkout@v4
+        with:
+          repository: shahzad31/backport
+          ref: clone-filter-and-depth-options
+          path: tool
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build tool
+        working-directory: tool
+        run: npm ci && npm run build
+
+      - name: Dry-run backport (first run clones, second reuses the clone)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x
-          SECONDS=0
-          git clone --filter=blob:none https://github.com/elastic/kibana.git "$RUNNER_TEMP/kibana"
-          clone_s=$SECONDS
-          cd "$RUNNER_TEMP/kibana"
-          du -sh .git
-
-          git config user.email t@example.com && git config user.name t
-          SECONDS=0
-          git fetch origin 9.5
-          git checkout -q -b bp origin/9.5
-          fetch_s=$SECONDS
-
-          SECONDS=0
-          git cherry-pick -x f5258057cfe3f909cc720136e3153e88574ca73e
-          git cherry-pick -x 45dcbbee172aa183e74d3b40497f8096e446ce0b
-          pick_s=$SECONDS
-
-          echo "| run ${{ matrix.run }} | clone ${clone_s}s | fetch+checkout ${fetch_s}s | cherry-pick x2 ${pick_s}s | total $((clone_s+fetch_s+pick_s))s |" | tee -a "$GITHUB_STEP_SUMMARY"
+          run_backport() {
+            node "$GITHUB_WORKSPACE/tool/bin/backport" \
+              --repo elastic/kibana --pr 281416 --branch 9.5 \
+              --non-interactive --no-fork --dry-run \
+              --clone-filter blob:none --accessToken "$TOKEN" --verbose
+          }
+          SECONDS=0; run_backport; first=$SECONDS
+          SECONDS=0; run_backport; second=$SECONDS
+          du -sh ~/.backport/repositories/elastic/kibana/.git || true
+          echo "| run ${{ matrix.run }} | first (clone) ${first}s | second (cached) ${second}s |" | tee -a "$GITHUB_STEP_SUMMARY"
