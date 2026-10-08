@@ -5,40 +5,16 @@ on:
     branches: [clone-timing]
 
 jobs:
-  backport-tool:
+  dry-run:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        run: [1, 2]
     steps:
       - uses: actions/checkout@v4
-        with:
-          repository: shahzad31/backport
-          ref: clone-filter-and-depth-options
-          path: tool
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-
-      - name: Build tool
-        working-directory: tool
-        run: npm ci && npm run build
-
-      - name: Dry-run backport (first run clones, second reuses the clone)
+      - run: npm init -y >/dev/null && npm i backport@^12.1.2
+      - name: Dry-run backports with the options used by the action
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -x
-          run_backport() {
-            node "$GITHUB_WORKSPACE/tool/bin/backport" \
-              --repo elastic/kibana --pr 295614 --branch 9.5 \
-              --non-interactive --no-fork --dry-run \
-              --clone-filter blob:none --accessToken "$TOKEN" --verbose
-          }
-          SECONDS=0; run_backport; first=$SECONDS
-          SECONDS=0; run_backport; second=$SECONDS
-          du -sh ~/.backport/repositories/elastic/kibana/.git || true
-          echo "| run ${{ matrix.run }} | first (clone) ${first}s | second (cached) ${second}s |" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node scripts/dry_run.mjs
