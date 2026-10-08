@@ -66,6 +66,7 @@
     "^v(\\d+).(\\d+).\\d+$": "$1.$2"
   },
   "autoMerge": true,
+  "fork": false,
   "autoMergeMethod": "squash",
   "backportBinary": "node scripts/backport",
   "prDescription": "{defaultPrDescription}\n\n<!--BACKPORT {commits} BACKPORT-->"
