@@ -11,6 +11,10 @@ jobs:
   on-merge:
     name: 'Label and Backport'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     if: |
       github.event.pull_request.merged == true &&
         (github.event.action == 'closed' ||
@@ -25,8 +29,8 @@ jobs:
       - name: Checkout Actions
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: 'elastic/kibana-github-actions'
-          ref: main
+          repository: 'shahzad31/kibana-github-actions'
+          ref: backport-clone-filter
           path: ./actions
           persist-credentials: false
 
@@ -36,4 +40,4 @@ jobs:
       - name: Run On-Merge
         uses: ./actions/on-merge
         with:
-          github_token: ${{secrets.KIBANAMACHINE_TOKEN}}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
